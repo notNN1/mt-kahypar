@@ -66,7 +66,7 @@ class PartitionedHypergraph {
   using NotificationFunc = std::function<void (SynchronizedEdgeUpdate&)>;
   using DeltaFunction = std::function<void (const SynchronizedEdgeUpdate&)>;
   #define NOOP_NOTIFY_FUNC [] (const SynchronizedEdgeUpdate&) { }
-  #define NOOP_FUNC [] (const SynchronizedEdgeUpdate&) { }cmake -DCMAKE_BUILD_TYPE=Debug
+  #define NOOP_FUNC [] (const SynchronizedEdgeUpdate&) { }
 
   // Factory
   using HypergraphFactory = typename Hypergraph::Factory;
