@@ -66,7 +66,7 @@ class PartitionedHypergraph {
   using NotificationFunc = std::function<void (SynchronizedEdgeUpdate&)>;
   using DeltaFunction = std::function<void (const SynchronizedEdgeUpdate&)>;
   #define NOOP_NOTIFY_FUNC [] (const SynchronizedEdgeUpdate&) { }
-  #define NOOP_FUNC [] (const SynchronizedEdgeUpdate&) { }
+  #define NOOP_FUNC [] (const SynchronizedEdgeUpdate&) { }cmake -DCMAKE_BUILD_TYPE=Debug
 
   // Factory
   using HypergraphFactory = typename Hypergraph::Factory;
@@ -1288,7 +1288,7 @@ class PartitionedHypergraph {
 
   // ! Underlying hypergraph
   Hypergraph* _hg = nullptr;
-
+//
   // ! Target graph on which this hypergraph is mapped
   const TargetGraph* _target_graph;
 
@@ -1296,7 +1296,7 @@ class PartitionedHypergraph {
   vec< CAtomic<HypernodeWeight> > _part_weights;
 
   // ! Current block IDs of the vertices
-  Array< PartitionID > _part_ids;
+  Array<PartitionID> _part_ids;
 
   // ! Stores the pin count values and connectivity sets
   ConnectivityInformation _con_info;
