@@ -43,6 +43,8 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
 
   // TODO: compute components and write components of block i to result[i]
 
+  (void)context;
+
   Bitset node_colored;
   node_colored.resize(phg.initialNumNodes());
   
@@ -61,9 +63,13 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
 
     while (node_queue.size() > 0) {
       HypernodeID current = node_queue.front();
+      node_queue.pop();
+      if (node_colored.isSet((size_t) current)) {
+        continue;
+      }
+
       node_colored.set((size_t) current);
       cc.nodes.push_back(current);
-      node_queue.pop();
 
       for (const HyperedgeID& he : phg.incidentEdges(current)) {
         for (const HypernodeID& incident_hn : phg.pins(he)) {
