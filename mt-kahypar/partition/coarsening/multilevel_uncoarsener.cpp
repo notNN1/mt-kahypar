@@ -87,7 +87,7 @@ namespace mt_kahypar {
   void MultilevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl() {
     PartitionedHypergraph& partitioned_hg = *_uncoarseningData.partitioned_hg;
 
-    if ( _context.partition.connected_blocks ) {
+    if ( _context.partition.connected_blocks && _context.type == ContextType::main ) {
       logConnectivityInformation(partitioned_hg, _context, _current_level);
     }
     
