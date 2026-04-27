@@ -33,8 +33,27 @@
 #include "mt-kahypar/partition/metrics.h"
 #include "mt-kahypar/utils/stats.h"
 #include "mt-kahypar/utils/cast.h"
+#include "mt-kahypar/partition/connected_components/compute_components.h"
+
+
 
 namespace mt_kahypar {
+  template<typename PartitionedHypergraph>
+  void logConnectivityInformation(const PartitionedHypergraph& phg,
+                                  const Context& context, 
+                                  int current_level) {
+
+    vec<vec<connected_components::ConnectedComponent>> result;
+    connected_components::compute_components_per_block(phg, context, result);
+                  
+    LOG  << "level ="  << current_level << ", type = " << (context.type == ContextType::main);
+    
+    for (size_t i = 0; i < result.size(); i++) {
+      vec<connected_components::ConnectedComponent> block = result[i];
+      LOG << "block = " << i << ", component count = " << block.size();
+    }
+    LOG << "\n";
+  }
 
   template<typename TypeTraits>
   void MultilevelUncoarsener<TypeTraits>::initializeImpl() {
@@ -67,6 +86,11 @@ namespace mt_kahypar {
   template<typename TypeTraits>
   void MultilevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl() {
     PartitionedHypergraph& partitioned_hg = *_uncoarseningData.partitioned_hg;
+
+    if ( _context.partition.connected_blocks ) {
+      logConnectivityInformation(partitioned_hg, _context, _current_level);
+    }
+    
     if ( _current_level == _num_levels ) {
       // We always start with a refinement pass on the smallest hypergraph.
       // The next calls to this function will then project the partition to the next level

@@ -64,9 +64,6 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
     while (node_queue.size() > 0) {
       HypernodeID current = node_queue.front();
       node_queue.pop();
-      if (node_colored.isSet((size_t) current)) {
-        continue;
-      }
 
       node_colored.set((size_t) current);
       cc.nodes.push_back(current);
@@ -82,6 +79,7 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
           }
 
           node_queue.push(incident_hn);
+          node_colored.set((size_t) incident_hn);
         }
       }
     }
