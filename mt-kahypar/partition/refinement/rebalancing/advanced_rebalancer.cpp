@@ -58,6 +58,34 @@ namespace impl {
     HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
     for (PartitionID i = 0; i < context.partition.k; ++i) {
+
+      int edge_count = 0;
+      // TODO: Check if the node has a connection to the partition i
+      bool is_connected_target_block = false;
+
+      for (const HyperedgeID& he : phg.incidentEdges(u)) {
+        edge_count++;
+        for (const PartitionID& partition : phg.connectivitySet(he)) {
+          if (partition == i) {
+            is_connected_target_block = true;
+            break;
+          }
+        }
+
+        if (is_connected_target_block) {
+          break;
+        }
+      }
+
+      if (!is_connected_target_block) {
+        continue;
+      }
+      // TODO: Check if the partition from stays connected
+      if (edge_count <= 2) {
+        continue;
+      }
+
+
       if (i != from) {
         const HypernodeWeight to_weight = phg.partWeight(i);
         HyperedgeWeight benefit;
@@ -95,6 +123,35 @@ namespace impl {
     HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
     for (PartitionID i : parts) {
+
+      int edge_count = 0;
+      // TODO: Check if the node has a connection to the partition i
+      bool is_connected_target_block = false;
+
+      for (const HyperedgeID& he : phg.incidentEdges(u)) {
+        edge_count++;
+        for (const PartitionID& partition : phg.connectivitySet(he)) {
+          if (partition == i) {
+            is_connected_target_block = true;
+            break;
+          }
+        }
+
+        if (is_connected_target_block) {
+          break;
+        }
+      }
+
+      if (!is_connected_target_block) {
+        continue;
+      }
+
+      // TODO: Check if the partition from stays connected
+      if (edge_count <= 2) {
+        continue;
+      }
+
+
       if (i != from && i != kInvalidPartition) {
         const HypernodeWeight to_weight = phg.partWeight(i);
         const HyperedgeWeight benefit = gain_cache.blockIsAdjacent(u, i) ? gain_cache.benefitTerm(u, i) : gain_cache.recomputeBenefitTerm(phg, u, i);

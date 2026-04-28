@@ -202,7 +202,7 @@ class PartitionedHypergraph {
 
   // ! Number of unique edge ids of the input hypergraph
   HyperedgeID topLevelNumUniqueIds() const {
-    return _input_num_edges;
+    return _input_num_edges; 
   }
 
   // ! Initial number of pins

@@ -51,6 +51,33 @@ namespace mt_kahypar {
       ASSERT(hypergraph.nodeIsEnabled(hn));
 
       Move best_move = _gain.computeMaxGainMove(hypergraph, hn, false, false, unconstrained);
+
+      int edge_count = 0;
+      // TODO: Check if the node has a connection to the partition best_move.to
+      bool is_connected_target_block = false;
+
+      for (const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
+        edge_count++;
+        for (const PartitionID& partition : hypergraph.connectivitySet(he)) {
+          if (partition == best_move.to) {
+            is_connected_target_block = true;
+            break;
+          }
+        }
+
+        if (is_connected_target_block) {
+          break;
+        }
+      }
+
+      if (!is_connected_target_block) {
+        return false;
+      }
+      // TODO: Check if the partition best_move.from stays connected
+      if (edge_count <= 2) {
+        return false;
+      }
+
       // We perform a move if it either improves the solution quality or, in case of a
       // zero gain move, the balance of the solution.
       const bool positive_gain = best_move.gain < 0;
