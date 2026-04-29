@@ -31,9 +31,14 @@
 namespace mt_kahypar {
 namespace hdlt {
 
-struct HDLT {
-  
+struct Wrapper {
+  vec<Hdlt> hdlts;
 };
+
+struct Hdlt{
+    
+};
+
 
 
 
