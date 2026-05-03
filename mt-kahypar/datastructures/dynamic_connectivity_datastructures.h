@@ -27,20 +27,24 @@
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/parallel/stl/scalable_vector.h"
 #include "mt-kahypar/partition/context.h"
+#include "mt-kahypar/partition/connected_components/compute_components.h"
 
 namespace mt_kahypar {
-namespace hdlt {
+namespace connected_components {
 
-struct Wrapper {
-  vec<Hdlt> hdlts;
-};
-
-struct Hdlt{
+template<typename PartitionedHypergraph>
+class DynamicConnectivityDatastructure {
+public:
     
-};
+    virtual bool moveVertex(
+        const PartitionedHypergraph& phg, 
+        const Context& context,
+        HypernodeID hn, 
+        PartitionID newPartition
+    );
 
-
-
+    virtual ~DynamicConnectivityDatastructure() {}
+}
 
 }  // namespace connected_components
 }  // namespace mt_kahypar
