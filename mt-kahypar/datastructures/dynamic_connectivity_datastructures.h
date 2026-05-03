@@ -33,18 +33,16 @@ namespace mt_kahypar {
 namespace connected_components {
 
 template<typename PartitionedHypergraph>
-class DynamicConnectivityDatastructure {
+class BFSConnectivity {
 public:
-    
-    virtual bool moveVertex(
+    bool moveVertex(
         const PartitionedHypergraph& phg, 
         const Context& context,
         HypernodeID hn, 
-        PartitionID newPartition
+        PartitionID from,
+        PartitionID to
     );
-
-    virtual ~DynamicConnectivityDatastructure() {}
-}
+};
 
 }  // namespace connected_components
 }  // namespace mt_kahypar

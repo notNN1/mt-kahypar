@@ -33,7 +33,7 @@ namespace connected_components {
     using Bitset = mt_kahypar::ds::Bitset;
 
     template<typename PartitionedHypergraph>
-    class BFSConnectivity : public DynamicConnectivityDatastructure {
+    class BFSConnectivity {
     public:
         bool moveVertex(
             const PartitionedHypergraph& phg, 
@@ -106,7 +106,7 @@ namespace connected_components {
             return is_connected_target_block && result == 1;
 
         }
-    }
+    };
 
 
 namespace {
@@ -116,6 +116,8 @@ namespace {
 
 // This tells the compiler: "Build BFSConnectivity for all Hypergraph types"
 INSTANTIATE_CLASS_WITH_PARTITIONED_HG(BFS_CONNECTIVITY)
+
+INSTANTIATE_CLASS_WITH_PARTITIONED_GRAPH(BFS_CONNECTIVITY)
 
 }  // namespace connected_components
 }  // namespace mt_kahypar

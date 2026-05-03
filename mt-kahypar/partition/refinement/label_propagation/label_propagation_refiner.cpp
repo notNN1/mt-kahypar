@@ -53,7 +53,11 @@ namespace mt_kahypar {
 
       Move best_move = _gain.computeMaxGainMove(hypergraph, hn, false, false, unconstrained);
 
-      
+
+      mt_kahypar::connected_components::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::connected_components::BFSConnectivity<PartitionedHypergraph>();
+      if (!dcd.moveVertex(hypergraph, _context, hn, best_move.from, best_move.to)) {
+        return false;
+      }
 
       // We perform a move if it either improves the solution quality or, in case of a
       // zero gain move, the balance of the solution.
