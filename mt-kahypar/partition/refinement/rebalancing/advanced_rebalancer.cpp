@@ -61,7 +61,7 @@ namespace impl {
     
     bool can_move_node = true;
 
-    if (context.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
+    if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
       mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
       can_move_node = dcd.moveVertex(phg, context, u, from);
     }
@@ -128,7 +128,7 @@ namespace impl {
 
     bool can_move_node = true;
 
-    if (context.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
+    if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
       mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
       can_move_node = dcd.moveVertex(phg, context, u, from);
     }

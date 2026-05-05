@@ -573,6 +573,22 @@ namespace mt_kahypar {
         context.initial_partitioning.refinement.min_border_vertices_per_thread),
       "Minimum number of border vertices per thread with which we perform a localized search (n-Level Partitioner)."
     )->capture_default_str();
+    app.add_option_function<std::string>(
+      (initial_partitioning ? "--i-r-rebalancer-dynamic-connectivity" : "--r-rebalancer-dynamic-connectivity"), [&, initial_partitioning](const std::string& s) {
+        if (initial_partitioning) {
+          context.initial_partitioning.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy =
+                  dynamicConnectivityStrategyFromString(s);
+        } else {
+          context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy =
+                  dynamicConnectivityStrategyFromString(s);
+        }
+      },
+      "Dynamic connectivity strategy:\n"
+      "- bfs\n"
+      "- hdlt\n"
+      "- g_vertex_degree\n"
+      "- do_nothing"
+    )->capture_default_str();
 
     // Label Propagation
     app.add_option_function<std::string>(
@@ -632,19 +648,16 @@ namespace mt_kahypar {
         context.initial_partitioning.refinement.label_propagation.relative_improvement_threshold ),
       "Relative improvement threshold for label propagation."
     )->capture_default_str();
-    app.add_option(
-      (initial_partitioning ? "--i-r-lp-dynamic-connectivity" : "--r-lp-relative-improvement-threshold"),
-      (!initial_partitioning ? context.refinement.label_propagation.relative_improvement_threshold :
-        context.initial_partitioning.refinement.label_propagation.relative_improvement_threshold ),
-      "Dynamic connectivity strategy:\n"
-      "- bfs\n"
-      "- hdlt\n"
-      "- g_vertex_degree\n"
-      "- do_nothing"
-    )->capture_default_str();
-    app.add_option(
-      "--r-lp-f-dynamic-connectivity",
-      context.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy,
+    app.add_option_function<std::string>(
+      (initial_partitioning ? "--i-r-lp-dynamic-connectivity" : "--r-lp-dynamic-connectivity"), [&, initial_partitioning](const std::string& s) {
+        if (initial_partitioning) {
+          context.initial_partitioning.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy =
+                  dynamicConnectivityStrategyFromString(s);
+        } else {
+          context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy =
+                  dynamicConnectivityStrategyFromString(s);
+        }
+      },
       "Dynamic connectivity strategy:\n"
       "- bfs\n"
       "- hdlt\n"

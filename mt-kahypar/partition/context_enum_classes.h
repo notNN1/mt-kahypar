@@ -184,10 +184,10 @@ enum class SteinerTreeFlowValuePolicy : uint8_t {
 };
 
 enum class DynamicConnectivityStrategy : uint8_t {
+  do_nothing,
   bfs,
   hdlt,
-  h_vertex_degree,
-  do_nothing
+  h_vertex_degree
 };
 
 std::ostream & operator<< (std::ostream& os, const FileFormat& type);

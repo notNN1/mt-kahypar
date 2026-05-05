@@ -201,6 +201,11 @@ struct FlowParameters {
   size_t num_parallel_searches = 0;
 };
 
+struct DynamicConnectivityParameters {
+  DynamicConnectivityStrategy label_propagation_dynamic_connectivity_strategy;
+  DynamicConnectivityStrategy advanced_rebalancer_dynamic_connectivity_strategy;
+};
+
 struct DeterministicRefinementParameters {
   size_t num_sub_rounds_sync_lp = 5;
   bool use_active_node_set = true;
@@ -221,6 +226,7 @@ struct RefinementParameters {
   NLevelGlobalRefinementParameters global;
   FlowParameters flows;
   RebalancingParameters rebalancing;
+  DynamicConnectivityParameters dynamic_connectivity;
   bool refine_until_no_improvement = false;
   double relative_improvement_threshold = 0.0;
   size_t max_batch_size = 1000;
@@ -234,6 +240,7 @@ struct InitialPartitioningParameters {
 
   Mode mode = Mode::recursive_bipartitioning;
   RefinementParameters refinement = { };
+  DynamicConnectivityParameters dynamic_connectivity;
   std::vector<bool> enabled_ip_algos;
   size_t runs = 20;
   bool use_adaptive_ip_runs = true;
@@ -266,11 +273,6 @@ struct SharedMemoryParameters {
   double degree_of_parallelism = 1.0;
 };
 
-struct DynamicConnectivityParameters {
-  DynamicConnectivityStrategy label_propagation_dynamic_connectivity_strategy;
-  DynamicConnectivityStrategy advanced_rebalancer_dynamic_connectivity_strategy;
-};
-
 class Context {
  public:
   PartitioningParameters partition { };
@@ -280,7 +282,6 @@ class Context {
   RefinementParameters refinement { };
   MappingParameters mapping { };
   SharedMemoryParameters shared_memory { };
-  DynamicConnectivityParameters dynamic_connectivity { };
   ContextType type = ContextType::main;
 
   std::string algorithm_name = "Mt-KaHyPar";
