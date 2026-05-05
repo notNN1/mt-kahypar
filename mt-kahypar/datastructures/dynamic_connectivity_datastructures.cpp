@@ -23,50 +23,47 @@
  ******************************************************************************/
 
 #include "mt-kahypar/datastructures/dynamic_connectivity_datastructures.h"
+#include "mt-kahypar/partition/connected_components/compute_components.h"
 
 #include "mt-kahypar/definitions.h"
 #include <tbb/task_group.h>
 
 namespace mt_kahypar {
-namespace connected_components {
+namespace ds {
 
     using Bitset = mt_kahypar::ds::Bitset;
+    using ConnectedComponent = mt_kahypar::connected_components::ConnectedComponent;
 
-    template<typename PartitionedHypergraph>
-    class BFSConnectivity {
-    public:
-        bool moveVertex(
-            const PartitionedHypergraph& phg, 
-            const Context& context,
-            HypernodeID hn, 
-            PartitionID from,
-            PartitionID to
-        ) {
-            // compute components with hn set, so we can't move over hn
-            vec<ConnectedComponent> result;
+    template<typename PartitionedHypergraph>    
+    bool BFSConnectivity<PartitionedHypergraph>::moveVertex(
+        const PartitionedHypergraph& phg, 
+        const Context& context,
+        HypernodeID hn, 
+        PartitionID from
+    ) {
+        (void) context;
 
-            Bitset node_colored;
-            node_colored.resize(phg.initialNumNodes());
-            node_colored.set((size_t) hn)
-            
-            std::queue<HypernodeID> node_queue;
-            PartitionID current_partition = phg.partID(hn);;
+        // compute components with hn set, so we can't move over hn
+        int components = 0;
 
-            for (const HypernodeID& hn : phg.nodes()) {
-                if (node_colored.isSet((size_t) hn) || phg.partID(hn) != current_partition) {
-                    continue;
-                }
+        Bitset node_colored;
+        node_colored.resize(phg.initialNumNodes());
+        node_colored.set((size_t) hn);
+        
+        std::queue<HypernodeID> node_queue;
+        PartitionID current_partition = from;
 
-                node_queue.push(hn);
-                
-                ConnectedComponent cc = { };
+        for (const HypernodeID& hn_ : phg.nodes()) {
+            if (node_colored.isSet((size_t) hn_) || phg.partID(hn_) != current_partition) {
+                continue;
+            }
 
-                while (node_queue.size() > 0) {
+            node_queue.push(hn_);
+            node_colored.set((size_t) hn_);
+
+            while (node_queue.size() > 0) {
                 HypernodeID current = node_queue.front();
                 node_queue.pop();
-
-                node_colored.set((size_t) current);
-                cc.nodes.push_back(current);
 
                 for (const HyperedgeID& he : phg.incidentEdges(current)) {
                     for (const HypernodeID& incident_hn : phg.pins(he)) {
@@ -82,42 +79,25 @@ namespace connected_components {
                         node_colored.set((size_t) incident_hn);
                     }
                 }
-                }
-                
-                result.push_back(cc);
             }
-
-            // check if new partition would break
-            bool is_connected_target_block = false;
-
-            for (const HyperedgeID& he : phg.incidentEdges(hn)) {
-                for (const PartitionID& partition : phg.connectivitySet(he)) {
-                if (partition == to) {
-                        is_connected_target_block = true;
-                        break;
-                    }
-                }
-
-                if (is_connected_target_block) {
-                    break;
-                }
+            
+            components++;
+            if (components > 1) {
+                return false;
             }
-
-            return is_connected_target_block && result == 1;
-
         }
+        return true;
     };
+    
 
 
 namespace {
-// This macro defines how to refer to your class for a specific type X
-#define BFS_CONNECTIVITY(X) BFSConnectivity<X>
+    // This macro defines how to refer to your class for a specific type X
+    #define BFS_CONNECTIVITY(X) BFSConnectivity<X>
 }
 
 // This tells the compiler: "Build BFSConnectivity for all Hypergraph types"
-INSTANTIATE_CLASS_WITH_PARTITIONED_HG(BFS_CONNECTIVITY)
+INSTANTIATE_CLASS_WITH_PARTITIONED_HG(BFSConnectivity)
 
-INSTANTIATE_CLASS_WITH_PARTITIONED_GRAPH(BFS_CONNECTIVITY)
-
-}  // namespace connected_components
+}  // namespace ds
 }  // namespace mt_kahypar

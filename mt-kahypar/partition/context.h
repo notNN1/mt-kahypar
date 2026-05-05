@@ -266,6 +266,11 @@ struct SharedMemoryParameters {
   double degree_of_parallelism = 1.0;
 };
 
+struct DynamicConnectivityParameters {
+  DynamicConnectivityStrategy label_propagation_dynamic_connectivity_strategy;
+  DynamicConnectivityStrategy advanced_rebalancer_dynamic_connectivity_strategy;
+};
+
 class Context {
  public:
   PartitioningParameters partition { };
@@ -275,6 +280,7 @@ class Context {
   RefinementParameters refinement { };
   MappingParameters mapping { };
   SharedMemoryParameters shared_memory { };
+  DynamicConnectivityParameters dynamic_connectivity { };
   ContextType type = ContextType::main;
 
   std::string algorithm_name = "Mt-KaHyPar";

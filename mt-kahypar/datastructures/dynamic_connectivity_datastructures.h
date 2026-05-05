@@ -27,10 +27,9 @@
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/parallel/stl/scalable_vector.h"
 #include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/partition/connected_components/compute_components.h"
 
 namespace mt_kahypar {
-namespace connected_components {
+namespace ds {
 
 template<typename PartitionedHypergraph>
 class BFSConnectivity {
@@ -39,10 +38,9 @@ public:
         const PartitionedHypergraph& phg, 
         const Context& context,
         HypernodeID hn, 
-        PartitionID from,
-        PartitionID to
+        PartitionID from
     );
 };
 
-}  // namespace connected_components
+}  // namespace ds
 }  // namespace mt_kahypar

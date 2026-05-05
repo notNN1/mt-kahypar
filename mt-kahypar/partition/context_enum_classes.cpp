@@ -277,6 +277,17 @@ namespace mt_kahypar {
       return os << static_cast<uint8_t>(policy);
   }
 
+  std::ostream & operator<< (std::ostream& os, const DynamicConnectivityStrategy& type) {
+      switch (type) {
+        case DynamicConnectivityStrategy::bfs:                return os << "bfs";
+        case DynamicConnectivityStrategy::hdlt:               return os << "hdlt";
+        case DynamicConnectivityStrategy::h_vertex_degree:    return os << "bfs";
+        case DynamicConnectivityStrategy::do_nothing:         return os << "do_nothing";
+          // omit default case to trigger compiler warning for missing cases
+      }
+      return os << static_cast<uint8_t>(type);
+  }
+
   Mode modeFromString(const std::string& mode) {
     if (mode == "rb" || mode == "recursive_bipartitioning") {
       return Mode::recursive_bipartitioning;
@@ -523,5 +534,23 @@ namespace mt_kahypar {
     }
     throw InvalidParameterException("Illegal option: " + policy);
     return SteinerTreeFlowValuePolicy::UNDEFINED;
+  }
+
+  DynamicConnectivityStrategy dynamicConnectivityStrategyFromString(const std::string& type) {
+    if (type == "bfs") {
+      return DynamicConnectivityStrategy::bfs;
+    }
+    else if (type == "hdlt") {
+      return DynamicConnectivityStrategy::hdlt;
+    }
+    else if (type == "h_vertex_degree") {
+      return DynamicConnectivityStrategy::h_vertex_degree;
+    }
+    else if (type == "do_nothing") {
+      return DynamicConnectivityStrategy::do_nothing;
+    }
+
+    throw InvalidParameterException("Illegal option: " + type);
+    return DynamicConnectivityStrategy::do_nothing;
   }
 }

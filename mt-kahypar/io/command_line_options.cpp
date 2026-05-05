@@ -632,6 +632,25 @@ namespace mt_kahypar {
         context.initial_partitioning.refinement.label_propagation.relative_improvement_threshold ),
       "Relative improvement threshold for label propagation."
     )->capture_default_str();
+    app.add_option(
+      (initial_partitioning ? "--i-r-lp-dynamic-connectivity" : "--r-lp-relative-improvement-threshold"),
+      (!initial_partitioning ? context.refinement.label_propagation.relative_improvement_threshold :
+        context.initial_partitioning.refinement.label_propagation.relative_improvement_threshold ),
+      "Dynamic connectivity strategy:\n"
+      "- bfs\n"
+      "- hdlt\n"
+      "- g_vertex_degree\n"
+      "- do_nothing"
+    )->capture_default_str();
+    app.add_option(
+      "--r-lp-f-dynamic-connectivity",
+      context.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy,
+      "Dynamic connectivity strategy:\n"
+      "- bfs\n"
+      "- hdlt\n"
+      "- g_vertex_degree\n"
+      "- do_nothing"
+    )->capture_default_str();
 
     // Jet
     app.add_option_function<std::string>(
@@ -893,6 +912,8 @@ namespace mt_kahypar {
         context.initial_partitioning.refinement.rebalancing.det_max_rounds ),
        "Deterministic rebalancer: maximum number of iterations per rebalancing call (0 means unlimited)"
     )->capture_default_str();
+
+
   }
 
   void addFlowRefinementOptions(Context& context, CLI::App& app, const bool initial_partitioning) {

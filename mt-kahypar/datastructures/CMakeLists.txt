@@ -14,7 +14,8 @@ set(NLevelDatastructureSources
       contraction_tree.cpp
       dynamic_hypergraph.cpp
       dynamic_hypergraph_factory.cpp
-      incident_net_array.cpp)
+      incident_net_array.cpp
+      dynamic_connectivity_datastructures.cpp)
 
 set(NLevelGraphDatastructureSources
       contraction_tree.cpp

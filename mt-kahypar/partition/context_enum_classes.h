@@ -183,6 +183,13 @@ enum class SteinerTreeFlowValuePolicy : uint8_t {
   UNDEFINED
 };
 
+enum class DynamicConnectivityStrategy : uint8_t {
+  bfs,
+  hdlt,
+  h_vertex_degree,
+  do_nothing
+};
+
 std::ostream & operator<< (std::ostream& os, const FileFormat& type);
 
 std::ostream & operator<< (std::ostream& os, const InstanceType& type);
@@ -227,6 +234,8 @@ std::ostream & operator<< (std::ostream& os, const OneToOneMappingStrategy& algo
 
 std::ostream & operator<< (std::ostream& os, const SteinerTreeFlowValuePolicy& policy);
 
+std::ostream & operator<< (std::ostream& os, const DynamicConnectivityStrategy& algo);
+
 Mode modeFromString(const std::string& mode);
 
 FileFormat fileFormatFromString(const std::string& type);
@@ -264,5 +273,7 @@ RebalancingAlgorithm rebalancingAlgorithmFromString(const std::string& type);
 OneToOneMappingStrategy oneToOneMappingStrategyFromString(const std::string& type);
 
 SteinerTreeFlowValuePolicy steinerTreeFlowValuePolicyFromString(const std::string& policy);
+
+DynamicConnectivityStrategy dynamicConnectivityStrategyFromString(const std::string& type);
 
 }  // namesapce mt_kahypar

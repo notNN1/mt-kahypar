@@ -33,6 +33,7 @@
 #include "mt-kahypar/partition/refinement/gains/gain_definitions.h"
 #include "mt-kahypar/utils/cast.h"
 #include "mt-kahypar/partition/context.h"
+#include "mt-kahypar/datastructures/dynamic_connectivity_datastructures.h"
 
 namespace mt_kahypar {
 
@@ -57,31 +58,33 @@ namespace impl {
     PartitionID to = kInvalidPartition;
     HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
-    for (PartitionID i = 0; i < context.partition.k; ++i) {
+    
+    bool can_move_node = true;
 
-      int edge_count = 0;
-      // TODO: Check if the node has a connection to the partition i
+    if (context.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
+      mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
+      can_move_node = dcd.moveVertex(phg, context, u, from);
+    }
+
+    for (PartitionID i = 0; i < context.partition.k && can_move_node; ++i) {
+
+      // check if new partition would break
       bool is_connected_target_block = false;
 
       for (const HyperedgeID& he : phg.incidentEdges(u)) {
-        edge_count++;
-        for (const PartitionID& partition : phg.connectivitySet(he)) {
-          if (partition == i) {
-            is_connected_target_block = true;
-            break;
+          for (const PartitionID& partition : phg.connectivitySet(he)) {
+            if (partition == to) {
+                    is_connected_target_block = true;
+                    break;
+                }
           }
-        }
 
-        if (is_connected_target_block) {
-          break;
-        }
+          if (is_connected_target_block) {
+              break;
+          }
       }
 
       if (!is_connected_target_block) {
-        continue;
-      }
-      // TODO: Check if the partition from stays connected
-      if (edge_count <= 2) {
         continue;
       }
 
@@ -122,44 +125,47 @@ namespace impl {
     PartitionID to = kInvalidPartition;
     HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
-    for (PartitionID i : parts) {
 
-      int edge_count = 0;
-      // TODO: Check if the node has a connection to the partition i
-      bool is_connected_target_block = false;
+    bool can_move_node = true;
 
-      for (const HyperedgeID& he : phg.incidentEdges(u)) {
-        edge_count++;
-        for (const PartitionID& partition : phg.connectivitySet(he)) {
-          if (partition == i) {
-            is_connected_target_block = true;
-            break;
+    if (context.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
+      mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
+      can_move_node = dcd.moveVertex(phg, context, u, from);
+    }
+
+    if (can_move_node) {
+      for (PartitionID i : parts) {
+
+
+        // check if new partition would break
+        bool is_connected_target_block = false;
+
+        for (const HyperedgeID& he : phg.incidentEdges(u)) {
+            for (const PartitionID& partition : phg.connectivitySet(he)) {
+            if (partition == to) {
+                    is_connected_target_block = true;
+                    break;
+                }
+            }
+
+            if (is_connected_target_block) {
+                break;
+            }
+        }
+
+        if (!is_connected_target_block) {
+          continue;
+        }
+
+        if (i != from && i != kInvalidPartition) {
+          const HypernodeWeight to_weight = phg.partWeight(i);
+          const HyperedgeWeight benefit = gain_cache.blockIsAdjacent(u, i) ? gain_cache.benefitTerm(u, i) : gain_cache.recomputeBenefitTerm(phg, u, i);
+          if ((benefit > to_benefit || (benefit == to_benefit && to_weight < best_to_weight)) &&
+              to_weight + wu <= context.partition.max_part_weights[i]) {
+            to_benefit = benefit;
+            to = i;
+            best_to_weight = to_weight;
           }
-        }
-
-        if (is_connected_target_block) {
-          break;
-        }
-      }
-
-      if (!is_connected_target_block) {
-        continue;
-      }
-
-      // TODO: Check if the partition from stays connected
-      if (edge_count <= 2) {
-        continue;
-      }
-
-
-      if (i != from && i != kInvalidPartition) {
-        const HypernodeWeight to_weight = phg.partWeight(i);
-        const HyperedgeWeight benefit = gain_cache.blockIsAdjacent(u, i) ? gain_cache.benefitTerm(u, i) : gain_cache.recomputeBenefitTerm(phg, u, i);
-        if ((benefit > to_benefit || (benefit == to_benefit && to_weight < best_to_weight)) &&
-            to_weight + wu <= context.partition.max_part_weights[i]) {
-          to_benefit = benefit;
-          to = i;
-          best_to_weight = to_weight;
         }
       }
     }

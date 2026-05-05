@@ -54,8 +54,14 @@ namespace mt_kahypar {
       Move best_move = _gain.computeMaxGainMove(hypergraph, hn, false, false, unconstrained);
 
 
-      mt_kahypar::connected_components::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::connected_components::BFSConnectivity<PartitionedHypergraph>();
-      if (!dcd.moveVertex(hypergraph, _context, hn, best_move.from, best_move.to)) {
+      bool can_move_node = true;
+
+      if (_context.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
+        mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
+        can_move_node = dcd.moveVertex(hypergraph, _context, hn, best_move.from);
+      }
+
+      if (!can_move_node) {
         return false;
       }
 
