@@ -60,6 +60,10 @@ namespace mt_kahypar {
         mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
         can_move_node = dcd.moveVertex(hypergraph, _context, hn, best_move.from);
       }
+      else if (_context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree) {
+        auto range = hypergraph.incidentEdges(hn);
+        can_move_node = std::distance(range.begin(), range.end()) > 4;
+      }
 
       if (!can_move_node) {
         return false;

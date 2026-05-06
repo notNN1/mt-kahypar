@@ -60,31 +60,33 @@ namespace impl {
     HypernodeWeight best_to_weight = from_weight - wu;
     
     bool can_move_node = true;
+    vec<bool> connection_found_to_partition;
+    connection_found_to_partition.resize(phg.k());
 
     if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
       mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
       can_move_node = dcd.moveVertex(phg, context, u, from);
     }
+    else if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree) {
+      auto range = phg.incidentEdges(u);
+      can_move_node = std::distance(range.begin(), range.end()) > 4;
+    }
 
+    if (
+      context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs
+      || context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree
+    ) {
+      for (const HyperedgeID& he : phg.incidentEdges(u)) {
+        for (const PartitionID& partition : phg.connectivitySet(he)) {
+          connection_found_to_partition[partition] = connection_found_to_partition[partition] || true;
+        }
+      }
+    }
+        
     for (PartitionID i = 0; i < context.partition.k && can_move_node; ++i) {
 
       // check if new partition would break
-      bool is_connected_target_block = false;
-
-      for (const HyperedgeID& he : phg.incidentEdges(u)) {
-          for (const PartitionID& partition : phg.connectivitySet(he)) {
-            if (partition == to) {
-                    is_connected_target_block = true;
-                    break;
-                }
-          }
-
-          if (is_connected_target_block) {
-              break;
-          }
-      }
-
-      if (!is_connected_target_block) {
+      if (!connection_found_to_partition[i]) {
         continue;
       }
 
@@ -127,14 +129,34 @@ namespace impl {
     HypernodeWeight best_to_weight = from_weight - wu;
 
     bool can_move_node = true;
+    vec<bool> connection_found_to_partition;
+    connection_found_to_partition.resize(phg.k());
 
     if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
       mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
       can_move_node = dcd.moveVertex(phg, context, u, from);
     }
+    else if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree) {
+      auto range = phg.incidentEdges(u);
+      can_move_node = std::distance(range.begin(), range.end()) > 4;
+    }
+
+    if (
+      context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs
+      || context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree
+    ) {
+      for (const HyperedgeID& he : phg.incidentEdges(u)) {
+        for (const PartitionID& partition : phg.connectivitySet(he)) {
+          connection_found_to_partition[partition] = connection_found_to_partition[partition] || true;
+        }
+      }
+    }
 
     if (can_move_node) {
       for (PartitionID i : parts) {
+        if (!connection_found_to_partition[i]) {
+          continue;
+        }
 
 
         // check if new partition would break
