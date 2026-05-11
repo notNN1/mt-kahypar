@@ -47,7 +47,7 @@ namespace ds {
         int components = 0;
 
         Bitset node_colored;
-        node_colored.resize(phg.initialNumNodes());
+        node_colored.resize(phg.initialNumnodes());
         node_colored.set((size_t) hn);
         
         std::queue<HypernodeID> node_queue;
@@ -88,7 +88,251 @@ namespace ds {
         }
         return true;
     };
+
+        
+    void rotate_zick(
+        vec<Node>& nodes,
+        int32_t x,
+        int32_t p,
+        int32_t B
+    ) {
+        nodes[x].parent         = -1;
+        nodes[x].right          = p;
+        nodes[x].splay_tree     = nodes[p].splay_tree;
+
+        nodes[p].parent         = x;
+        nodes[p].left           = B;
+        nodes[p].splay_tree     = -1;
+    };
+
+        
+    void rotate_zack(
+        vec<Node>& nodes,
+        int32_t x,
+        int32_t p,
+        int32_t B
+    ) {
+        nodes[x].parent         = -1;
+        nodes[x].left           = p;
+        nodes[x].splay_tree     = nodes[p].splay_tree;
+
+        nodes[p].parent         = x;
+        nodes[p].right          = B;
+        nodes[p].splay_tree     = -1;
+    };
+
+        
+    void rotate_zick_zick(
+        vec<Node>& nodes,
+        int32_t x,
+        int32_t p,
+        int32_t g,
+        int32_t gg,
+        int32_t B,
+        int32_t C
+    ) {
+        nodes[x].right          = p;
+        nodes[x].parent         = gg;
+        nodes[x].splay_tree     = nodes[g].splay_tree;
+
+        nodes[p].right    = g;
+        nodes[p].parent   = x;
+        nodes[p].left     = B;
+        
+        nodes[g].left           = C;
+        nodes[g].parent         = p;
+        nodes[g].splay_tree     = -1;
+    };
+
+        
+    void rotate_zack_zack(
+        vec<Node>& nodes,
+        int32_t x,
+        int32_t p,
+        int32_t g,
+        int32_t gg,
+        int32_t B,
+        int32_t C
+    ) {
+        nodes[x].left           = p;
+        nodes[x].parent         = gg;
+        nodes[x].splay_tree     = nodes[g].splay_tree;
+
+        nodes[p].left     = g;
+        nodes[p].parent   = x;
+        nodes[p].right    = B;
+
+        nodes[g].right          = C;
+        nodes[g].parent         = p;
+        nodes[g].splay_tree     = -1;
+    };
     
+
+        
+    void rotate_zick_zack(
+        vec<Node>& nodes,
+        int32_t x,
+        int32_t p,
+        int32_t g,
+        int32_t gg,
+        int32_t B,
+        int32_t C
+    ) {
+        nodes[x].parent         = gg;
+        nodes[x].left           = p;
+        nodes[x].right          = g;
+        nodes[x].splay_tree     = nodes[g].splay_tree;
+
+        nodes[p].parent   = x;
+        nodes[p].right    = B;
+
+        nodes[g].parent         = x;
+        nodes[g].left           = C;
+        nodes[g].splay_tree     = -1;
+    };
+
+        
+    void rotate_zack_zick(
+        vec<Node>& nodes,
+        int32_t x,
+        int32_t p,
+        int32_t g,
+        int32_t gg,
+        int32_t B,
+        int32_t C
+    ) {
+        nodes[x].parent         = gg;
+        nodes[x].right          = p;
+        nodes[x].left           = g;
+        nodes[x].splay_tree     = nodes[g].splay_tree;
+
+        nodes[p].parent   = x;
+        nodes[p].left     = B;
+
+        nodes[g].parent         = x;
+        nodes[g].right          = C;
+        nodes[g].splay_tree     = -1;
+    };
+
+        
+    static void splay(
+        vec<Node>& nodes,
+        Node x
+    ) {
+        int32_t p    = x.parent;
+
+        if (p == -1) {
+            return;
+        }
+
+        int32_t g    = nodes[p].parent;
+
+        // zick / zack
+        if (g == -1) {
+
+            if (nodes[p].left == x.self) {
+                rotate_zick(nodes, x.self, p, x.right);
+            } 
+            else {
+                rotate_zack(nodes, x.self, p, x.left);
+            }
+
+            return;
+        }
+
+        int32_t gg   = nodes[g].parent;
+
+        if (nodes[p].left == x.self) {
+            if (nodes[g].left == p) {
+                rotate_zick_zick(
+                    nodes,
+                    x.self,
+                    p,
+                    g,
+                    gg,
+                    x.right,
+                    nodes[p].right
+                );
+            }
+            else {
+                rotate_zick_zack(
+                    nodes,
+                    x.self,
+                    p,
+                    g,
+                    gg,
+                    x.right,
+                    x.left
+                );
+            }
+        }
+        else {
+            if (nodes[g].left == p) {
+                rotate_zack_zick(
+                    nodes,
+                    x.self,
+                    p,
+                    g,
+                    gg,
+                    x.left,
+                    x.right
+                );
+            }
+            else {
+               rotate_zack_zack(
+                nodes,
+                    x.self,
+                    p,
+                    g,
+                    gg,
+                    x.left,
+                    nodes[p].left
+                );
+            }
+        }
+
+        splay(nodes, x);
+    };
+
+
+    void LinkCutTree::expose(
+        Node& u
+    ) {
+        splay(this->nodes, u);
+        SplayTree current = paths[u.splay_tree];
+        int32_t current_index = u.splay_tree;
+
+        Node& lower_node = u;
+        Node& upper_node = u;
+
+        
+        while (current.connected_to != -1) {
+            upper_node = nodes[current.connected_to];
+            splay(this->nodes, upper_node);
+
+            // remove current splay tree
+            this->paths.erase(this->paths.begin() + current_index);
+
+            // connect to upper splay tree and add new splay tree for cut splay tree
+
+            lower_node.splay_tree = -1;
+            lower_node.parent = upper_node.self;
+
+            if (upper_node.right != -1) {
+                this->paths.push_back(SplayTree {upper_node.self, upper_node.right});
+                this->nodes[upper_node.right].splay_tree = this->paths.size() - 1;
+                this->nodes[upper_node.right].parent = -1;
+            }
+
+            upper_node.right = lower_node.self;
+
+            // find the next splay tree and repeat
+            current = paths[upper_node.splay_tree];
+            current_index = upper_node.splay_tree;
+
+            lower_node = upper_node;
+        }
+    }
 
 
 namespace {

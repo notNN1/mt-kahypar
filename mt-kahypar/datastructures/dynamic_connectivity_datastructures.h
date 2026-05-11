@@ -42,5 +42,155 @@ public:
     );
 };
 
+struct Node {
+    int32_t left;
+    int32_t right;
+    int32_t parent;
+    int32_t self;
+
+    size_t splay_tree;
+
+    bool rev;
+
+    int value;
+    int sum;
+};
+
+struct SplayTree {
+    int32_t connected_to;
+    int32_t root_node;
+};
+
+class LinkCutTree {
+private:
+    vec<SplayTree> paths;
+    vec<Node> nodes;
+public:
+    void expose(
+        Node& u
+    );
+
+    void link(
+        Node u,
+        Node v
+    );
+
+    void cut(
+        Node u,
+        Node v
+    );
+
+    void findRoot(
+        Node u
+    );
+
+    void pathQuery(
+        Node u,
+        Node v
+    );
+
+    void pathUpdate(
+        Node u,
+        Node v
+    );
+};
+
+/*template<typename PartitionedHypergraph>
+class HolmeRotenbergThorup {
+public:
+    bool moveVertex(
+        const PartitionedHypergraph& phg, 
+        const Context& context,
+        HypernodeID hn, 
+        PartitionID from
+    );
+
+    HolmeRotenbergThorup(
+        const PartitionedHypergraph& phg, 
+        const Context& context
+    );
+
+private:
+    struct Node {
+        uint32_t id,
+        bool is_edge
+    }
+
+    void link(
+        Node v, 
+        Node w
+    );
+
+    void cut(
+        Node v, 
+        Node w
+    );
+
+    bool connected(
+        Node v, 
+        Node w
+    );
+
+    void cover(
+        Node v, 
+        Node w,
+        int32_t cover_level
+    );
+
+    void uncover(
+        Node v, 
+        Node w,
+        int32_t cover_level
+    );
+
+    int32_t coverLevel(
+        Node v
+    );
+
+    int32_t coverLevel(
+        Node v,
+        Node w
+    );
+
+    int32_t minCoveredEdge(
+        Node v
+    );
+    
+    int32_t minCoveredEdge(
+        Node v,
+        Node w
+    );
+
+    void addLabel(
+        Node v,
+        std::string user_label,
+        int32_t cover_level
+    );
+
+    void removeLabel(
+        std::string user_label
+    );
+
+    void findFirstLabel(
+        Node v,
+        Node w,
+        int32_t cover_level
+    );
+
+    FindSize(
+        Node v,
+        Node w,
+        int32_t cover_level
+    )
+
+    Node meet(
+        Node u,
+        Node v,
+        Node w
+    );
+
+
+}*/
+
 }  // namespace ds
 }  // namespace mt_kahypar
