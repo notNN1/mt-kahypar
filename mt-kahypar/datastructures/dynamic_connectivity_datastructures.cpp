@@ -23,16 +23,12 @@
  ******************************************************************************/
 
 #include "mt-kahypar/datastructures/dynamic_connectivity_datastructures.h"
-#include "mt-kahypar/partition/connected_components/compute_components.h"
 
 #include "mt-kahypar/definitions.h"
 #include <tbb/task_group.h>
 
 namespace mt_kahypar {
 namespace ds {
-
-    using Bitset = mt_kahypar::ds::Bitset;
-    using ConnectedComponent = mt_kahypar::connected_components::ConnectedComponent;
 
     template<typename PartitionedHypergraph>    
     bool BFSConnectivity<PartitionedHypergraph>::moveVertex(
@@ -47,7 +43,7 @@ namespace ds {
         int components = 0;
 
         Bitset node_colored;
-        node_colored.resize(phg.initialNumnodes());
+        node_colored.resize(phg.initialNumNodes());
         node_colored.set((size_t) hn);
         
         std::queue<HypernodeID> node_queue;
@@ -89,251 +85,195 @@ namespace ds {
         return true;
     };
 
-        
-    void rotate_zick(
-        vec<Node>& nodes,
-        int32_t x,
-        int32_t p,
-        int32_t B
+
+    template<typename PartitionedHypergraph>   
+    SpanningTreeConnectivity<PartitionedHypergraph>::SpanningTreeConnectivity(
+        const PartitionedHypergraph& phg,
+        const Context& context
     ) {
-        nodes[x].parent         = -1;
-        nodes[x].right          = p;
-        nodes[x].splay_tree     = nodes[p].splay_tree;
+        // find nodes that have connections to other partitions
+        Bitset has_connection_to_other_partition;
+        has_connection_to_other_partition.resize(phg.initialNumNodes());
 
-        nodes[p].parent         = x;
-        nodes[p].left           = B;
-        nodes[p].splay_tree     = -1;
-    };
+        for (const HypernodeID& hn : phg.nodes()) {
 
-        
-    void rotate_zack(
-        vec<Node>& nodes,
-        int32_t x,
-        int32_t p,
-        int32_t B
-    ) {
-        nodes[x].parent         = -1;
-        nodes[x].left           = p;
-        nodes[x].splay_tree     = nodes[p].splay_tree;
+            PartitionID current_partition = phg.partID(hn);
 
-        nodes[p].parent         = x;
-        nodes[p].right          = B;
-        nodes[p].splay_tree     = -1;
-    };
-
-        
-    void rotate_zick_zick(
-        vec<Node>& nodes,
-        int32_t x,
-        int32_t p,
-        int32_t g,
-        int32_t gg,
-        int32_t B,
-        int32_t C
-    ) {
-        nodes[x].right          = p;
-        nodes[x].parent         = gg;
-        nodes[x].splay_tree     = nodes[g].splay_tree;
-
-        nodes[p].right    = g;
-        nodes[p].parent   = x;
-        nodes[p].left     = B;
-        
-        nodes[g].left           = C;
-        nodes[g].parent         = p;
-        nodes[g].splay_tree     = -1;
-    };
-
-        
-    void rotate_zack_zack(
-        vec<Node>& nodes,
-        int32_t x,
-        int32_t p,
-        int32_t g,
-        int32_t gg,
-        int32_t B,
-        int32_t C
-    ) {
-        nodes[x].left           = p;
-        nodes[x].parent         = gg;
-        nodes[x].splay_tree     = nodes[g].splay_tree;
-
-        nodes[p].left     = g;
-        nodes[p].parent   = x;
-        nodes[p].right    = B;
-
-        nodes[g].right          = C;
-        nodes[g].parent         = p;
-        nodes[g].splay_tree     = -1;
-    };
-    
-
-        
-    void rotate_zick_zack(
-        vec<Node>& nodes,
-        int32_t x,
-        int32_t p,
-        int32_t g,
-        int32_t gg,
-        int32_t B,
-        int32_t C
-    ) {
-        nodes[x].parent         = gg;
-        nodes[x].left           = p;
-        nodes[x].right          = g;
-        nodes[x].splay_tree     = nodes[g].splay_tree;
-
-        nodes[p].parent   = x;
-        nodes[p].right    = B;
-
-        nodes[g].parent         = x;
-        nodes[g].left           = C;
-        nodes[g].splay_tree     = -1;
-    };
-
-        
-    void rotate_zack_zick(
-        vec<Node>& nodes,
-        int32_t x,
-        int32_t p,
-        int32_t g,
-        int32_t gg,
-        int32_t B,
-        int32_t C
-    ) {
-        nodes[x].parent         = gg;
-        nodes[x].right          = p;
-        nodes[x].left           = g;
-        nodes[x].splay_tree     = nodes[g].splay_tree;
-
-        nodes[p].parent   = x;
-        nodes[p].left     = B;
-
-        nodes[g].parent         = x;
-        nodes[g].right          = C;
-        nodes[g].splay_tree     = -1;
-    };
-
-        
-    static void splay(
-        vec<Node>& nodes,
-        Node x
-    ) {
-        int32_t p    = x.parent;
-
-        if (p == -1) {
-            return;
-        }
-
-        int32_t g    = nodes[p].parent;
-
-        // zick / zack
-        if (g == -1) {
-
-            if (nodes[p].left == x.self) {
-                rotate_zick(nodes, x.self, p, x.right);
-            } 
-            else {
-                rotate_zack(nodes, x.self, p, x.left);
-            }
-
-            return;
-        }
-
-        int32_t gg   = nodes[g].parent;
-
-        if (nodes[p].left == x.self) {
-            if (nodes[g].left == p) {
-                rotate_zick_zick(
-                    nodes,
-                    x.self,
-                    p,
-                    g,
-                    gg,
-                    x.right,
-                    nodes[p].right
-                );
-            }
-            else {
-                rotate_zick_zack(
-                    nodes,
-                    x.self,
-                    p,
-                    g,
-                    gg,
-                    x.right,
-                    x.left
-                );
-            }
-        }
-        else {
-            if (nodes[g].left == p) {
-                rotate_zack_zick(
-                    nodes,
-                    x.self,
-                    p,
-                    g,
-                    gg,
-                    x.left,
-                    x.right
-                );
-            }
-            else {
-               rotate_zack_zack(
-                nodes,
-                    x.self,
-                    p,
-                    g,
-                    gg,
-                    x.left,
-                    nodes[p].left
-                );
+            for (const HyperedgeID& he : phg.incidentEdges(hn)) {
+                for (const HypernodeID& incident_hn : phg.pins(he)) {
+                    if (current_partition != phg.partID(incident_hn)) {
+                        has_connection_to_other_partition.set((size_t) incident_hn);
+                        break;
+                    }
+                }
             }
         }
 
-        splay(nodes, x);
+        // There are nodes, that cannot be avoided when building the spanning tree, which are also nodes, that connect to other partitions
+        // Save these in nodes_unavoidable
+        // Then a new run for the connected component tries to use these nodes first, to build the spanning tree
+
+        vec<vec<ConnectedComponent>> connected_components;
+        connected_components::compute_components_per_block(
+            phg,
+            context,
+            connected_components
+        );
+
+
+        this->connected_to.resize(phg.initialNumnodes());
+        this->vertex_to_parent_compressed.resize(phg.initialNumnodes());
+
+        for (HypernodeID hypernode : phg.nodes()) {
+            this->vertex_to_parent_compressed[hypernode]  = hypernode;
+            this->vertex_to_parent[hypernode]       = hypernode;
+        }
+
+        for (const vec<ConnectedComponent>& components_per_partition : connected_components) {
+            for (const ConnectedComponent& connected_sub_component : components_per_partition) {
+
+                // ignore nodes with 'has_connection_to_other_partition'
+                for (           const HypernodeID& hn          : phg.nodes()                ) {
+                    for (       const HyperedgeID& he          : phg.incidentEdges(hn) ) {
+                        for (   const HypernodeID& incident_hn : phg.pins(he)               ) {
+
+                            if (has_connection_to_other_partition.isSet((size_t) hn)) {
+                                continue;
+                            }
+
+                            try_connect_to_incident_con_partition(
+                                has_connection_to_other_partition,
+                                hn,
+                                incident_hn
+                            );
+                            
+                            try_connect_to_incident_no_con_partition(
+                                has_connection_to_other_partition,
+                                hn,
+                                incident_hn
+                            );
+
+                        }
+                    }
+                }
+
+                // now only connect nodes with 'has_connection_to_other_partition'
+                for (           const HypernodeID& hn          : phg.nodes()                ) {
+                    for (       const HyperedgeID& he          : phg.incidentEdges(hn) ) {
+                        for (   const HypernodeID& incident_hn : phg.pins(he)               ) {
+
+                            if (!has_connection_to_other_partition.isSet((size_t) hn)) {
+                                continue;
+                            }
+
+                            try_connect_to_incident_con_partition(
+                                has_connection_to_other_partition,
+                                hn,
+                                incident_hn
+                            );
+                        }
+                    }
+                }
+            }
+        }
     };
 
-
-    void LinkCutTree::expose(
-        Node& u
+    // connect to nodes with has_connection_to_other_partition, if the incident hn is not in a component yet
+    template<typename PartitionedHypergraph>    
+    inline void  SpanningTreeConnectivity<PartitionedHypergraph>::try_connect_to_incident_con_partition(
+        Bitset& has_connection_to_other_partition,
+        const HypernodeID& hn,
+        const HypernodeID& incident_hn
     ) {
-        splay(this->nodes, u);
-        SplayTree current = paths[u.splay_tree];
-        int32_t current_index = u.splay_tree;
-
-        Node& lower_node = u;
-        Node& upper_node = u;
-
-        
-        while (current.connected_to != -1) {
-            upper_node = nodes[current.connected_to];
-            splay(this->nodes, upper_node);
-
-            // remove current splay tree
-            this->paths.erase(this->paths.begin() + current_index);
-
-            // connect to upper splay tree and add new splay tree for cut splay tree
-
-            lower_node.splay_tree = -1;
-            lower_node.parent = upper_node.self;
-
-            if (upper_node.right != -1) {
-                this->paths.push_back(SplayTree {upper_node.self, upper_node.right});
-                this->nodes[upper_node.right].splay_tree = this->paths.size() - 1;
-                this->nodes[upper_node.right].parent = -1;
-            }
-
-            upper_node.right = lower_node.self;
-
-            // find the next splay tree and repeat
-            current = paths[upper_node.splay_tree];
-            current_index = upper_node.splay_tree;
-
-            lower_node = upper_node;
+        if (
+            !has_connection_to_other_partition.isSet((size_t) hn) 
+            && has_connection_to_other_partition.isSet((size_t) incident_hn)
+            && this->vertex_to_parent_compressed[incident_hn] == incident_hn
+        ) {
+            connect_nodes(hn, incident_hn);
         }
+    };
+
+    // connect to nodes without has_connection_to_other_partition
+    template<typename PartitionedHypergraph>    
+    inline void  SpanningTreeConnectivity<PartitionedHypergraph>::try_connect_to_incident_no_con_partition(
+        Bitset& has_connection_to_other_partition,
+        const HypernodeID& hn,
+        const HypernodeID& incident_hn
+    ) {
+        if (
+            !has_connection_to_other_partition.isSet((size_t) hn) 
+            && !has_connection_to_other_partition.isSet((size_t) incident_hn)
+        ) {
+            if (!is_same_component(hn, incident_hn)) {
+                connect_nodes(hn, incident_hn);
+            }
+            
+        }
+    };
+
+    template<typename PartitionedHypergraph>    
+    inline void  SpanningTreeConnectivity<PartitionedHypergraph>::connect_nodes(
+        const HypernodeID& hn,
+        const HypernodeID& incident_hn
+    ) {
+        this->vertex_to_parent_compressed[this->vertex_to_parent_compressed[incident_hn]]   = this->vertex_to_parent_compressed[hn];
+        this->vertex_to_parent_compressed[incident_hn]                                = this->vertex_to_parent_compressed[hn];
+
+        this->connected_to[hn].push_back(incident_hn);
+        this->connected_to[incident_hn].push_back(hn);
     }
 
+    template<typename PartitionedHypergraph>    
+    inline bool SpanningTreeConnectivity<PartitionedHypergraph>::is_same_component(
+        const HypernodeID& hn1,
+        const HypernodeID& hn2
+    ) {
+        HypernodeID parent1 = hn1;
+        HypernodeID parent2 = hn2;
+
+        while (this->vertex_to_parent_compressed[parent1] != parent1) {
+            this->vertex_to_parent_compressed[parent1] = this->vertex_to_parent_compressed[this->vertex_to_parent_compressed[parent1]];
+            parent1 = this->vertex_to_parent_compressed[parent1];
+        }
+
+        while (this->vertex_to_parent_compressed[parent2] != parent2) {
+            this->vertex_to_parent_compressed[parent2] = this->vertex_to_parent_compressed[this->vertex_to_parent_compressed[parent2]];
+            parent2 = this->vertex_to_parent_compressed[parent2];
+        }
+
+        return parent1 == parent2;        
+    };
+
+    template<typename PartitionedHypergraph>    
+    bool SpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(
+        const Context& context,
+        HypernodeID hn
+    ) {
+        return this->connected_to[hn].size() <= 1;
+    };
+
+    template<typename PartitionedHypergraph>    
+    void SpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
+        const PartitionedHypergraph& phg,
+        const Context& context,
+        HypernodeID hn,
+        PartitionID to
+    ) {
+        assert(this->connected_to[hn].size() <= 1);
+
+        if (this->connected_to[hn].size() == 1) {
+            this->connected_to[hn].clear();   
+        }
+
+        for (       const HyperedgeID& he           : phg.incidentEdges(hn) ) {
+            for (   const HypernodeID& incident_hn  : phg.pins(he)          ) {
+                if (phg.partID(incident_hn) == to && !is_same_component(hn, incident_hn)) {
+                    connect_nodes(hn, incident_hn);
+                }
+            }
+        }
+    };
 
 namespace {
     // This macro defines how to refer to your class for a specific type X

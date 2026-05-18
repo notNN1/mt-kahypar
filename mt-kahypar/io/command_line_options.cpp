@@ -586,7 +586,8 @@ namespace mt_kahypar {
       "Dynamic connectivity strategy:\n"
       "- bfs\n"
       "- hdlt\n"
-      "- g_vertex_degree\n"
+      "- h_vertex_degree\n"
+      "- st\n"
       "- do_nothing"
     )->capture_default_str();
 
@@ -661,7 +662,8 @@ namespace mt_kahypar {
       "Dynamic connectivity strategy:\n"
       "- bfs\n"
       "- hdlt\n"
-      "- g_vertex_degree\n"
+      "- h_vertex_degree\n"
+      "- st\n"
       "- do_nothing"
     )->capture_default_str();
 

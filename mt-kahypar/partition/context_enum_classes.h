@@ -185,6 +185,7 @@ enum class SteinerTreeFlowValuePolicy : uint8_t {
 
 enum class DynamicConnectivityStrategy : uint8_t {
   do_nothing,
+  st,
   bfs,
   hdlt,
   h_vertex_degree

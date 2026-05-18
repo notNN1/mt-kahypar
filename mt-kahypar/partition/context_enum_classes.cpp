@@ -281,7 +281,8 @@ namespace mt_kahypar {
       switch (type) {
         case DynamicConnectivityStrategy::bfs:                return os << "bfs";
         case DynamicConnectivityStrategy::hdlt:               return os << "hdlt";
-        case DynamicConnectivityStrategy::h_vertex_degree:    return os << "bfs";
+        case DynamicConnectivityStrategy::h_vertex_degree:    return os << "h_vertex_degree";
+        case DynamicConnectivityStrategy::st:                 return os << "st";
         case DynamicConnectivityStrategy::do_nothing:         return os << "do_nothing";
           // omit default case to trigger compiler warning for missing cases
       }
@@ -545,6 +546,9 @@ namespace mt_kahypar {
     }
     else if (type == "h_vertex_degree") {
       return DynamicConnectivityStrategy::h_vertex_degree;
+    }
+    else if (type == "st") {
+      return DynamicConnectivityStrategy::st;
     }
     else if (type == "do_nothing") {
       return DynamicConnectivityStrategy::do_nothing;
