@@ -105,7 +105,7 @@ namespace ds {
                 for (const HypernodeID& incident_hn : phg.pins(he)) {
 
                     if (current_partition != phg.partID(incident_hn)) {
-                        has_connection_to_other_partition.set((size_t) incident_hn);
+                        has_connection_to_other_partition.set((size_t) hn);
                         break;
                     }
                 }
@@ -134,6 +134,7 @@ namespace ds {
         for (const vec<ConnectedComponent>& components_per_partition : connected_components) {
 
             PartitionID current_partition = phg.partID(components_per_partition[0].nodes[0]);
+            LOG << "current partition" << current_partition;
             for (const ConnectedComponent& connected_sub_component : components_per_partition) {
 
                 // ignore nodes with 'has_connection_to_other_partition'
@@ -197,6 +198,15 @@ namespace ds {
             }
         }
 
+        int count = 0;
+        for (const HypernodeID& hn_ : phg.nodes()) {
+            if (this->vertex_to_parent_compressed[hn_] == hn_) {
+                count++;
+            }
+        }
+
+        LOG << "parents" << count;
+
     };
 
 
@@ -232,14 +242,22 @@ namespace ds {
         const HypernodeID& hn,
         const HypernodeID& incident_hn
     ) {
-        //LOG << "connect_nodes:";
-        //LOG << "parent of hn" << this->vertex_to_parent_compressed[hn]; 
-        this->vertex_to_parent_compressed[this->vertex_to_parent_compressed[incident_hn]]   = this->vertex_to_parent_compressed[hn];
-        this->vertex_to_parent_compressed[incident_hn]                                      = this->vertex_to_parent_compressed[hn];
+        HypernodeID parent1 = hn;
+        HypernodeID parent2 = incident_hn;
 
-        //LOG << "size" << this->connected_to.size();
-        //LOG << "incident_hn" << incident_hn;
-        //LOG << "hn" << hn;
+        while (this->vertex_to_parent_compressed[parent1] != parent1) {
+            this->vertex_to_parent_compressed[parent1] = this->vertex_to_parent_compressed[this->vertex_to_parent_compressed[parent1]];
+            parent1 = this->vertex_to_parent_compressed[parent1];
+        }
+
+
+        while (this->vertex_to_parent_compressed[parent2] != parent2) {
+            this->vertex_to_parent_compressed[parent2] = this->vertex_to_parent_compressed[this->vertex_to_parent_compressed[parent2]];
+            parent2 = this->vertex_to_parent_compressed[parent2];
+        }
+
+        this->vertex_to_parent_compressed[parent2] = parent1;
+
         this->connected_to[hn].push_back(incident_hn);
         this->connected_to[incident_hn].push_back(hn);
     }
@@ -252,20 +270,15 @@ namespace ds {
         HypernodeID parent1 = hn1;
         HypernodeID parent2 = hn2;
 
-        /*LOG << "is_same_component:";
-        LOG << "hn1" << hn1;
-        LOG << "hn2" << hn2;*/
         while (this->vertex_to_parent_compressed[parent1] != parent1) {
             this->vertex_to_parent_compressed[parent1] = this->vertex_to_parent_compressed[this->vertex_to_parent_compressed[parent1]];
             parent1 = this->vertex_to_parent_compressed[parent1];
-            //LOG << "parent1" << parent1;
         }
 
 
         while (this->vertex_to_parent_compressed[parent2] != parent2) {
             this->vertex_to_parent_compressed[parent2] = this->vertex_to_parent_compressed[this->vertex_to_parent_compressed[parent2]];
             parent2 = this->vertex_to_parent_compressed[parent2];
-            //LOG << "parent2" << parent2;
         }
 
         return parent1 == parent2;        
@@ -281,7 +294,7 @@ namespace ds {
         }
 
         if (this->vertex_to_parent_compressed[hn] == hn) {
-            LOG << "tried to move root" << hn;
+            //LOG << "tried to move root" << hn;
             return false;   
         }
         return this->connected_to[hn].size() == 1;
@@ -296,20 +309,25 @@ namespace ds {
     ) {
         assert(this->connected_to[hn].size() <= 1);
 
+        /*int count_1 = 0;
+        for (const HypernodeID& hn_ : phg.nodes()) {
+            if (this->vertex_to_parent_compressed[hn_] == hn_) {
+                count_1++;
+            }
+        }*/
+
         if (this->connected_to[hn].size() == 1) {
 
             // compress path for child
-            this->vertex_to_parent_compressed[this->connected_to[hn][0]] = this->vertex_to_parent_compressed[hn];
+            if (hn == this->vertex_to_parent_compressed[this->connected_to[hn][0]]) {
+                this->vertex_to_parent_compressed[this->connected_to[hn][0]] = this->vertex_to_parent_compressed[hn];
+            }
 
             // erase parent from child
             for (size_t i = 0; i < this->connected_to[this->connected_to[hn][0]].size(); i++) {
                 if (this->connected_to[this->connected_to[hn][0]][i] == hn) {
                     this->connected_to[this->connected_to[hn][0]].erase(this->connected_to[this->connected_to[hn][0]].begin() + i);
-                }
-
-                // repair parents
-                if (this->connected_to[this->connected_to[hn][0]].size() == 0) {
-                    this->connected_to[this->connected_to[hn][0]].push_back(this->connected_to[hn][0]);
+                    break;
                 }
             }
 
@@ -317,6 +335,13 @@ namespace ds {
             this->connected_to[hn].clear();   
         }
 
+
+        /*int count_2 = 0;
+        for (const HypernodeID& hn_ : phg.nodes()) {
+            if (this->vertex_to_parent_compressed[hn_] == hn_) {
+                count_2++;
+            }
+        }*/
 
         this->vertex_to_parent_compressed[hn] = hn;
 
@@ -327,6 +352,17 @@ namespace ds {
                 }
             }
         }
+
+        /*int count_3 = 0;
+        for (const HypernodeID& hn_ : phg.nodes()) {
+            if (this->vertex_to_parent_compressed[hn_] == hn_) {
+                count_3++;
+            }
+        }*/
+
+        /*if (count_3 > count_2) {
+            LOG << "count_3 > count_2";
+        }*/
     };
 
 namespace {

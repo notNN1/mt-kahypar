@@ -39,6 +39,66 @@ namespace mt_kahypar {
 
 namespace impl {
 
+  template <typename PartitionedHypergraph>
+  bool can_move_out_of_partition(
+    const PartitionedHypergraph& hypergraph,
+    const Context& _context,
+    const HypernodeID& hn
+  ) {
+    bool can_move_node = true;
+
+    if (_context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
+      mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
+      can_move_node = dcd.moveVertex(hypergraph, _context, hn);
+    }
+    else if (_context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree) {
+      auto range = hypergraph.incidentEdges(hn);
+      can_move_node = std::distance(range.begin(), range.end()) > 4;
+    }
+    else if (_context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
+      can_move_node = hypergraph.canMoveVertex(_context, hn);
+    }
+
+    return can_move_node;
+  }
+
+  template <typename PartitionedHypergraph>
+  void move_out_of_partition(
+    const PartitionedHypergraph& hypergraph,
+    const Context& _context,
+    const HypernodeID& hn,
+    const PartitionID& to
+  ) {
+    if (_context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
+        hypergraph.moveVertex(_context, hn, to);
+      }
+  }
+
+  template <typename PartitionedHypergraph>
+  mt_kahypar::ds::Bitset can_move_into_partition(
+    const PartitionedHypergraph& hypergraph,
+    const Context& _context,
+    const HypernodeID& hn
+  ) {
+    mt_kahypar::ds::Bitset connection_found_to_partition;
+    connection_found_to_partition.resize(hypergraph.k());
+
+    if (
+      _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs
+      || _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree
+      || _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st
+    ) {
+      for (const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
+        for (const PartitionID& partition : hypergraph.connectivitySet(he)) {
+          connection_found_to_partition.set((size_t) partition); 
+        }
+      }
+    }
+  
+    return connection_found_to_partition;
+  }
+  
+
   float transformGain(Gain gain_, HypernodeWeight wu) {
     float gain = gain_;
     if (gain > 0) {
@@ -59,38 +119,14 @@ namespace impl {
     HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
     
-    bool can_move_node = true;
-    vec<bool> connection_found_to_partition;
-    connection_found_to_partition.resize(phg.k());
-
-    if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
-      mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
-      can_move_node = dcd.moveVertex(phg, context, u);
-    }
-    else if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree) {
-      auto range = phg.incidentEdges(u);
-      can_move_node = std::distance(range.begin(), range.end()) > 4;
-    }
-    else if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
-      can_move_node = phg.canMoveVertex(context, u);
-    }
-
-    if (
-      context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs
-      || context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree
-      || context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st
-    ) {
-      for (const HyperedgeID& he : phg.incidentEdges(u)) {
-        for (const PartitionID& partition : phg.connectivitySet(he)) {
-          connection_found_to_partition[partition] = connection_found_to_partition[partition] || true;
-        }
-      }
-    }
+    bool can_move_node = can_move_out_of_partition(phg, context, u);
+    mt_kahypar::ds::Bitset connection_found_to_partition = can_move_into_partition(phg, context, u);
+    
         
     for (PartitionID i = 0; i < context.partition.k && can_move_node; ++i) {
 
       // check if new partition would break
-      if (!connection_found_to_partition[i]) {
+      if (!connection_found_to_partition.isSet((size_t) i)) {
         continue;
       }
 
@@ -119,9 +155,7 @@ namespace impl {
     if (to != kInvalidPartition) {
       gain = to_benefit - gain_cache.penaltyTerm(u, phg.partID(u));
 
-      if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
-        phg.moveVertex(context, u, to);
-      }
+      move_out_of_partition(phg, context, u, to);
     }
 
     return std::make_pair(to, transformGain(gain, wu));
@@ -137,37 +171,14 @@ namespace impl {
     HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
 
-    bool can_move_node = true;
-    vec<bool> connection_found_to_partition;
-    connection_found_to_partition.resize(phg.k());
-
-    if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
-      mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
-      can_move_node = dcd.moveVertex(phg, context, u);
-    }
-    else if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree) {
-      auto range = phg.incidentEdges(u);
-      can_move_node = std::distance(range.begin(), range.end()) > 4;
-    }
-    else if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
-      can_move_node = phg.canMoveVertex(context, u);
-    }
-
-    if (
-      context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs
-      || context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree
-      || context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st
-    ) {
-      for (const HyperedgeID& he : phg.incidentEdges(u)) {
-        for (const PartitionID& partition : phg.connectivitySet(he)) {
-          connection_found_to_partition[partition] = connection_found_to_partition[partition] || true;
-        }
-      }
-    }
+    bool can_move_node = can_move_out_of_partition(phg, context, u);
+    mt_kahypar::ds::Bitset connection_found_to_partition = can_move_into_partition(phg, context, u);
 
     if (can_move_node) {
       for (PartitionID i : parts) {
-        if (!connection_found_to_partition[i]) {
+
+        // check if new partition would break
+        if (!connection_found_to_partition.isSet((size_t) i)) {
           continue;
         }
 
@@ -208,9 +219,7 @@ namespace impl {
     if (to != kInvalidPartition) {
       Gain gain = to_benefit - gain_cache.penaltyTerm(u, phg.partID(u));
 
-      if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
-        phg.moveVertex(context, u, to);
-      }
+      move_out_of_partition(phg, context, u, to);
 
       return std::make_pair(to, transformGain(gain, wu));
     } else {
