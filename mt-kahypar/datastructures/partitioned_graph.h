@@ -46,6 +46,8 @@
 #include "mt-kahypar/parallel/stl/thread_locals.h"
 #include "mt-kahypar/utils/range.h"
 #include "mt-kahypar/utils/timer.h"
+#include "mt-kahypar/partition/context.h"
+#include "mt-kahypar/datastructures/dynamic_connectivity_datastructures.h"
 
 namespace mt_kahypar {
 
@@ -1222,11 +1224,35 @@ private:
     return block_of_v;
   }
 
+public:
+  bool canMoveVertex(
+    const Context& context,
+    HypernodeID hn
+  ) const {
+    return true;
+  }
+
+  void moveVertex(
+    const Context& context,
+    HypernodeID hn,
+    PartitionID to
+  ) const {
+  
+  }
+
+  void deleteST() const {
+   
+  }
+
+private:
   HypernodeID _input_num_nodes = 0;
 
   HyperedgeID _input_num_edges = 0;
 
   HyperedgeID _input_unique_ids = 0;
+
+  // ! Dynamic connectivity
+  SpanningTreeConnectivity<PartitionedGraph>_st;
 
   // ! Number of blocks
   PartitionID _k = 0;

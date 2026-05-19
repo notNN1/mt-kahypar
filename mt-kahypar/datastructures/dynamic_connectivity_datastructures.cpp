@@ -34,8 +34,7 @@ namespace ds {
     bool BFSConnectivity<PartitionedHypergraph>::moveVertex(
         const PartitionedHypergraph& phg, 
         const Context& context,
-        HypernodeID hn, 
-        PartitionID from
+        HypernodeID hn
     ) {
         (void) context;
 
@@ -47,7 +46,7 @@ namespace ds {
         node_colored.set((size_t) hn);
         
         std::queue<HypernodeID> node_queue;
-        PartitionID current_partition = from;
+        PartitionID current_partition = phg.partID(hn);
 
         for (const HypernodeID& hn_ : phg.nodes()) {
             if (node_colored.isSet((size_t) hn_) || phg.partID(hn_) != current_partition) {
@@ -91,16 +90,20 @@ namespace ds {
         const PartitionedHypergraph& phg,
         const Context& context
     ) {
+        this->initialized = true;
+
         // find nodes that have connections to other partitions
         Bitset has_connection_to_other_partition;
         has_connection_to_other_partition.resize(phg.initialNumNodes());
 
         for (const HypernodeID& hn : phg.nodes()) {
+            
 
             PartitionID current_partition = phg.partID(hn);
 
             for (const HyperedgeID& he : phg.incidentEdges(hn)) {
                 for (const HypernodeID& incident_hn : phg.pins(he)) {
+
                     if (current_partition != phg.partID(incident_hn)) {
                         has_connection_to_other_partition.set((size_t) incident_hn);
                         break;
@@ -121,52 +124,69 @@ namespace ds {
         );
 
 
-        this->connected_to.resize(phg.initialNumnodes());
-        this->vertex_to_parent_compressed.resize(phg.initialNumnodes());
+        this->connected_to.resize(phg.initialNumNodes());
+        this->vertex_to_parent_compressed.resize(phg.initialNumNodes());
 
         for (HypernodeID hypernode : phg.nodes()) {
-            this->vertex_to_parent_compressed[hypernode]  = hypernode;
-            this->vertex_to_parent[hypernode]       = hypernode;
+            this->vertex_to_parent_compressed[hypernode] = hypernode;
         }
 
         for (const vec<ConnectedComponent>& components_per_partition : connected_components) {
+
+            PartitionID current_partition = phg.partID(components_per_partition[0].nodes[0]);
             for (const ConnectedComponent& connected_sub_component : components_per_partition) {
 
                 // ignore nodes with 'has_connection_to_other_partition'
-                for (           const HypernodeID& hn          : phg.nodes()                ) {
-                    for (       const HyperedgeID& he          : phg.incidentEdges(hn) ) {
-                        for (   const HypernodeID& incident_hn : phg.pins(he)               ) {
+                for (           const HypernodeID& hn          : connected_sub_component.nodes  ) {
 
-                            if (has_connection_to_other_partition.isSet((size_t) hn)) {
-                                continue;
-                            }
+                    if (has_connection_to_other_partition.isSet((size_t) hn)) {
+                        continue;
+                    }
 
-                            try_connect_to_incident_con_partition(
+                    for (       const HyperedgeID& he          : phg.incidentEdges(hn)          ) {
+                        for (   const HypernodeID& incident_hn : phg.pins(he)                   ) {
+
+                            try_connect_to_incident_without_connection(
                                 has_connection_to_other_partition,
                                 hn,
                                 incident_hn
                             );
                             
-                            try_connect_to_incident_no_con_partition(
-                                has_connection_to_other_partition,
-                                hn,
-                                incident_hn
-                            );
+                            if (!has_connection_to_other_partition.isSet((size_t) incident_hn)) {
+                                try_connect_to_incident_with_connection(
+                                    has_connection_to_other_partition,
+                                    hn,
+                                    incident_hn
+                                );
+                            }
 
                         }
                     }
                 }
 
                 // now only connect nodes with 'has_connection_to_other_partition'
-                for (           const HypernodeID& hn          : phg.nodes()                ) {
-                    for (       const HyperedgeID& he          : phg.incidentEdges(hn) ) {
-                        for (   const HypernodeID& incident_hn : phg.pins(he)               ) {
+                for (           const HypernodeID& hn          : connected_sub_component.nodes  ) {
 
-                            if (!has_connection_to_other_partition.isSet((size_t) hn)) {
+                    if (!has_connection_to_other_partition.isSet((size_t) hn)) {
+                        continue;
+                    }
+
+                    for (       const HyperedgeID& he          : phg.incidentEdges(hn)          ) {
+                        for (   const HypernodeID& incident_hn : phg.pins(he)                   ) {
+
+                            //LOG << "incident hn outer" << incident_hn;
+
+                            if (phg.partID(incident_hn) != current_partition) {
                                 continue;
                             }
 
-                            try_connect_to_incident_con_partition(
+                            try_connect_to_incident_without_connection(
+                                has_connection_to_other_partition,
+                                hn,
+                                incident_hn
+                            );
+
+                            try_connect_to_incident_with_connection(
                                 has_connection_to_other_partition,
                                 hn,
                                 incident_hn
@@ -176,19 +196,18 @@ namespace ds {
                 }
             }
         }
+
     };
 
-    // connect to nodes with has_connection_to_other_partition, if the incident hn is not in a component yet
+
     template<typename PartitionedHypergraph>    
-    inline void  SpanningTreeConnectivity<PartitionedHypergraph>::try_connect_to_incident_con_partition(
+    inline void  SpanningTreeConnectivity<PartitionedHypergraph>::try_connect_to_incident_without_connection(
         Bitset& has_connection_to_other_partition,
         const HypernodeID& hn,
         const HypernodeID& incident_hn
     ) {
         if (
-            !has_connection_to_other_partition.isSet((size_t) hn) 
-            && has_connection_to_other_partition.isSet((size_t) incident_hn)
-            && this->vertex_to_parent_compressed[incident_hn] == incident_hn
+            this->vertex_to_parent_compressed[incident_hn] == incident_hn
         ) {
             connect_nodes(hn, incident_hn);
         }
@@ -196,20 +215,16 @@ namespace ds {
 
     // connect to nodes without has_connection_to_other_partition
     template<typename PartitionedHypergraph>    
-    inline void  SpanningTreeConnectivity<PartitionedHypergraph>::try_connect_to_incident_no_con_partition(
+    inline void  SpanningTreeConnectivity<PartitionedHypergraph>::try_connect_to_incident_with_connection(
         Bitset& has_connection_to_other_partition,
         const HypernodeID& hn,
         const HypernodeID& incident_hn
     ) {
-        if (
-            !has_connection_to_other_partition.isSet((size_t) hn) 
-            && !has_connection_to_other_partition.isSet((size_t) incident_hn)
-        ) {
-            if (!is_same_component(hn, incident_hn)) {
-                connect_nodes(hn, incident_hn);
-            }
-            
+    
+        if (!is_same_component(hn, incident_hn)) {
+            connect_nodes(hn, incident_hn);
         }
+        
     };
 
     template<typename PartitionedHypergraph>    
@@ -217,9 +232,14 @@ namespace ds {
         const HypernodeID& hn,
         const HypernodeID& incident_hn
     ) {
+        //LOG << "connect_nodes:";
+        //LOG << "parent of hn" << this->vertex_to_parent_compressed[hn]; 
         this->vertex_to_parent_compressed[this->vertex_to_parent_compressed[incident_hn]]   = this->vertex_to_parent_compressed[hn];
-        this->vertex_to_parent_compressed[incident_hn]                                = this->vertex_to_parent_compressed[hn];
+        this->vertex_to_parent_compressed[incident_hn]                                      = this->vertex_to_parent_compressed[hn];
 
+        //LOG << "size" << this->connected_to.size();
+        //LOG << "incident_hn" << incident_hn;
+        //LOG << "hn" << hn;
         this->connected_to[hn].push_back(incident_hn);
         this->connected_to[incident_hn].push_back(hn);
     }
@@ -232,14 +252,20 @@ namespace ds {
         HypernodeID parent1 = hn1;
         HypernodeID parent2 = hn2;
 
+        /*LOG << "is_same_component:";
+        LOG << "hn1" << hn1;
+        LOG << "hn2" << hn2;*/
         while (this->vertex_to_parent_compressed[parent1] != parent1) {
             this->vertex_to_parent_compressed[parent1] = this->vertex_to_parent_compressed[this->vertex_to_parent_compressed[parent1]];
             parent1 = this->vertex_to_parent_compressed[parent1];
+            //LOG << "parent1" << parent1;
         }
+
 
         while (this->vertex_to_parent_compressed[parent2] != parent2) {
             this->vertex_to_parent_compressed[parent2] = this->vertex_to_parent_compressed[this->vertex_to_parent_compressed[parent2]];
             parent2 = this->vertex_to_parent_compressed[parent2];
+            //LOG << "parent2" << parent2;
         }
 
         return parent1 == parent2;        
@@ -250,7 +276,15 @@ namespace ds {
         const Context& context,
         HypernodeID hn
     ) {
-        return this->connected_to[hn].size() <= 1;
+        if (this->connected_to[hn].size() == 0) {
+            LOG << "weird move" << hn;
+        }
+
+        if (this->vertex_to_parent_compressed[hn] == hn) {
+            LOG << "tried to move root" << hn;
+            return false;   
+        }
+        return this->connected_to[hn].size() == 1;
     };
 
     template<typename PartitionedHypergraph>    
@@ -263,8 +297,28 @@ namespace ds {
         assert(this->connected_to[hn].size() <= 1);
 
         if (this->connected_to[hn].size() == 1) {
+
+            // compress path for child
+            this->vertex_to_parent_compressed[this->connected_to[hn][0]] = this->vertex_to_parent_compressed[hn];
+
+            // erase parent from child
+            for (size_t i = 0; i < this->connected_to[this->connected_to[hn][0]].size(); i++) {
+                if (this->connected_to[this->connected_to[hn][0]][i] == hn) {
+                    this->connected_to[this->connected_to[hn][0]].erase(this->connected_to[this->connected_to[hn][0]].begin() + i);
+                }
+
+                // repair parents
+                if (this->connected_to[this->connected_to[hn][0]].size() == 0) {
+                    this->connected_to[this->connected_to[hn][0]].push_back(this->connected_to[hn][0]);
+                }
+            }
+
+            // erase child from parent
             this->connected_to[hn].clear();   
         }
+
+
+        this->vertex_to_parent_compressed[hn] = hn;
 
         for (       const HyperedgeID& he           : phg.incidentEdges(hn) ) {
             for (   const HypernodeID& incident_hn  : phg.pins(he)          ) {
@@ -278,10 +332,12 @@ namespace ds {
 namespace {
     // This macro defines how to refer to your class for a specific type X
     #define BFS_CONNECTIVITY(X) BFSConnectivity<X>
+    #define ST_CONNECTIVITY(X) SpanningTreeConnectivity<X>
 }
 
 // This tells the compiler: "Build BFSConnectivity for all Hypergraph types"
 INSTANTIATE_CLASS_WITH_PARTITIONED_HG(BFSConnectivity)
+INSTANTIATE_CLASS_WITH_PARTITIONED_HG(SpanningTreeConnectivity)
 
 }  // namespace ds
 }  // namespace mt_kahypar

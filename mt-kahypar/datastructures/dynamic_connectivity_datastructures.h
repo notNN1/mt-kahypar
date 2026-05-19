@@ -29,6 +29,7 @@
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/partition/connected_components/compute_components.h"
+#include "mt-kahypar/partition/context.h"
 
 namespace mt_kahypar {
 namespace ds {
@@ -43,8 +44,7 @@ public:
     bool moveVertex(
         const PartitionedHypergraph& phg, 
         const Context& context,
-        HypernodeID hn, 
-        PartitionID from
+        HypernodeID hn
     );
 };
 
@@ -53,15 +53,15 @@ class SpanningTreeConnectivity {
 private:
     vec<vec<HypernodeID>> connected_to;        
     vec<HypernodeID> vertex_to_parent_compressed;
+    bool initialized;
 
-
-    inline void try_connect_to_incident_con_partition(
+    inline void try_connect_to_incident_without_connection(
         Bitset& has_connection_to_other_partition,
         const HypernodeID& hn,
         const HypernodeID& incident_hn
     );
 
-    inline void try_connect_to_incident_no_con_partition(
+    inline void try_connect_to_incident_with_connection(
         Bitset& has_connection_to_other_partition,
         const HypernodeID& hn,
         const HypernodeID& incident_hn
@@ -83,6 +83,10 @@ public:
         const Context& context
     );
 
+    SpanningTreeConnectivity() {
+        this->initialized = false;
+    };
+
     bool canMoveVertex(
         const Context& context,
         HypernodeID hn
@@ -94,6 +98,10 @@ public:
         HypernodeID hn,
         PartitionID to
     );
+
+    bool isInitialized() const {
+        return this->initialized;
+    };
 };
 
 }  // namespace ds

@@ -58,11 +58,18 @@ namespace mt_kahypar {
 
       if (_context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
         mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
-        can_move_node = dcd.moveVertex(hypergraph, _context, hn, best_move.from);
+        can_move_node = dcd.moveVertex(hypergraph, _context, hn);
       }
       else if (_context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree) {
         auto range = hypergraph.incidentEdges(hn);
         can_move_node = std::distance(range.begin(), range.end()) > 4;
+      }
+      else if (_context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
+        can_move_node = hypergraph.canMoveVertex(_context, hn);
+        mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
+        if (!dcd.moveVertex(hypergraph, _context, hn) && can_move_node) {
+          LOG << "strange hn" << hn;
+        }
       }
 
       if (!can_move_node) {
@@ -94,6 +101,10 @@ namespace mt_kahypar {
           Gain move_delta = _gain.localDelta() - delta_before;
           bool accept_move = (move_delta == best_move.gain || move_delta <= 0);
           if (accept_move) {
+            if (_context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
+              hypergraph.moveVertex(_context, hn, best_move.to);
+            } 
+
             if constexpr (!unconstrained) {
               // in unconstrained case, we don't want to activate neighbors if the move is undone
               // by the rebalancing
