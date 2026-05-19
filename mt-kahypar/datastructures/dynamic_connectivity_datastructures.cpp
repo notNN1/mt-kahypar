@@ -312,7 +312,7 @@ namespace ds {
 
         auto it1                = this->connected_to[hn].begin();
         auto it2                = it1->iterator;
-        HypernodeID incident_hn = it2->node;
+        HypernodeID incident_hn = it1->node;
 
         // compress path for child
         if (this->vertex_to_parent_compressed[incident_hn] == hn) {
@@ -322,7 +322,6 @@ namespace ds {
         // erase parent from child
         this->connected_to[hn].erase(it1);
         this->connected_to[incident_hn].erase(it2);
-
 
         // remove hn from component tree
         this->vertex_to_parent_compressed[hn] = hn;
