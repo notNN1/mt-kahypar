@@ -88,7 +88,7 @@ namespace mt_kahypar {
 
       Move best_move = _gain.computeMaxGainMove(hypergraph, hn, false, false, unconstrained);
 
-      if (can_move_out_of_partition<GraphAndGainTypes>(hypergraph, _context, hn)) {
+      if (!can_move_out_of_partition<GraphAndGainTypes>(hypergraph, _context, hn)) {
         return false;
       }
 
