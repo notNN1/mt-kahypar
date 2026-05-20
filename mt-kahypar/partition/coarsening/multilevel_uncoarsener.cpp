@@ -126,6 +126,9 @@ namespace mt_kahypar {
       partitioned_hg.initializePartition();
       _timer.stop_timer("projecting_partition");
 
+      // some imbalance constraints (empty blocks) can be different on top level
+      _current_metrics.imbalance = metrics::imbalance(partitioned_hg, _context);
+
       // Improve partition
       IUncoarsener<TypeTraits>::refine();
 
@@ -144,7 +147,7 @@ namespace mt_kahypar {
   void MultilevelUncoarsener<TypeTraits>::rebalancingImpl() {
     // If we reach the top-level hypergraph and the partition is still imbalanced,
     // we use a rebalancing algorithm to restore balance.
-    if (_context.type == ContextType::main && !metrics::isBalanced(*_uncoarseningData.partitioned_hg, _context)) {
+    if (_context.type == ContextType::main && !metrics::isValidPartition(*_uncoarseningData.partitioned_hg, _context)) {
       Base::applyRebalancing();
     }
   }
@@ -193,19 +196,21 @@ namespace mt_kahypar {
     }
 
     parallel::scalable_vector<HypernodeID> dummy;
-    bool improvement_found = true;
     mt_kahypar_partitioned_hypergraph_t phg = utils::partitioned_hg_cast(partitioned_hypergraph);
+
+    if ( _rebalancer && _context.refinement.rebalancing.algorithm != RebalancingAlgorithm::do_nothing ) {
+      _rebalancer->initialize(phg);
+    }
+    if (!metrics::isValidPartition(partitioned_hypergraph, _context)) {
+      _timer.start_timer("rebalance", "Rebalance");
+      _rebalancer->refine(phg, dummy, _current_metrics, 0.0);
+      _timer.stop_timer("rebalance");
+    }
+
+    bool improvement_found = true;
     while( improvement_found ) {
       improvement_found = false;
       const HyperedgeWeight metric_before = _current_metrics.quality;
-
-      if ( _rebalancer && _context.refinement.rebalancing.algorithm != RebalancingAlgorithm::do_nothing ) {
-        _rebalancer->initialize(phg);
-      }
-
-      /*if ( _context.partition.connected_blocks && _context.type == ContextType::main ) {
-        logConnectivityInformation(partitioned_hypergraph, _context, _current_level);
-      }*/
 
       if ( _label_propagation && _context.refinement.label_propagation.algorithm != LabelPropagationAlgorithm::do_nothing ) {
         _timer.start_timer("initialize_lp_refiner", "Initialize LP Refiner");
@@ -216,10 +221,6 @@ namespace mt_kahypar {
         improvement_found |= _label_propagation->refine(phg, dummy, _current_metrics, time_limit);
         _timer.stop_timer("label_propagation");
       }
-
-      /*if ( _context.partition.connected_blocks && _context.type == ContextType::main ) {
-        logConnectivityInformation(partitioned_hypergraph, _context, _current_level);
-      }*/
 
 
 

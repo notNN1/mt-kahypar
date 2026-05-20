@@ -234,7 +234,7 @@ namespace mt_kahypar::io {
       max_part_size = std::max(max_part_size, part_sizes[i]);
       num_imbalanced_blocks +=
         (hypergraph.partWeight(i) > context.partition.max_part_weights[i] ||
-          ( context.partition.preset_type != PresetType::large_k && hypergraph.partWeight(i) == 0 ));
+          ( !context.partition.allow_empty_blocks && hypergraph.partWeight(i) == 0 ));
     }
     avg_part_weight /= context.partition.k;
 
@@ -244,7 +244,7 @@ namespace mt_kahypar::io {
       for (PartitionID i = 0; i != context.partition.k; ++i) {
         bool is_imbalanced =
                 hypergraph.partWeight(i) > context.partition.max_part_weights[i] ||
-                ( context.partition.preset_type != PresetType::large_k && hypergraph.partWeight(i) == 0 );
+                ( !context.partition.allow_empty_blocks && hypergraph.partWeight(i) == 0 );
         if ( is_imbalanced ) std::cout << RED;
         std::cout << "|block " << std::left  << std::setw(k_digits) << i
                   << std::setw(1) << "| = "  << std::right << std::setw(part_digits) << part_sizes[i]
@@ -268,7 +268,7 @@ namespace mt_kahypar::io {
         for (PartitionID i = 0; i != context.partition.k; ++i) {
           const bool is_imbalanced =
             hypergraph.partWeight(i) > context.partition.max_part_weights[i] ||
-            ( context.partition.preset_type != PresetType::large_k && hypergraph.partWeight(i) == 0 );
+            ( !context.partition.allow_empty_blocks && hypergraph.partWeight(i) == 0 );
           if ( is_imbalanced ) {
             std::cout << RED << "|block " << std::left  << std::setw(k_digits) << i
                       << std::setw(1) << "| = "  << std::right << std::setw(part_digits) << part_sizes[i]
@@ -316,10 +316,11 @@ namespace mt_kahypar::io {
                                 const Context& context,
                                 const std::string& description) {
     if (context.partition.enable_logging) {
+      BalanceMetrics imbalance = metrics::imbalance(hypergraph, context);
       LOG << description;
       LOG << context.partition.objective << "      ="
           << metrics::quality(hypergraph, context);
-      LOG << "imbalance =" << metrics::imbalance(hypergraph, context);
+      LOG << "imbalance =" << imbalance.imbalance_value;
       if (context.partition.verbose_logging) {
         LOG << "Part sizes and weights:";
         io::printPartWeightsAndSizes(hypergraph, context);
@@ -437,7 +438,11 @@ namespace mt_kahypar::io {
     if ( context.partition.objective != Objective::soed && !PartitionedHypergraph::is_graph ) {
       printKeyValue(Objective::soed, metrics::quality(hypergraph, Objective::soed));
     }
-    printKeyValue("Imbalance", metrics::imbalance(hypergraph, context));
+    BalanceMetrics imbalance = metrics::imbalance(hypergraph, context);
+    printKeyValue("Imbalance", imbalance.imbalance_value);
+    if ( context.partition.verbose_logging && !context.partition.allow_empty_blocks ) {
+      printKeyValue("Has Empty Blocks", imbalance.violates_non_empty_blocks ? "true" : "false");
+    }
     printKeyValue("Partitioning Time", std::to_string(elapsed_seconds.count()) + " s");
   }
 
