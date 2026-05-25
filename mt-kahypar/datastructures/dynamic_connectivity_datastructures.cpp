@@ -226,6 +226,7 @@ namespace ds {
         
     };
 
+    // is_same_component has to be called before, so hn and incident_hn are directly under the parent in the vertex_to_parent tree
     template<typename PartitionedHypergraph>    
     inline void  SpanningTreeConnectivity<PartitionedHypergraph>::connect_nodes(
         const HypernodeID& hn,

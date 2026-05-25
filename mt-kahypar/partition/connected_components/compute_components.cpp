@@ -61,7 +61,6 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
 
     while (node_queue.size() > 0) {
       HypernodeID current = node_queue.front();
-      node_colored.set((size_t) current);
       cc.nodes.push_back(current);
       node_queue.pop();
 
@@ -75,52 +74,8 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
             continue;
           }
 
-          node_queue.push(incident_hn);
-        }
-      }
-    }
-    
-    result[current_partition].push_back(cc);
-  }
-}
-
-  (void)context;
-
-  Bitset node_colored;
-  node_colored.resize(phg.initialNumNodes());
-  
-  std::queue<HypernodeID> node_queue;
-  PartitionID current_partition;
-
-  for (const HypernodeID& hn : phg.nodes()) {
-    if (node_colored.isSet((size_t) hn)) {
-      continue;
-    }
-
-    current_partition = phg.partID(hn);
-    node_queue.push(hn);
-    
-    ConnectedComponent cc = { };
-
-    while (node_queue.size() > 0) {
-      HypernodeID current = node_queue.front();
-      node_queue.pop();
-
-      node_colored.set((size_t) current);
-      cc.nodes.push_back(current);
-
-      for (const HyperedgeID& he : phg.incidentEdges(current)) {
-        for (const HypernodeID& incident_hn : phg.pins(he)) {
-          if (node_colored.isSet((size_t) incident_hn)) {
-            continue;
-          }
-          
-          if (phg.partID(incident_hn) != current_partition) {
-            continue;
-          }
-
-          node_queue.push(incident_hn);
           node_colored.set((size_t) incident_hn);
+          node_queue.push(incident_hn);
         }
       }
     }

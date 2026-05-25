@@ -31,6 +31,7 @@
 #include <limits>
 
 #include "mt-kahypar/partition/context.h"
+#include "mt-kahypar/partition/connected_components/compute_components.h"
 
 namespace mt_kahypar {
 
@@ -46,17 +47,35 @@ struct BalanceMetrics {
   bool isEqual(const BalanceMetrics& other) const;
 
   bool operator==(const BalanceMetrics& other) const;
+
+  int numViolations() const;
+};
+
+
+struct ConnectivityMetrics {
+  u_int32_t extra_components_count;                      // #components - k
+
+  bool isBetter(const ConnectivityMetrics& other) const;
+
+  bool isEqual(const ConnectivityMetrics& other) const;
+
+  bool operator==(const ConnectivityMetrics& other) const;
+
+  int numViolations() const;
 };
 
 std::ostream& operator<< (std::ostream& os, const BalanceMetrics& imbalance);
 
 struct Metrics {
-  HyperedgeWeight quality;
-  BalanceMetrics imbalance;
+  HyperedgeWeight     quality;
+  BalanceMetrics      imbalance;
+  ConnectivityMetrics connectivity;
 
   bool isBetter(const Metrics& other) const;
 
   bool isEqual(const Metrics& other) const;
+
+  int numViolations() const;
 };
 
 namespace metrics {
@@ -85,6 +104,10 @@ BalanceMetrics imbalance(const PartitionedHypergraph& hypergraph, const Context&
 
 template<typename PartitionedHypergraph>
 double approximationFactorForProcessMapping(const PartitionedHypergraph& hypergraph, const Context& context);
+
+template<typename PartitionedHypergraph>
+ConnectivityMetrics connectivity(const PartitionedHypergraph& phg,
+                    const Context& context);
 
 }  // namespace metrics
 }  // namespace mt_kahypar

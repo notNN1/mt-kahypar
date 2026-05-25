@@ -33,24 +33,25 @@
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/partition/mapping/target_graph.h"
 #include "mt-kahypar/utils/exception.h"
+#include "mt-kahypar/partition/connected_components/compute_components.h"
 
 namespace mt_kahypar {
 
-int numViolations(const BalanceMetrics& imbalance) {
-  return (imbalance.violates_balance ? 1 : 0) + (imbalance.violates_non_empty_blocks ? 1 : 0);
+int BalanceMetrics::numViolations() const {
+  return (this->violates_balance ? 1 : 0) + (this->violates_non_empty_blocks ? 1 : 0);
 }
 
 bool BalanceMetrics::isValidPartition() const {
-  return numViolations(*this) == 0;
+  return this->numViolations() == 0;
 }
 
 bool BalanceMetrics::isBetter(const BalanceMetrics& other) const {
-  return numViolations(*this) < numViolations(other) ||
-    (numViolations(*this) == numViolations(other) && imbalance_value < other.imbalance_value);
+  return this->numViolations() < other.numViolations() ||
+    (this->numViolations() == other.numViolations() && imbalance_value < other.imbalance_value);
 }
 
 bool BalanceMetrics::isEqual(const BalanceMetrics& other) const {
-  return numViolations(*this) == numViolations(other) && imbalance_value == other.imbalance_value;
+  return this->numViolations() == other.numViolations() && imbalance_value == other.imbalance_value;
 }
 
 bool BalanceMetrics::operator==(const BalanceMetrics& other) const {
@@ -59,12 +60,31 @@ bool BalanceMetrics::operator==(const BalanceMetrics& other) const {
     violates_non_empty_blocks == other.violates_non_empty_blocks;
 }
 
+bool ConnectivityMetrics::isBetter(const ConnectivityMetrics& other) const {
+  return this->extra_components_count < other.extra_components_count;
+}
+
+bool ConnectivityMetrics::isEqual(const ConnectivityMetrics& other) const {
+  return this->extra_components_count == other.extra_components_count;
+}
+
+bool ConnectivityMetrics::operator==(const ConnectivityMetrics& other) const {
+  return this->extra_components_count == other.extra_components_count;
+}
+
+int ConnectivityMetrics::numViolations() const {
+  return this->extra_components_count;
+}
+
 bool Metrics::isBetter(const Metrics& other) const {
-  if (numViolations(imbalance) < numViolations(other.imbalance)) {
+  if (this->imbalance.numViolations() < other.imbalance.numViolations()) {
     return true;
-  } else if (numViolations(imbalance) == numViolations(other.imbalance)) {
+  } else if (this->imbalance.numViolations() == other.imbalance.numViolations()) {
+    if (this->connectivity.isBetter(other.connectivity)) {
+      return true;
+    }
     bool improvesBalanceViolation = other.imbalance.violates_balance && imbalance.isBetter(other.imbalance);
-    bool worsensBalanceViolation = imbalance.violates_balance && other.imbalance.isBetter(imbalance);
+    bool worsensBalanceViolation  = imbalance.violates_balance && other.imbalance.isBetter(imbalance);
     return improvesBalanceViolation
            || (!worsensBalanceViolation && quality < other.quality)
            || (!worsensBalanceViolation && quality == other.quality
@@ -75,7 +95,11 @@ bool Metrics::isBetter(const Metrics& other) const {
 }
 
 bool Metrics::isEqual(const Metrics& other) const {
-  return quality == other.quality && imbalance.isEqual(other.imbalance);
+  return quality == other.quality && imbalance.isEqual(other.imbalance) && connectivity.isEqual(other.connectivity);
+}
+
+int Metrics::numViolations() const {
+  return this->imbalance.numViolations() + this->connectivity.numViolations();
 }
 
 std::ostream& operator<< (std::ostream& os, const BalanceMetrics& imbalance) {
@@ -237,6 +261,22 @@ double approximationFactorForProcessMapping(const PartitionedHypergraph& hypergr
   }
 }
 
+template<typename PartitionedHypergraph>
+ConnectivityMetrics connectivity(const PartitionedHypergraph& phg, const Context& context) {
+
+  vec<vec<mt_kahypar::connected_components::ConnectedComponent>> result;
+  mt_kahypar::connected_components::compute_components_per_block(phg, context, result);
+
+  // calculate the total number of components
+  u_int32_t total_component_count = 0;
+  for (const vec<mt_kahypar::connected_components::ConnectedComponent>& components_per_partition : result) {
+    total_component_count += components_per_partition.size();
+  }
+
+  u_int32_t extra_components_count = total_component_count - phg.k();
+  return { extra_components_count };
+}
+
 namespace {
 #define OBJECTIVE_1(X) HyperedgeWeight quality(const X& hg, const Context& context, const bool parallel)
 #define OBJECTIVE_2(X) HyperedgeWeight quality(const X& hg, const Objective objective, const bool parallel)
@@ -244,6 +284,7 @@ namespace {
 #define IS_VALID_PARTITION(X) bool isValidPartition(const X& phg, const Context& context)
 #define IMBALANCE(X) BalanceMetrics imbalance(const X& hypergraph, const Context& context)
 #define APPROX_FACTOR(X) double approximationFactorForProcessMapping(const X& hypergraph, const Context& context)
+#define CONNECTIVITY(X) ConnectivityMetrics connectivity(const X& hypergraph, const Context& context)
 }
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(OBJECTIVE_1)
@@ -252,7 +293,8 @@ INSTANTIATE_FUNC_WITH_PARTITIONED_HG(CONTRIBUTION)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(IS_VALID_PARTITION)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(IMBALANCE)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(APPROX_FACTOR)
+INSTANTIATE_FUNC_WITH_PARTITIONED_HG(CONNECTIVITY)
 
 } // namespace metrics
 
-} // namespace mt_kahypar
+} // namespace mt_kahypar 

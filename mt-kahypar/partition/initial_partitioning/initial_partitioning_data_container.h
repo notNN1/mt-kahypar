@@ -62,15 +62,17 @@ class InitialPartitioningDataContainer {
     PartitioningResult(InitialPartitioningAlgorithm algorithm,
                        HyperedgeWeight objective_ip,
                        HyperedgeWeight objective,
-                       BalanceMetrics imbalance) :
+                       BalanceMetrics imbalance,
+                       ConnectivityMetrics connectivity) :
       _algorithm(algorithm),
       _objective_ip(objective_ip),
       _objective(objective),
-      _imbalance(imbalance) { }
+      _imbalance(imbalance),
+      _connectivity(connectivity) { }
 
     bool is_other_better(const PartitioningResult& other) const {
-      Metrics my_metric{_objective, _imbalance};
-      Metrics other_metric{other._objective, other._imbalance};
+      Metrics      my_metric{_objective, _imbalance, _connectivity };
+      Metrics   other_metric{ other._objective, other._imbalance, other._connectivity };
       return other_metric.isBetter(my_metric) ||
              ( other_metric.isEqual(my_metric)     // tie breaking for deterministic mode
                 && std::tie(other._random_tag, other._deterministic_tag) < std::tie(_random_tag, _deterministic_tag) );
@@ -78,10 +80,11 @@ class InitialPartitioningDataContainer {
 
     std::string str() const {
       std::stringstream ss;
-      ss << "Algorithm = " << _algorithm << ", "
-         << "Objective IP = " << _objective_ip << ", "
-         << "Objective = " << _objective << ", "
-         << "Imbalance = " << _imbalance;
+      ss << "Algorithm = "    << _algorithm                           << ", "
+         << "Objective IP = " << _objective_ip                        << ", "
+         << "Objective = "    << _objective                           << ", "
+         << "Imbalance = "    << _imbalance                           << ", "
+         << "Connectivity = " << _connectivity.extra_components_count << " extra components";
       return ss.str();
     }
 
@@ -89,6 +92,7 @@ class InitialPartitioningDataContainer {
     HyperedgeWeight _objective_ip = std::numeric_limits<HyperedgeWeight>::max();
     HyperedgeWeight _objective = std::numeric_limits<HyperedgeWeight>::max();
     BalanceMetrics _imbalance;
+    ConnectivityMetrics _connectivity;
     size_t _random_tag = std::numeric_limits<size_t>::max();
     size_t _deterministic_tag = std::numeric_limits<size_t>::max();
   };
@@ -196,7 +200,8 @@ class InitialPartitioningDataContainer {
       _result(InitialPartitioningAlgorithm::UNDEFINED,
               std::numeric_limits<HyperedgeWeight>::max(),
               std::numeric_limits<HyperedgeWeight>::max(),
-              BalanceMetrics()),
+              BalanceMetrics(),
+              ConnectivityMetrics()),
       _gain_cache(GainCachePtr::constructGainCache(context)),
       _rebalancer(nullptr),
       _label_propagation(nullptr),
@@ -232,15 +237,16 @@ class InitialPartitioningDataContainer {
         } (), "There are unassigned hypernodes!");
 
       Metrics current_metric;
-      current_metric.quality = metrics::quality(_partitioned_hypergraph, _context, false);
-      current_metric.imbalance = metrics::imbalance(_partitioned_hypergraph, _context);
+      current_metric.quality      = metrics::quality(_partitioned_hypergraph, _context, false);
+      current_metric.imbalance    = metrics::imbalance(_partitioned_hypergraph, _context);
+      current_metric.connectivity = metrics::connectivity(_partitioned_hypergraph, _context);
 
       const HyperedgeWeight quality_before_refinement = current_metric.quality;
 
       refineCurrentPartition(current_metric, prng);
 
       PartitioningResult result(algorithm, quality_before_refinement,
-        current_metric.quality, current_metric.imbalance);
+        current_metric.quality, current_metric.imbalance, current_metric.connectivity);
 
       // Aggregate Stats
       auto algorithm_index = static_cast<uint8_t>(algorithm);
@@ -256,7 +262,7 @@ class InitialPartitioningDataContainer {
 
     PartitioningResult performRefinementOnPartition(vec<PartitionID>& partition,
                                                     PartitioningResult& input, std::mt19937& prng) {
-      Metrics current_metric = { input._objective, input._imbalance };
+      Metrics current_metric = { input._objective, input._imbalance, input._connectivity };
 
       _partitioned_hypergraph.resetPartition();
 
@@ -272,9 +278,13 @@ class InitialPartitioningDataContainer {
 
       refineCurrentPartition(current_metric, prng);
 
-      PartitioningResult result(_result._algorithm,
-        current_metric.quality, current_metric.quality,
-        current_metric.imbalance);
+      PartitioningResult result(
+        _result._algorithm,
+        current_metric.quality, 
+        current_metric.quality,
+        current_metric.imbalance,
+        current_metric.connectivity
+      );
 
       return result;
     }
