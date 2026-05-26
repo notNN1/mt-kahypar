@@ -177,33 +177,7 @@ namespace impl {
     if (can_move_node) {
       for (PartitionID i : parts) {
 
-        // check if new partition would break
-        if (!connection_found_to_partition.isSet((size_t) i)) {
-          continue;
-        }
-
-
-        // check if new partition would break
-        bool is_connected_target_block = false;
-
-        for (const HyperedgeID& he : phg.incidentEdges(u)) {
-            for (const PartitionID& partition : phg.connectivitySet(he)) {
-            if (partition == to) {
-                    is_connected_target_block = true;
-                    break;
-                }
-            }
-
-            if (is_connected_target_block) {
-                break;
-            }
-        }
-
-        if (!is_connected_target_block) {
-          continue;
-        }
-
-        if (i != from && i != kInvalidPartition) {
+        if (i != from && i != kInvalidPartition && connection_found_to_partition.isSet((size_t) i)) {
           const HypernodeWeight to_weight = phg.partWeight(i);
           const HyperedgeWeight benefit = gain_cache.blockIsAdjacent(u, i) ? gain_cache.benefitTerm(u, i) : gain_cache.recomputeBenefitTerm(phg, u, i);
           if ((benefit > to_benefit || (benefit == to_benefit && to_weight < best_to_weight)) &&
