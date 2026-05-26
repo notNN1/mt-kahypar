@@ -125,6 +125,7 @@ namespace ds {
 
         this->connected_to.resize(phg.initialNumNodes());
         this->vertex_to_parent_compressed.resize(phg.initialNumNodes());
+        this->vertex_to_rank.resize(phg.initialNumNodes());
 
         for (HypernodeID hypernode : phg.nodes()) {
             this->vertex_to_parent_compressed[hypernode] = hypernode;
@@ -232,7 +233,19 @@ namespace ds {
         const HypernodeID& hn,
         const HypernodeID& incident_hn
     ) {
-        this->vertex_to_parent_compressed[incident_hn] = this->vertex_to_parent_compressed[hn];
+        HypernodeID pn          = this->vertex_to_parent_compressed[hn];
+        HypernodeID incident_pn = this->vertex_to_parent_compressed[incident_hn];
+
+        if (this->vertex_to_rank[pn] > this->vertex_to_rank[incident_pn]) {
+            this->vertex_to_parent_compressed[incident_hn] = this->vertex_to_parent_compressed[hn];
+        }
+        else if (this->vertex_to_rank[pn] == this->vertex_to_rank[incident_pn]) {
+            this->vertex_to_rank[pn]++;
+            this->vertex_to_parent_compressed[incident_hn] = this->vertex_to_parent_compressed[hn];
+        }
+        else {
+            this->vertex_to_parent_compressed[hn] = this->vertex_to_parent_compressed[incident_hn];
+        }
 
         this->connected_to[hn].emplace_back(incident_hn);
         auto it1 = std::prev(this->connected_to[hn].end());
@@ -323,13 +336,7 @@ namespace ds {
 
     };
 
-namespace {
-    // This macro defines how to refer to your class for a specific type X
-    #define BFS_CONNECTIVITY(X) BFSConnectivity<X>
-    #define ST_CONNECTIVITY(X) SpanningTreeConnectivity<X>
-}
 
-// This tells the compiler: "Build BFSConnectivity for all Hypergraph types"
 INSTANTIATE_CLASS_WITH_PARTITIONED_HG(BFSConnectivity)
 INSTANTIATE_CLASS_WITH_PARTITIONED_HG(SpanningTreeConnectivity)
 

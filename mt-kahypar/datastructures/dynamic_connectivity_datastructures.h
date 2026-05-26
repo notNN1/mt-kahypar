@@ -52,9 +52,9 @@ public:
 template<typename PartitionedHypergraph>
 class SpanningTreeConnectivity {
 private:
-    //vec<vec<HypernodeID>> connected_to;        
+    
     vec<HypernodeID> vertex_to_parent_compressed;
-
+    vec<size_t> vertex_to_rank;
 
     struct Connection {
         typename std::list<Connection>::iterator iterator;
