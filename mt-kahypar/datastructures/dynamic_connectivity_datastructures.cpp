@@ -23,9 +23,10 @@
  ******************************************************************************/
 
 #include "mt-kahypar/datastructures/dynamic_connectivity_datastructures.h"
-
-#include "mt-kahypar/definitions.h"
 #include <tbb/task_group.h>
+#include <queue>
+#include <cassert>
+#include "mt-kahypar/definitions.h"
 
 namespace mt_kahypar {
 namespace ds {
@@ -95,9 +96,7 @@ namespace ds {
         Bitset has_connection_to_other_partition;
         has_connection_to_other_partition.resize(phg.initialNumNodes());
 
-        for (const HypernodeID& hn : phg.nodes()) {
-            
-
+        for (const HypernodeID& hn : phg.nodes()) {            
             PartitionID current_partition = phg.partID(hn);
 
             for (const HyperedgeID& he : phg.incidentEdges(hn)) {
@@ -127,73 +126,95 @@ namespace ds {
         this->vertex_to_parent_compressed.resize(phg.initialNumNodes());
         this->vertex_to_rank.resize(phg.initialNumNodes());
 
+        Bitset edge_already_seen;
+        edge_already_seen.resize(phg.initialNumEdges());
+
         for (HypernodeID hypernode : phg.nodes()) {
             this->vertex_to_parent_compressed[hypernode] = hypernode;
         }
 
-        for (const vec<ConnectedComponent>& components_per_partition : connected_components) {
+        
+        PartitionID current_partition;
 
-            PartitionID current_partition = phg.partID(components_per_partition[0].nodes[0]);
-            for (const ConnectedComponent& connected_sub_component : components_per_partition) {
+        for (const HypernodeID& hn : phg.nodes()) {
 
-                // ignore nodes with 'has_connection_to_other_partition'
-                for (           const HypernodeID& hn          : connected_sub_component.nodes  ) {
+            if (has_connection_to_other_partition.isSet((size_t) hn)) {
+                continue;
+            }
 
-                    if (has_connection_to_other_partition.isSet((size_t) hn)) {
-                        continue;
-                    }
+            current_partition = phg.partID(hn);
 
-                    for (       const HyperedgeID& he          : phg.incidentEdges(hn)          ) {
-                        for (   const HypernodeID& incident_hn : phg.pins(he)                   ) {
+            for (       const HyperedgeID& he          : phg.incidentEdges(hn)          ) {
 
-                            try_connect_to_incident_without_connection(
-                                has_connection_to_other_partition,
-                                hn,
-                                incident_hn
-                            );
-                            
-                            if (!has_connection_to_other_partition.isSet((size_t) incident_hn)) {
-                                try_connect_to_incident_with_connection(
-                                    has_connection_to_other_partition,
-                                    hn,
-                                    incident_hn
-                                );
-                            }
-
-                        }
-                    }
+                if (edge_already_seen.isSet((size_t) he)) {
+                    continue;
                 }
 
-                // now only connect nodes with 'has_connection_to_other_partition'
-                for (           const HypernodeID& hn          : connected_sub_component.nodes  ) {
+                edge_already_seen.set((size_t) he);
 
-                    if (!has_connection_to_other_partition.isSet((size_t) hn)) {
-                        continue;
+                for (   const HypernodeID& incident_hn : phg.pins(he)                   ) {
+
+                    try_connect_to_incident_without_connection(
+                        has_connection_to_other_partition,
+                        hn,
+                        incident_hn
+                    );
+                    
+                    if (!has_connection_to_other_partition.isSet((size_t) incident_hn)) {
+                        try_connect_to_incident_with_connection(
+                            has_connection_to_other_partition,
+                            hn,
+                            incident_hn
+                        );
                     }
 
-                    for (       const HyperedgeID& he          : phg.incidentEdges(hn)          ) {
-                        for (   const HypernodeID& incident_hn : phg.pins(he)                   ) {
-
-                            if (phg.partID(incident_hn) != current_partition) {
-                                continue;
-                            }
-
-                            try_connect_to_incident_without_connection(
-                                has_connection_to_other_partition,
-                                hn,
-                                incident_hn
-                            );
-
-                            try_connect_to_incident_with_connection(
-                                has_connection_to_other_partition,
-                                hn,
-                                incident_hn
-                            );
-                        }
-                    }
                 }
             }
         }
+
+        edge_already_seen.reset();
+
+        // now only connect nodes with 'has_connection_to_other_partition'
+       for (const HypernodeID& hn : phg.nodes()) {
+
+            if (!has_connection_to_other_partition.isSet((size_t) hn)) {
+                continue;
+            }
+
+            current_partition = phg.partID(hn);
+
+
+            for (       const HyperedgeID& he          : phg.incidentEdges(hn)          ) {
+
+                if (edge_already_seen.isSet((size_t) he)) {
+                    continue;
+                }
+
+                edge_already_seen.set((size_t) he);
+
+                for (   const HypernodeID& incident_hn : phg.pins(he)                   ) {
+
+                    
+                    if (phg.partID(incident_hn) != current_partition) {
+                        continue;
+                    }
+
+                    try_connect_to_incident_without_connection(
+                        has_connection_to_other_partition,
+                        hn,
+                        incident_hn
+                    );
+
+                    try_connect_to_incident_with_connection(
+                        has_connection_to_other_partition,
+                        hn,
+                        incident_hn
+                    );
+                }
+            }
+        }
+            
+        
 
     };
 

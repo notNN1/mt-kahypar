@@ -27,9 +27,9 @@
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/parallel/stl/scalable_vector.h"
 #include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/definitions.h"
 #include "mt-kahypar/partition/connected_components/compute_components.h"
 #include "mt-kahypar/partition/context.h"
+#include "mt-kahypar/datastructures/bitset.h"
 #include <list>
 
 namespace mt_kahypar {

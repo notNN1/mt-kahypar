@@ -46,6 +46,9 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
   Bitset node_colored;
   node_colored.resize(phg.initialNumNodes());
   
+  Bitset edge_colored;
+  edge_colored.resize(phg.initialNumEdges());
+
   std::queue<HypernodeID> node_queue;
   PartitionID current_partition;
 
@@ -65,6 +68,13 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
       node_queue.pop();
 
       for (const HyperedgeID& he : phg.incidentEdges(current)) {
+
+        if (edge_colored.isSet((size_t) he)) {
+          continue;
+        }
+
+        edge_colored.set((size_t) he);
+
         for (const HypernodeID& incident_hn : phg.pins(he)) {
           if (node_colored.isSet((size_t) incident_hn)) {
             continue;
