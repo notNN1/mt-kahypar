@@ -61,6 +61,7 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
     node_queue.push(hn);
     
     ConnectedComponent cc = { };
+    edge_colored.reset();
 
     while (node_queue.size() > 0) {
       HypernodeID current = node_queue.front();
