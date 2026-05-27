@@ -45,6 +45,9 @@ namespace ds {
         Bitset node_colored;
         node_colored.resize(phg.initialNumNodes());
         node_colored.set((size_t) hn);
+
+        Bitset edge_colored;
+        edge_colored.resize(phg.initialNumEdges());
         
         std::queue<HypernodeID> node_queue;
         PartitionID current_partition = phg.partID(hn);
@@ -57,11 +60,20 @@ namespace ds {
             node_queue.push(hn_);
             node_colored.set((size_t) hn_);
 
+            edge_colored.reset();
+
             while (node_queue.size() > 0) {
                 HypernodeID current = node_queue.front();
                 node_queue.pop();
 
                 for (const HyperedgeID& he : phg.incidentEdges(current)) {
+
+                    if (edge_colored.isSet((size_t) he)) {
+                        continue;
+                    }
+
+                    edge_colored.set((size_t) he);
+
                     for (const HypernodeID& incident_hn : phg.pins(he)) {
                         if (node_colored.isSet((size_t) incident_hn)) {
                             continue;
