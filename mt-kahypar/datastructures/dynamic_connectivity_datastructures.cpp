@@ -187,7 +187,7 @@ namespace ds {
         edge_already_seen.reset();
 
         // now only connect nodes with 'has_connection_to_other_partition'
-       for (const HypernodeID& hn : phg.nodes()) {
+        for (const HypernodeID& hn : phg.nodes()) {
 
             if (!has_connection_to_other_partition.isSet((size_t) hn)) {
                 continue;
@@ -238,7 +238,7 @@ namespace ds {
         const HypernodeID& incident_hn
     ) {
         if (
-            this->vertex_to_parent_compressed[incident_hn] == incident_hn
+            this->connected_to[incident_hn].size() == 0
         ) {
             if (!is_same_component(hn, incident_hn)) {
                 connect_nodes(hn, incident_hn);
