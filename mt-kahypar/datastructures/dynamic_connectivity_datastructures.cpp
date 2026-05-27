@@ -166,18 +166,25 @@ namespace ds {
 
                 for (   const HypernodeID& incident_hn : phg.pins(he)                   ) {
 
-                    try_connect_to_incident_without_connection(
-                        has_connection_to_other_partition,
-                        hn,
-                        incident_hn
-                    );
                     
-                    if (!has_connection_to_other_partition.isSet((size_t) incident_hn)) {
-                        try_connect_to_incident_with_connection(
-                            has_connection_to_other_partition,
-                            hn,
-                            incident_hn
-                        );
+                    
+                    if (!has_connection_to_other_partition.isSet((size_t) incident_hn) 
+                        ||(has_connection_to_other_partition.isSet((size_t) incident_hn) && this->connected_to[incident_hn].size() == 0)
+                    ) {
+                        if (!is_same_component(hn, incident_hn)) {
+                            int c1 = calc_parents(phg);
+                        
+                            connect_nodes(hn, incident_hn);
+
+                            int c2 = calc_parents(phg);
+
+                            if (c2 > c1) {
+                                LOG << "parents increased";
+                            }
+                            else if(c2 == c1) {
+                                LOG << "parents did not decrease";
+                            }
+                        }
                     }
 
                 }
@@ -199,7 +206,7 @@ namespace ds {
             for (       const HyperedgeID& he          : phg.incidentEdges(hn)          ) {
 
                 if (edge_already_seen.isSet((size_t) he)) {
-                    continue;
+                    //continue;
                 }
 
                 edge_already_seen.set((size_t) he);
@@ -211,25 +218,40 @@ namespace ds {
                         continue;
                     }
 
-                    try_connect_to_incident_without_connection(
-                        has_connection_to_other_partition,
-                        hn,
-                        incident_hn
-                    );
+                    
+                    if (!is_same_component(hn, incident_hn)) {
+                        int c1 = calc_parents(phg);
+                        
+                        connect_nodes(hn, incident_hn);
 
-                    try_connect_to_incident_with_connection(
-                        has_connection_to_other_partition,
-                        hn,
-                        incident_hn
-                    );
+                        int c2 = calc_parents(phg);
+
+                        if (c2 > c1) {
+                            LOG << "parents increased";
+                        }
+                        else if(c2 == c1) {
+                            LOG << "parents did not decrease";
+                        }
+                    }
                 }
             }
         }
             
-        
-
+        LOG << "Parents: " << calc_parents(phg);
     };
 
+
+    template<typename PartitionedHypergraph>  
+    int SpanningTreeConnectivity<PartitionedHypergraph>::calc_parents(const PartitionedHypergraph& phg) {
+      int count = 0;
+        for (const HypernodeID& hn : phg.nodes()) {
+            if (this->vertex_to_parent_compressed[hn] == hn) {
+                count++;
+            }
+        }
+
+        return count;  
+    }
 
     template<typename PartitionedHypergraph>    
     inline void  SpanningTreeConnectivity<PartitionedHypergraph>::try_connect_to_incident_without_connection(
@@ -270,14 +292,14 @@ namespace ds {
         HypernodeID incident_pn = this->vertex_to_parent_compressed[incident_hn];
 
         if (this->vertex_to_rank[pn] > this->vertex_to_rank[incident_pn]) {
-            this->vertex_to_parent_compressed[incident_hn] = this->vertex_to_parent_compressed[hn];
+            this->vertex_to_parent_compressed[incident_pn] = this->vertex_to_parent_compressed[pn];
         }
         else if (this->vertex_to_rank[pn] == this->vertex_to_rank[incident_pn]) {
             this->vertex_to_rank[pn]++;
-            this->vertex_to_parent_compressed[incident_hn] = this->vertex_to_parent_compressed[hn];
+            this->vertex_to_parent_compressed[incident_pn] = this->vertex_to_parent_compressed[pn];
         }
         else {
-            this->vertex_to_parent_compressed[hn] = this->vertex_to_parent_compressed[incident_hn];
+            this->vertex_to_parent_compressed[pn] = this->vertex_to_parent_compressed[incident_pn];
         }
 
         this->connected_to[hn].emplace_back(incident_hn);
@@ -353,8 +375,6 @@ namespace ds {
         this->connected_to[incident_hn].erase(it2);
         this->connected_to[hn].erase(it1);
 
-        
-        
 
         // remove hn from component tree
         this->vertex_to_parent_compressed[hn] = hn;

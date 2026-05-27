@@ -77,12 +77,9 @@ int ConnectivityMetrics::numViolations() const {
 }
 
 bool Metrics::isBetter(const Metrics& other) const {
-  if (this->imbalance.numViolations() < other.imbalance.numViolations()) {
+  if (this->numViolations() < other.numViolations()) {
     return true;
   } else if (this->imbalance.numViolations() == other.imbalance.numViolations()) {
-    if (this->connectivity.isBetter(other.connectivity)) {
-      return true;
-    }
     bool improvesBalanceViolation = other.imbalance.violates_balance && imbalance.isBetter(other.imbalance);
     bool worsensBalanceViolation  = imbalance.violates_balance && other.imbalance.isBetter(imbalance);
     return improvesBalanceViolation

@@ -88,6 +88,7 @@ private:
         const HypernodeID& hn2
     );
 
+    int calc_parents(const PartitionedHypergraph& phg);
 public:
     SpanningTreeConnectivity(
         const PartitionedHypergraph& phg,
