@@ -145,16 +145,12 @@ namespace ds {
             this->vertex_to_parent_compressed[hypernode] = hypernode;
         }
 
-        
-        PartitionID current_partition;
 
         for (const HypernodeID& hn : phg.nodes()) {
 
             if (has_connection_to_other_partition.isSet((size_t) hn)) {
                 continue;
             }
-
-            current_partition = phg.partID(hn);
 
             for (       const HyperedgeID& he          : phg.incidentEdges(hn)          ) {
 
@@ -166,24 +162,11 @@ namespace ds {
 
                 for (   const HypernodeID& incident_hn : phg.pins(he)                   ) {
 
-                    
-                    
                     if (!has_connection_to_other_partition.isSet((size_t) incident_hn) 
                         ||(has_connection_to_other_partition.isSet((size_t) incident_hn) && this->connected_to[incident_hn].size() == 0)
                     ) {
                         if (!is_same_component(hn, incident_hn)) {
-                            int c1 = calc_parents(phg);
-                        
                             connect_nodes(hn, incident_hn);
-
-                            int c2 = calc_parents(phg);
-
-                            if (c2 > c1) {
-                                LOG << "parents increased";
-                            }
-                            else if(c2 == c1) {
-                                LOG << "parents did not decrease";
-                            }
                         }
                     }
 
@@ -193,6 +176,7 @@ namespace ds {
 
         edge_already_seen.reset();
 
+        PartitionID current_partition;
         // now only connect nodes with 'has_connection_to_other_partition'
         for (const HypernodeID& hn : phg.nodes()) {
 
@@ -220,24 +204,11 @@ namespace ds {
 
                     
                     if (!is_same_component(hn, incident_hn)) {
-                        int c1 = calc_parents(phg);
-                        
                         connect_nodes(hn, incident_hn);
-
-                        int c2 = calc_parents(phg);
-
-                        if (c2 > c1) {
-                            LOG << "parents increased";
-                        }
-                        else if(c2 == c1) {
-                            LOG << "parents did not decrease";
-                        }
                     }
                 }
             }
         }
-            
-        LOG << "Parents: " << calc_parents(phg);
     };
 
 

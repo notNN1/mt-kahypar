@@ -73,7 +73,7 @@ bool ConnectivityMetrics::operator==(const ConnectivityMetrics& other) const {
 }
 
 int ConnectivityMetrics::numViolations() const {
-  return this->extra_components_count;
+  return this->extra_components_count > 0 ? 1 : 0;
 }
 
 bool Metrics::isBetter(const Metrics& other) const {
@@ -83,6 +83,9 @@ bool Metrics::isBetter(const Metrics& other) const {
     bool improvesBalanceViolation = other.imbalance.violates_balance && imbalance.isBetter(other.imbalance);
     bool worsensBalanceViolation  = imbalance.violates_balance && other.imbalance.isBetter(imbalance);
     return improvesBalanceViolation
+           || (!worsensBalanceViolation && this->connectivity.extra_components_count < other.connectivity.extra_components_count)
+           || (!worsensBalanceViolation && this->connectivity.extra_components_count == other.connectivity.extra_components_count
+                && imbalance.imbalance_value < other.imbalance.imbalance_value)
            || (!worsensBalanceViolation && quality < other.quality)
            || (!worsensBalanceViolation && quality == other.quality
                 && imbalance.imbalance_value < other.imbalance.imbalance_value);
