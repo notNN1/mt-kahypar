@@ -5,6 +5,7 @@ pkgs.mkShell {
     onetbb
     hwloc
     cmake
+    gdb
   ];
 
   buildInputs = [ pkgs.bashInteractive ];

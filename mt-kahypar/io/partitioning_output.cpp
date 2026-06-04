@@ -316,11 +316,13 @@ namespace mt_kahypar::io {
                                 const Context& context,
                                 const std::string& description) {
     if (context.partition.enable_logging) {
-      BalanceMetrics imbalance = metrics::imbalance(hypergraph, context);
+      BalanceMetrics imbalance          = metrics::imbalance(hypergraph, context);
+      ConnectivityMetrics connectivity  = metrics::connectivity(hypergraph, context);
       LOG << description;
       LOG << context.partition.objective << "      ="
           << metrics::quality(hypergraph, context);
       LOG << "imbalance =" << imbalance.imbalance_value;
+      LOG << "component =" << connectivity.extra_components_count;
       if (context.partition.verbose_logging) {
         LOG << "Part sizes and weights:";
         io::printPartWeightsAndSizes(hypergraph, context);

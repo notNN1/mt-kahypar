@@ -245,6 +245,8 @@ class InitialPartitioningDataContainer {
 
       refineCurrentPartition(current_metric, prng);
 
+      current_metric.connectivity = metrics::connectivity(_partitioned_hypergraph, _context);
+
       PartitioningResult result(algorithm, quality_before_refinement,
         current_metric.quality, current_metric.imbalance, current_metric.connectivity);
 
@@ -252,10 +254,23 @@ class InitialPartitioningDataContainer {
       auto algorithm_index = static_cast<uint8_t>(algorithm);
       _stats[algorithm_index].total_sum_quality += result._objective;
       _stats[algorithm_index].total_time += time;
+      _stats[algorithm_index].total_extra_components += result._connectivity.extra_components_count;
+      _stats[algorithm_index].least_extra_components = _stats[algorithm_index].least_extra_components > result._connectivity.extra_components_count ? 
+        result._connectivity.extra_components_count : _stats[algorithm_index].least_extra_components;
       ++_stats[algorithm_index].total_calls;
 
       _global_stats.add_run(algorithm, current_metric.quality,
         current_metric.imbalance.isValidPartition());
+
+      // print stats
+      LOG << std::left << std::setw(15) << "Algorithm: " 
+          << std::left << std::setw(30) << algorithm 
+          << std::left << std::setw(10) << " Quality: " 
+          << std::left << std::setw(10) << result._objective 
+          << std::left << std::setw(15) << " Components: " 
+          << std::left << std::setw(15) << result._connectivity.extra_components_count
+          << std::left << std::setw(15) << " Imbalance: " 
+          << std::left << std::setw(15) << result._imbalance.imbalance_value;
 
       return result;
     }

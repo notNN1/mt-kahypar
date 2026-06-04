@@ -79,16 +79,17 @@ int ConnectivityMetrics::numViolations() const {
 bool Metrics::isBetter(const Metrics& other) const {
   if (this->numViolations() < other.numViolations()) {
     return true;
-  } else if (this->imbalance.numViolations() == other.imbalance.numViolations()) {
+  } else if (this->numViolations() == other.numViolations()) {
     bool improvesBalanceViolation = other.imbalance.violates_balance && imbalance.isBetter(other.imbalance);
     bool worsensBalanceViolation  = imbalance.violates_balance && other.imbalance.isBetter(imbalance);
-    return improvesBalanceViolation
-           || (!worsensBalanceViolation && this->connectivity.extra_components_count < other.connectivity.extra_components_count)
-           || (!worsensBalanceViolation && this->connectivity.extra_components_count == other.connectivity.extra_components_count
-                && imbalance.imbalance_value < other.imbalance.imbalance_value)
-           || (!worsensBalanceViolation && quality < other.quality)
-           || (!worsensBalanceViolation && quality == other.quality
-                && imbalance.imbalance_value < other.imbalance.imbalance_value);
+    if (!this->imbalance.isValidPartition() || !other.imbalance.isValidPartition() || this->connectivity.extra_components_count == other.connectivity.extra_components_count) {
+      return improvesBalanceViolation
+          || (!worsensBalanceViolation && quality < other.quality)
+          || (!worsensBalanceViolation && quality == other.quality
+              && imbalance.imbalance_value < other.imbalance.imbalance_value);
+    }
+
+    return this->connectivity.extra_components_count < other.connectivity.extra_components_count;
   } else {
     return false;
   }
@@ -100,6 +101,14 @@ bool Metrics::isEqual(const Metrics& other) const {
 
 int Metrics::numViolations() const {
   return this->imbalance.numViolations() + this->connectivity.numViolations();
+}
+
+void Metrics::log() const {
+  LOG << "Violates balance:          " << this->imbalance.violates_balance;
+  LOG << "Violates non empty blocks: " << this->imbalance.violates_non_empty_blocks;
+  LOG << "Imbalance:                 " << this->imbalance.imbalance_value;
+  LOG << "Quality:                   " << this->quality;
+  LOG << "Extra components:          " << this->connectivity.extra_components_count;
 }
 
 std::ostream& operator<< (std::ostream& os, const BalanceMetrics& imbalance) {

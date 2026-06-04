@@ -75,6 +75,8 @@ struct Metrics {
 
   bool isEqual(const Metrics& other) const;
 
+  void log() const;
+
   int numViolations() const;
 };
 
