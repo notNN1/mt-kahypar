@@ -209,6 +209,21 @@ namespace ds {
                 }
             }
         }
+
+        // calculate lost nodes
+        size_t count = 0;
+        size_t count1 = 0;
+        for (const HypernodeID& hn : phg.nodes()) {
+            if (has_connection_to_other_partition.isSet((size_t) hn)) {
+                count1++;
+                if (this->connected_to[hn].size() > 1) {
+                    count++;
+                }
+            }
+        }
+
+        LOG << "Number of nodes that are not leaves and connected to other partitions: " << count;
+        LOG << "Number of nodes that are: " << count1 - count;
     };
 
 
@@ -360,9 +375,240 @@ namespace ds {
 
     };
 
+    template<typename PartitionedHypergraph>
+    BFSSpanningTreeConnectivity<PartitionedHypergraph>::BFSSpanningTreeConnectivity(const PartitionedHypergraph& phg, const Context& context) {
+        
+        (void)context;
+
+        this->hn_to_num_children.resize(phg.initialNumNodes());
+        this->hn_to_parent.resize(phg.initialNumNodes());
+        this->has_connection_to_other_partition.resize(phg.initialNumNodes());
+
+        // find nodes that have connections to other partitions
+
+        for (const HypernodeID& hn : phg.nodes()) {            
+            PartitionID current_partition = phg.partID(hn);
+
+            for (const HyperedgeID& he : phg.incidentEdges(hn)) {
+                for (const HypernodeID& incident_hn : phg.pins(he)) {
+
+                    if (current_partition != phg.partID(incident_hn)) {
+                        this->has_connection_to_other_partition.set((size_t) hn);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // do BFS with two queues
+
+        Bitset node_colored;
+        node_colored.resize(phg.initialNumNodes());
+        
+        Bitset edge_colored;
+        edge_colored.resize(phg.initialNumEdges());
+
+        std::queue<HypernodeID> node_queue;
+        std::queue<HypernodeID> colored_node_queue;
+        PartitionID current_partition;
+
+        for (const HypernodeID& hn : phg.nodes()) {
+            if (node_colored.isSet((size_t) hn)) {
+                continue;
+            }
+
+            current_partition = phg.partID(hn);
+
+            if (this->has_connection_to_other_partition.isSet((size_t) hn)) {
+                colored_node_queue.push(hn);
+            }
+            else {
+                node_queue.push(hn);
+            }
+            
+            
+            edge_colored.reset();
+
+            while (node_queue.size() > 0 || colored_node_queue.size() > 0) {
+                
+                HypernodeID current;
+
+                if (node_queue.size() > 0) {
+                    current = node_queue.front();
+                    node_queue.pop();
+                }
+                else {
+                    current = colored_node_queue.front();
+                    colored_node_queue.pop();
+                }
+
+
+                for (const HyperedgeID& he : phg.incidentEdges(current)) {
+
+                    if (edge_colored.isSet((size_t) he)) {
+                    continue;
+                    }
+
+                    edge_colored.set((size_t) he);
+
+                    for (const HypernodeID& incident_hn : phg.pins(he)) {
+                        if (node_colored.isSet((size_t) incident_hn)) {
+                            continue;
+                        }
+                        
+                        if (phg.partID(incident_hn) != current_partition) {
+                            continue;
+                        }
+
+                        node_colored.set((size_t) incident_hn);
+
+                        if (this->has_connection_to_other_partition.isSet((size_t) incident_hn)) {
+                            colored_node_queue.push(incident_hn);
+                        }
+                        else {
+                            node_queue.push(incident_hn);
+                        }
+
+                        this->hn_to_num_children[current]++;
+                        this->hn_to_parent[incident_hn] = current;
+                    }
+                }
+            }   
+        }
+    }
+
+    template<typename PartitionedHypergraph>
+    bool BFSSpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(const Context& context, HypernodeID hn) {
+        (void) context;
+        return this->hn_to_num_children[hn] <= 1;
+    }
+
+    template<typename PartitionedHypergraph>
+    void BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
+        const PartitionedHypergraph& phg,
+        const Context& context,
+        HypernodeID hn,
+        PartitionID to
+    ) {
+        assert(canMoveVertex(context, hn));
+
+        // find candidate to attach to 
+        for (const HyperedgeID& he : phg.incidentEdges(hn)) {
+            for (const HypernodeID& incident_hn : phg.pins(he)) {
+                if (phg.partID(incident_hn) != to) {
+                    continue;
+                }
+
+                bool can_move_to_colored_node = this->has_connection_to_other_partition.isSet((size_t) incident_hn) && this->hn_to_num_children[incident_hn] > 1;
+                bool can_move_to_regular_node = !this->has_connection_to_other_partition.isSet((size_t) incident_hn);
+                
+                if (can_move_to_colored_node || can_move_to_regular_node) {
+                    HypernodeID parent = this->hn_to_parent[hn];
+                    this->hn_to_num_children[parent]--;
+
+                    this->hn_to_parent[hn] = incident_hn;
+                    this->hn_to_num_children[incident_hn]++;
+
+                    return;
+                }
+            }
+        }
+
+        // attach to the next best node
+        for (const HyperedgeID& he : phg.incidentEdges(hn)) {
+            for (const HypernodeID& incident_hn : phg.pins(he)) {
+                if (phg.partID(incident_hn) != to) {
+                    continue;
+                }
+
+                HypernodeID parent = this->hn_to_parent[hn];
+                this->hn_to_num_children[parent]--;
+
+                this->hn_to_parent[hn] = incident_hn;
+                this->hn_to_num_children[incident_hn]++;
+
+                return;
+                
+            }
+        }
+    }
+
+    template<typename PartitionedHypergraph>
+    void ConnectivityFacade<PartitionedHypergraph>::initialize_can_move_current_node_to_partition(
+        const PartitionedHypergraph& hypergraph,
+        const Context& _context,
+        const HypernodeID& hn
+    ) {
+        this->can_move_current_node_to_partition.resize(hypergraph.k());
+
+        if (
+        _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs
+        || _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree
+        || _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st
+        ) {
+            for (const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
+                for (const PartitionID& partition : hypergraph.connectivitySet(he)) {
+                    this->can_move_current_node_to_partition.set((size_t) partition); 
+                }
+            }
+        }
+
+        this->current_node = hn;
+    }
+
+    template<typename PartitionedHypergraph>
+    bool ConnectivityFacade<PartitionedHypergraph>::can_move_into_partition(
+        const PartitionedHypergraph& hypergraph,
+        const Context& _context,
+        const HypernodeID& hn,
+        const PartitionID& to
+    ) {
+        if (hn != this->current_node) {
+            this->initialize_can_move_current_node_to_partition(hypergraph, _context, hn);
+        }
+        return this->can_move_current_node_to_partition.isSet((size_t) to);
+    }
+
+    template<typename PartitionedHypergraph>
+    bool ConnectivityFacade<PartitionedHypergraph>::can_move_out_of_partition(
+        const PartitionedHypergraph& hypergraph,
+        const Context& _context,
+        const HypernodeID hn
+    ) {
+        bool can_move_node = true;
+
+        if (_context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
+            mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
+            can_move_node = dcd.moveVertex(hypergraph, _context, hn);
+        }
+        else if (_context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree) {
+            auto range = hypergraph.incidentEdges(hn);
+            can_move_node = std::distance(range.begin(), range.end()) > 4;
+        }
+        else if (_context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
+            can_move_node = hypergraph.canMoveVertex(_context, hn);
+        }
+
+        return can_move_node;
+    }
+
+    template<typename PartitionedHypergraph>
+    void ConnectivityFacade<PartitionedHypergraph>::move_out_of_partition(
+        const PartitionedHypergraph& hypergraph,
+        const Context& _context,
+        const HypernodeID& hn,
+        const PartitionID& to
+    ) {
+        if (_context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
+            hypergraph.moveVertex(_context, hn, to);
+        }
+    }
+
 
 INSTANTIATE_CLASS_WITH_PARTITIONED_HG(BFSConnectivity)
 INSTANTIATE_CLASS_WITH_PARTITIONED_HG(SpanningTreeConnectivity)
+INSTANTIATE_CLASS_WITH_PARTITIONED_HG(BFSSpanningTreeConnectivity)
+INSTANTIATE_CLASS_WITH_PARTITIONED_HG(ConnectivityFacade)
 
 }  // namespace ds
 }  // namespace mt_kahypar

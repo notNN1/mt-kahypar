@@ -1224,6 +1224,7 @@ private:
     return block_of_v;
   }
 
+
 public:
   bool canMoveVertex(
     const Context& context,
@@ -1237,11 +1238,34 @@ public:
     HypernodeID hn,
     PartitionID to
   ) const {
-  
+    
   }
 
   void deleteST() const {
    
+  }
+
+  bool can_move_node_out_of_partition(
+    const Context& _context,
+    const HypernodeID hn
+  ) const {
+    return true;
+  }
+
+  void move_node_out_of_partition(
+    const Context& _context,
+    const HypernodeID& hn,
+    const PartitionID& to
+  ) const {
+    
+  }
+
+  bool can_move_node_into_partition(
+    const Context& _context,
+    const HypernodeID& hn,
+    const PartitionID& to
+  ) const {
+    return true;
   }
 
 private:

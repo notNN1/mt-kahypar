@@ -1289,6 +1289,8 @@ public:
       }
       return _st->canMoveVertex(context, hn);
     }
+
+    return true;
   }
 
   void moveVertex(
@@ -1308,9 +1310,46 @@ public:
     this->_st.reset();
   }
 
+  bool can_move_node_out_of_partition(
+    const Context& _context,
+    const HypernodeID hn
+  ) const {
+    if (!_cf) {
+      _cf.emplace();
+    }
+
+    return _cf->can_move_out_of_partition(*this, _context, hn);
+  }
+
+  void move_node_out_of_partition(
+    const Context& _context,
+    const HypernodeID& hn,
+    const PartitionID& to
+  ) const {
+    if (!_cf) {
+      _cf.emplace();
+    }
+
+    _cf->move_out_of_partition(*this, _context, hn, to);
+  }
+
+  bool can_move_node_into_partition(
+    const Context& _context,
+    const HypernodeID& hn,
+    const PartitionID& to
+  ) const {
+    if (!_cf) {
+      _cf.emplace();
+    }
+
+    return _cf->can_move_into_partition(*this, _context, hn, to);
+  }
+
 private:
   // ! Dynamic connectivity
-  mutable std::optional<SpanningTreeConnectivity<PartitionedHypergraph>> _st;
+  mutable std::optional<BFSSpanningTreeConnectivity<PartitionedHypergraph>> _st;
+  
+  mutable std::optional<ConnectivityFacade<PartitionedHypergraph>> _cf;
 //
   // ! Number of nodes of the top level hypergraph
   HypernodeID _input_num_nodes = 0;

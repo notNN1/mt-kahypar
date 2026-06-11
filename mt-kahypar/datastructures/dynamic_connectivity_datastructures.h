@@ -50,6 +50,30 @@ public:
 };
 
 template<typename PartitionedHypergraph>
+class BFSSpanningTreeConnectivity {
+private:
+    vec<HypernodeID> hn_to_parent;
+    vec<size_t> hn_to_num_children;
+
+    Bitset has_connection_to_other_partition;
+public:
+    BFSSpanningTreeConnectivity(const PartitionedHypergraph& phg,
+                                const Context& context);
+    
+    bool canMoveVertex(
+        const Context& context,
+        HypernodeID hn
+    );
+
+    void moveVertex(
+        const PartitionedHypergraph& phg,
+        const Context& context,
+        HypernodeID hn,
+        PartitionID to
+    );
+};
+
+template<typename PartitionedHypergraph>
 class SpanningTreeConnectivity {
 private:
     
@@ -108,7 +132,40 @@ public:
         HypernodeID hn,
         PartitionID to
     );
+};
 
+template<typename PartitionedHypergraph>
+class ConnectivityFacade {
+private:
+    Bitset          can_move_current_node_to_partition;
+    HypernodeID     current_node;
+
+    void initialize_can_move_current_node_to_partition(
+        const PartitionedHypergraph& hypergraph,
+        const Context& _context,
+        const HypernodeID& hn
+    );
+
+public:
+    bool can_move_out_of_partition(
+        const PartitionedHypergraph& hypergraph,
+        const Context& _context,
+        const HypernodeID hn
+    );
+
+    void move_out_of_partition(
+        const PartitionedHypergraph& hypergraph,
+        const Context& _context,
+        const HypernodeID& hn,
+        const PartitionID& to
+    );
+
+    bool can_move_into_partition(
+        const PartitionedHypergraph& hypergraph,
+        const Context& _context,
+        const HypernodeID& hn,
+        const PartitionID& to
+    );
 };
 
 }  // namespace ds

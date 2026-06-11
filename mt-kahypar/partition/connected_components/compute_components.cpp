@@ -95,12 +95,96 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
   }
 }
 
+template<typename PartitionedHypergraph>
+void compute_verticy_count_per_partition_of_initial_component(const PartitionedHypergraph& phg,
+                                                              const Context& context,
+                                                              const vec<vec<ConnectedComponent>>& components,
+                                                              vec<vec<ComponentInfo>>& result) {
+
+  vec<size_t> hn_to_component;
+  hn_to_component.resize(phg.initialNumNodes());
+
+  vec<size_t> component_to_size;
+  vec<PartitionID> component_to_paritition;
+
+  size_t component_i = 0;
+
+  PartitionID partition = 0;
+
+  for (vec<ConnectedComponent> components_per_partition : components) {
+    for (ConnectedComponent component : components_per_partition) {
+      for (HypernodeID hn : component.nodes) {
+        hn_to_component[hn] = component_i;
+      }
+      component_to_size.push_back(component.nodes.size());
+      component_to_paritition.push_back(partition);
+      component_i++;
+    }
+    partition++;
+  }
+
+  vec<size_t> component_to_parent;
+  component_to_parent.resize(component_i);
+
+  for (size_t i = 0; i < component_i; i++) {
+    component_to_parent[i] = i;
+  }
+
+  Bitset edge_colored;
+  edge_colored.resize(phg.initialNumEdges());
+
+  for (vec<ConnectedComponent> components_per_partition : components) {
+    for (ConnectedComponent component : components_per_partition) {
+      for (HypernodeID hn : component.nodes) {
+        
+        size_t component        = hn_to_component[hn];
+        size_t parent_component = component;
+
+        while (component_to_parent[parent_component] != parent_component) parent_component = component_to_parent[parent_component];
+
+        for (const HyperedgeID& he : phg.incidentEdges(hn)) {
+
+          if (edge_colored.isSet((size_t) he)) {
+            continue;
+          }
+
+          edge_colored.set((size_t) he);
+
+          for (const HypernodeID& incident_hn : phg.pins(he)) {
+            size_t incident_component = hn_to_component[incident_hn];
+
+            if (incident_component != component) {
+              // calculate parent
+              size_t incident_parent_component  = incident_component;
+              while (component_to_parent[incident_parent_component] != incident_component) incident_component = component_to_parent[incident_component];
+
+              if (parent_component != incident_component) {
+                component_to_parent[incident_component] = parent_component;
+              }
+            }   
+          }
+        }
+      }
+    }
+  }
+  
+
+  result.resize(component_i);
+  for (size_t component = 0; component < component_i; component++) {
+    size_t parent_component = component;
+    while (component_to_parent[parent_component] != parent_component) parent_component = component_to_parent[parent_component];
+
+    result[parent_component].push_back({component_to_size[component], component_to_paritition[component]});
+  }
+}
 
 namespace {
 #define COMPUTE_COMPONENTS_PER_BLOCK(X) void compute_components_per_block(const X& phg, const Context& context, vec<vec<ConnectedComponent>>& result)
+#define COMPUTE_VC(X) void compute_verticy_count_per_partition_of_initial_component(const X& phg, const Context& context, const vec<vec<ConnectedComponent>>& components, vec<vec<ComponentInfo>>& result)
 }
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_COMPONENTS_PER_BLOCK)
+INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_VC)
 
 }  // namespace connected_components
 }  // namespace mt_kahypar

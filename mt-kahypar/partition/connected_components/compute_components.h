@@ -35,11 +35,26 @@ struct ConnectedComponent {
   vec<HypernodeID> nodes;
 };
 
+struct ComponentInfo {
+  size_t nodes;
+  PartitionID partition;
+};
+
 // ! Computes the connected components of each block and writes them to result
 template<typename PartitionedHypergraph>
-void compute_components_per_block(const PartitionedHypergraph& phg,
-                                  const Context& context,
-                                  vec<vec<ConnectedComponent>>& result);
+void compute_components_per_block(
+  const PartitionedHypergraph& phg,
+  const Context& context,
+  vec<vec<ConnectedComponent>>& result
+);
+
+template<typename PartitionedHypergraph>
+void compute_verticy_count_per_partition_of_initial_component(
+  const PartitionedHypergraph& phg,                                     
+  const Context& context,
+  const vec<vec<ConnectedComponent>>& components,
+  vec<vec<ComponentInfo>>& result
+);
 
 }  // namespace connected_components
 }  // namespace mt_kahypar

@@ -88,8 +88,15 @@ bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics& best_metrics, std::m
     // Perform vertex move
     PartitionID from = _phg.partID(hn);
     _vertex_state[hn] = VertexState::MOVED;
+
+    if (!_phg.can_move_node_out_of_partition(_context, hn) || !_phg.can_move_node_into_partition(_context, hn, to)) {
+      continue;
+    }
+
     if ( _phg.changeNodePart(hn, from, to,
           _context.partition.max_part_weights[to], []{}, border_vertex_update) ) {
+
+      _phg.move_node_out_of_partition(_context, hn, to);
 
       // Perform delta gain updates
       updateNeighbors(hn, from, to);

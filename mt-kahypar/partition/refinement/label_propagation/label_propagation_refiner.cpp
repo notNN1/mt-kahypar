@@ -40,41 +40,6 @@
 namespace mt_kahypar {
 
   template <typename GraphAndGainTypes>
-  bool can_move_out_of_partition(
-    const typename GraphAndGainTypes::PartitionedHypergraph& hypergraph,
-    const Context& _context,
-    const HypernodeID hn
-  ) {
-    bool can_move_node = true;
-
-    if (_context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
-      mt_kahypar::ds::BFSConnectivity<typename GraphAndGainTypes::PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<typename GraphAndGainTypes::PartitionedHypergraph>();
-      can_move_node = dcd.moveVertex(hypergraph, _context, hn);
-    }
-    else if (_context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree) {
-      auto range = hypergraph.incidentEdges(hn);
-      can_move_node = std::distance(range.begin(), range.end()) > 4;
-    }
-    else if (_context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
-      can_move_node = hypergraph.canMoveVertex(_context, hn);
-    }
-
-    return can_move_node;
-  }
-
-  template <typename GraphAndGainTypes>
-  void move_out_of_partition(
-    const typename GraphAndGainTypes::PartitionedHypergraph& hypergraph,
-    const Context& _context,
-    const HypernodeID& hn,
-    const PartitionID& to
-  ) {
-    if (_context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
-        hypergraph.moveVertex(_context, hn, to);
-      }
-  }
-
-  template <typename GraphAndGainTypes>
   template<bool unconstrained, typename F>
   bool LabelPropagationRefiner<GraphAndGainTypes>::moveVertex(PartitionedHypergraph& hypergraph,
                                                               const HypernodeID hn,
@@ -87,7 +52,7 @@ namespace mt_kahypar {
 
       Move best_move = _gain.computeMaxGainMove(hypergraph, hn, false, false, unconstrained);
 
-      if (!can_move_out_of_partition<GraphAndGainTypes>(hypergraph, _context, hn)) {
+      if (!hypergraph.can_move_node_out_of_partition(_context, hn)) {
         return false;
       }
 
@@ -117,7 +82,7 @@ namespace mt_kahypar {
           bool accept_move = (move_delta == best_move.gain || move_delta <= 0);
           if (accept_move) {
 
-            move_out_of_partition<GraphAndGainTypes>(hypergraph, _context, hn, to);
+            hypergraph.move_node_out_of_partition(_context, hn, to);
 
             if constexpr (!unconstrained) {
               // in unconstrained case, we don't want to activate neighbors if the move is undone
