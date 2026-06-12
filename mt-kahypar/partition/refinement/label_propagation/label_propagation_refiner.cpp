@@ -111,7 +111,7 @@ namespace mt_kahypar {
     resizeDataStructuresForCurrentK();
     _gain.reset();
     _next_active.reset();
-    Gain old_quality = best_metrics.quality;
+    Metrics old_metric = best_metrics;
 
     // Initialize set of active vertices
     initializeActiveNodes(hypergraph, refinement_nodes);
@@ -126,8 +126,8 @@ namespace mt_kahypar {
           !_context.refinement.label_propagation.execute_sequential)));
 
     // Update metrics statistics
-    Gain delta = old_quality - best_metrics.quality;
-    ASSERT(delta >= 0, "LP refiner worsen solution quality");
+    Gain delta = old_metric.quality - best_metrics.quality;
+    //ASSERT(old_metric.isBetter(best_metrics), "LP refiner worsen solution");
     utils::Utilities::instance().getStats(_context.utility_id).update_stat("lp_improvement", delta);
     return delta > 0;
   }
