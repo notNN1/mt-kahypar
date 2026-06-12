@@ -73,27 +73,23 @@ bool ConnectivityMetrics::operator==(const ConnectivityMetrics& other) const {
 }
 
 int ConnectivityMetrics::numViolations() const {
-  return this->extra_components_count > 0 ? 1 : 0;
+  return this->extra_components_count > 0 ? 1 : 0 + this->inefficient_components_count > 0 ? 1 : 0;
 }
 
 bool Metrics::isBetter(const Metrics& other) const {
-  if (this->numViolations() < other.numViolations()) {
-    return true;
-  } else if (this->numViolations() == other.numViolations()) {
-    bool improvesBalanceViolation = other.imbalance.violates_balance && imbalance.isBetter(other.imbalance);
-    bool worsensBalanceViolation  = imbalance.violates_balance && other.imbalance.isBetter(imbalance);
-    if (!this->imbalance.isValidPartition() || !other.imbalance.isValidPartition() || this->connectivity.extra_components_count == other.connectivity.extra_components_count) {
-      return improvesBalanceViolation
-          || (!worsensBalanceViolation && quality < other.quality)
-          || (!worsensBalanceViolation && quality == other.quality
-              && imbalance.imbalance_value < other.imbalance.imbalance_value);
-    }
-
-    return this->connectivity.extra_components_count < other.connectivity.extra_components_count;
-  } else {
-    return false;
-  }
+  return this->to_tuple() < other.to_tuple();
 }
+
+std::tuple<size_t, bool, size_t, size_t, double, HyperedgeWeight> Metrics::to_tuple() const {
+  return std::tuple {
+    this->imbalance.numViolations(),
+    this->imbalance.violates_balance,
+    this->connectivity.inefficient_components_count,
+    this->connectivity.extra_components_count,
+    this->imbalance.imbalance_value,
+    this->quality
+  };
+} 
 
 bool Metrics::isEqual(const Metrics& other) const {
   return quality == other.quality && imbalance.isEqual(other.imbalance) && connectivity.isEqual(other.connectivity);
@@ -109,6 +105,7 @@ void Metrics::log() const {
   LOG << "Imbalance:                 " << this->imbalance.imbalance_value;
   LOG << "Quality:                   " << this->quality;
   LOG << "Extra components:          " << this->connectivity.extra_components_count;
+  LOG << "Inefficient components:    " << this->connectivity.inefficient_components_count;
 }
 
 std::ostream& operator<< (std::ostream& os, const BalanceMetrics& imbalance) {
@@ -273,17 +270,25 @@ double approximationFactorForProcessMapping(const PartitionedHypergraph& hypergr
 template<typename PartitionedHypergraph>
 ConnectivityMetrics connectivity(const PartitionedHypergraph& phg, const Context& context) {
 
-  vec<vec<mt_kahypar::connected_components::ConnectedComponent>> result;
-  mt_kahypar::connected_components::compute_components_per_block(phg, context, result);
+  vec<vec<mt_kahypar::connected_components::ConnectedComponent>> components;
+  mt_kahypar::connected_components::compute_components_per_block(phg, context, components);
 
   // calculate the total number of components
   u_int32_t total_component_count = 0;
-  for (const vec<mt_kahypar::connected_components::ConnectedComponent>& components_per_partition : result) {
+  for (const vec<mt_kahypar::connected_components::ConnectedComponent>& components_per_partition : components) {
     total_component_count += components_per_partition.size();
   }
 
-  u_int32_t extra_components_count = total_component_count - phg.k();
-  return { extra_components_count };
+  // calculate inefficient components
+  vec<vec<connected_components::ComponentInfo>> super_components;
+    connected_components::compute_super_components(phg, context, components, super_components);
+
+    vec<vec<connected_components::ComponentInfo>> filtered_super_components;
+    connected_components::find_inefficient_super_components(context, super_components, filtered_super_components);
+
+  u_int32_t extra_components_count        = total_component_count - phg.k();
+  u_int32_t inefficient_components_count  = filtered_super_components.size(); 
+  return { extra_components_count, inefficient_components_count };
 }
 
 namespace {

@@ -101,7 +101,7 @@ class UncoarsenerBase {
   }
 
   Metrics initializeMetrics(PartitionedHypergraph& phg) {
-    Metrics m = { metrics::quality(phg, _context),  metrics::imbalance(phg, _context) };
+    Metrics m = { metrics::quality(phg, _context),  metrics::imbalance(phg, _context), metrics::connectivity(phg, _context) };
 
     int64_t num_nodes = phg.initialNumNodes();
     int64_t num_edges = Hypergraph::is_graph ? phg.initialNumEdges() / 2 : phg.initialNumEdges();

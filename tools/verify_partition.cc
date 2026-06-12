@@ -161,30 +161,13 @@ int main(int argc, char* argv[]) {
     vec<vec<connected_components::ConnectedComponent>> components;
     connected_components::compute_components_per_block(phg, context, components);
 
-    vec<vec<connected_components::ComponentInfo>> components_across_partitions;
-    connected_components::compute_verticy_count_per_partition_of_initial_component(phg, context, components, components_across_partitions);
+    vec<vec<connected_components::ComponentInfo>> super_components;
+    connected_components::compute_super_components(phg, context, components, super_components);
 
-    size_t c = 0;
-    for (const vec<connected_components::ComponentInfo>& components_parent : components_across_partitions) {
-      bool has_different_partitions = false;
-      PartitionID partID = -1;
-      for (const connected_components::ComponentInfo& component : components_parent) {
-        if (partID == -1) {
-          partID = component.partition;
-        }
-        else if (partID != component.partition) {
-          has_different_partitions = true;
-          break;
-        }
-      }
-
-      if (has_different_partitions) {
-        for (const connected_components::ComponentInfo& component : components_parent) {
-          LOG << "Super component: " << c << " nodes: " << component.nodes << " parititon: " << component.partition;
-        }
-      }
-      c++;
-    }
+    vec<vec<connected_components::ComponentInfo>> filtered_super_components;
+    connected_components::find_inefficient_super_components(context, super_components, filtered_super_components);
+    
+    LOG << "Number of inefficient components: " << filtered_super_components.size();
 
     for ( PartitionID i = 0; i < context.partition.k; ++i ) {
       if ( components[i].size() > 1 ) {

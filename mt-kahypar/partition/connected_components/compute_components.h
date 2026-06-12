@@ -49,10 +49,16 @@ void compute_components_per_block(
 );
 
 template<typename PartitionedHypergraph>
-void compute_verticy_count_per_partition_of_initial_component(
+void compute_super_components(
   const PartitionedHypergraph& phg,                                     
   const Context& context,
   const vec<vec<ConnectedComponent>>& components,
+  vec<vec<ComponentInfo>>& result
+);
+
+void find_inefficient_super_components(                               
+  const Context& context,
+  const vec<vec<ComponentInfo>>& super_components,
   vec<vec<ComponentInfo>>& result
 );
 

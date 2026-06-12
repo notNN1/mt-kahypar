@@ -251,13 +251,20 @@ class InitialPartitioningDataContainer {
         current_metric.quality, current_metric.imbalance, current_metric.connectivity);
 
       // Aggregate Stats
+      utils::InitialPartitionerSummary new_summary(algorithm);
+      new_summary.total_sum_quality = result._objective;
+      new_summary.total_time        = time;
+      new_summary.total_best        = 0;
+      new_summary.total_calls       = 1;
+
+      new_summary.total_extra_components = result._connectivity.extra_components_count;
+      new_summary.least_extra_components = result._connectivity.extra_components_count;
+
+      new_summary.total_inefficient_components = result._connectivity.inefficient_components_count;
+      new_summary.least_inefficient_components = result._connectivity.inefficient_components_count;
+
       auto algorithm_index = static_cast<uint8_t>(algorithm);
-      _stats[algorithm_index].total_sum_quality += result._objective;
-      _stats[algorithm_index].total_time += time;
-      _stats[algorithm_index].total_extra_components += result._connectivity.extra_components_count;
-      _stats[algorithm_index].least_extra_components = _stats[algorithm_index].least_extra_components > result._connectivity.extra_components_count ? 
-        result._connectivity.extra_components_count : _stats[algorithm_index].least_extra_components;
-      ++_stats[algorithm_index].total_calls;
+      _stats[algorithm_index].add(new_summary);
 
       _global_stats.add_run(algorithm, current_metric.quality,
         current_metric.imbalance.isValidPartition());
@@ -268,7 +275,9 @@ class InitialPartitioningDataContainer {
           << std::left << std::setw(10) << " Quality: " 
           << std::left << std::setw(10) << result._objective 
           << std::left << std::setw(15) << " Components: " 
-          << std::left << std::setw(15) << result._connectivity.extra_components_count
+          << std::left << std::setw(8) << result._connectivity.extra_components_count
+          << std::left << std::setw(25) << " Inefficient components: "
+          << std::left << std::setw(5) << result._connectivity.inefficient_components_count
           << std::left << std::setw(15) << " Imbalance: " 
           << std::left << std::setw(15) << result._imbalance.imbalance_value;
 

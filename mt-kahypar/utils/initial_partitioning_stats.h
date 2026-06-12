@@ -44,7 +44,9 @@ struct InitialPartitionerSummary {
     total_best(0),
     total_calls(0),
     total_extra_components(0),
-    least_extra_components(std::numeric_limits<size_t>::max()) {}
+    least_extra_components(std::numeric_limits<size_t>::max()),
+    total_inefficient_components(0),
+    least_inefficient_components(std::numeric_limits<size_t>::max()) {}
 
   friend std::ostream & operator<< (std::ostream& str, const InitialPartitionerSummary& summary);
 
@@ -58,6 +60,12 @@ struct InitialPartitionerSummary {
     if (least_extra_components > summary.least_extra_components) {
       least_extra_components = summary.least_extra_components;
     }
+
+    total_inefficient_components += summary.total_inefficient_components;
+
+    if (least_inefficient_components > summary.least_inefficient_components) {
+      least_inefficient_components = summary.least_inefficient_components;
+    }
   }
 
   double average_quality() const {
@@ -66,6 +74,10 @@ struct InitialPartitionerSummary {
 
   double average_components() const {
     return static_cast<double>(total_extra_components) / std::max(total_calls, UL(1));
+  }
+
+  double average_inefficient_components() const {
+    return static_cast<double>(total_inefficient_components)/ std::max(total_calls, UL(1));
   }
 
   double average_running_time() const {
@@ -83,6 +95,8 @@ struct InitialPartitionerSummary {
   size_t total_calls;
   size_t total_extra_components;
   size_t least_extra_components;
+  size_t total_inefficient_components;
+  size_t least_inefficient_components;
 };
 
 inline std::ostream & operator<< (std::ostream& str, const InitialPartitionerSummary& summary) {
@@ -154,6 +168,8 @@ class InitialPartitioningStats {
               << std::left << std::setw(15) << " Avg. Quality"
               << std::left << std::setw(20) << "  Avg. Components"
               << std::left << std::setw(20) << "  Least Components"
+              << std::left << std::setw(30) << "  Avg. Inefficient Components"
+              << std::left << std::setw(30) << "  Least Inefficient Components"
               << std::left << std::setw(15) << "  Total Time (s)"
               << std::left << std::setw(10) << "  Total Best"
               << std::left << std::setw(15) << " Total Best (%)"
@@ -163,6 +179,8 @@ class InitialPartitioningStats {
           << std::left << std::setw(15) << summary.average_quality()
           << std::left << std::setw(20) << summary.average_components()
           << std::left << std::setw(20) << summary.least_extra_components
+          << std::left << std::setw(30) << summary.average_inefficient_components()
+          << std::left << std::setw(30) << summary.least_inefficient_components
           << std::left << std::setw(15) << summary.total_time
           << std::left << std::setw(10) << summary.total_best
           << std::left << std::setw(15) << summary.percentage_best(_total_ip_calls);

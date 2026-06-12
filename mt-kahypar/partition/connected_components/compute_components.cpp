@@ -96,7 +96,7 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
 }
 
 template<typename PartitionedHypergraph>
-void compute_verticy_count_per_partition_of_initial_component(const PartitionedHypergraph& phg,
+void compute_super_components(const PartitionedHypergraph& phg,
                                                               const Context& context,
                                                               const vec<vec<ConnectedComponent>>& components,
                                                               vec<vec<ComponentInfo>>& result) {
@@ -178,9 +178,38 @@ void compute_verticy_count_per_partition_of_initial_component(const PartitionedH
   }
 }
 
+void find_inefficient_super_components(                               
+  const Context& context,
+  const vec<vec<ComponentInfo>>& super_components,
+  vec<vec<ComponentInfo>>& result
+) {
+  
+  Bitset has_component_in_parititon;
+  has_component_in_parititon.resize(context.partition.k);
+
+  for (const vec<connected_components::ComponentInfo>& components_parent : super_components) {
+
+    has_component_in_parititon.reset();
+    bool is_inefficient = false;
+
+    for (const connected_components::ComponentInfo& component : components_parent) {
+      if (has_component_in_parititon.isSet((size_t) component.partition)) {
+        is_inefficient = true;
+        break;
+      }
+
+      has_component_in_parititon.set((size_t) component.partition);
+    }
+
+    if (is_inefficient) {
+      result.push_back(components_parent);
+    }
+  }
+}
+
 namespace {
 #define COMPUTE_COMPONENTS_PER_BLOCK(X) void compute_components_per_block(const X& phg, const Context& context, vec<vec<ConnectedComponent>>& result)
-#define COMPUTE_VC(X) void compute_verticy_count_per_partition_of_initial_component(const X& phg, const Context& context, const vec<vec<ConnectedComponent>>& components, vec<vec<ComponentInfo>>& result)
+#define COMPUTE_VC(X) void compute_super_components(const X& phg, const Context& context, const vec<vec<ConnectedComponent>>& components, vec<vec<ComponentInfo>>& result)
 }
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_COMPONENTS_PER_BLOCK)

@@ -54,6 +54,7 @@ struct BalanceMetrics {
 
 struct ConnectivityMetrics {
   u_int32_t extra_components_count;                      // #components - k
+  u_int32_t inefficient_components_count;
 
   bool isBetter(const ConnectivityMetrics& other) const;
 
@@ -78,6 +79,8 @@ struct Metrics {
   void log() const;
 
   int numViolations() const;
+
+  std::tuple<size_t, bool, size_t, size_t, double, HyperedgeWeight> to_tuple() const; 
 };
 
 namespace metrics {
