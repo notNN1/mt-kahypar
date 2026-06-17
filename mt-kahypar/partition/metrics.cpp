@@ -84,8 +84,8 @@ std::tuple<size_t, bool, size_t, size_t, double, HyperedgeWeight> Metrics::to_tu
   return std::tuple {
     this->imbalance.numViolations(),
     this->imbalance.violates_balance,
-    this->connectivity.inefficient_components_count,
     this->connectivity.extra_components_count,
+    this->connectivity.inefficient_components_count,
     this->imbalance.imbalance_value,
     this->quality
   };

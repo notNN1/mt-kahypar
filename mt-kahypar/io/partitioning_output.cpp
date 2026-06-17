@@ -321,8 +321,11 @@ namespace mt_kahypar::io {
       LOG << description;
       LOG << context.partition.objective << "      ="
           << metrics::quality(hypergraph, context);
-      LOG << "imbalance =" << imbalance.imbalance_value;
-      LOG << "component =" << connectivity.extra_components_count;
+      LOG << "imbalance              =" << imbalance.imbalance_value;
+      LOG << "component              =" << connectivity.extra_components_count;
+      LOG << "inefficient components =" << connectivity.inefficient_components_count;
+      LOG << "Imbalance violated     =" << imbalance.violates_balance;
+      LOG << "Empty blocks           =" << imbalance.violates_non_empty_blocks;
       if (context.partition.verbose_logging) {
         LOG << "Part sizes and weights:";
         io::printPartWeightsAndSizes(hypergraph, context);
