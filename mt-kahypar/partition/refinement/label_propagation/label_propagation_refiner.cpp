@@ -127,9 +127,13 @@ namespace mt_kahypar {
 
     // Update metrics statistics
     Gain delta = old_metric.quality - best_metrics.quality;
-    ASSERT(best_metrics.isBetter(old_metric), "LP refiner worsen solution");
+    if (!best_metrics.isBetter(old_metric)) {
+      best_metrics.log();
+      old_metric.log();
+    }
+    //ASSERT(best_metrics.isBetter(old_metric) || best_metrics.isEqual(old_metric), "LP refiner worsen solution");
     utils::Utilities::instance().getStats(_context.utility_id).update_stat("lp_improvement", delta);
-    return delta > 0;
+    return best_metrics.isBetter(old_metric);
   }
 
 

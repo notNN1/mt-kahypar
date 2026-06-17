@@ -65,7 +65,7 @@ bool ConnectivityMetrics::isBetter(const ConnectivityMetrics& other) const {
 }
 
 bool ConnectivityMetrics::isEqual(const ConnectivityMetrics& other) const {
-  return this->extra_components_count == other.extra_components_count;
+  return this->extra_components_count == other.extra_components_count && this->inefficient_components_count == other.inefficient_components_count;
 }
 
 bool ConnectivityMetrics::operator==(const ConnectivityMetrics& other) const {
