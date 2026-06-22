@@ -385,16 +385,33 @@ namespace ds {
         this->has_connection_to_other_partition.resize(phg.initialNumNodes());
 
         // find nodes that have connections to other partitions
+        Bitset edge_colored;
+        edge_colored.resize(phg.initialNumEdges());
 
         for (const HypernodeID& hn : phg.nodes()) {            
             PartitionID current_partition = phg.partID(hn);
 
             for (const HyperedgeID& he : phg.incidentEdges(hn)) {
+
+                if (edge_colored.isSet((size_t) he)) {
+                    continue;
+                }
+
+                edge_colored.set((size_t) he);
+
                 for (const HypernodeID& incident_hn : phg.pins(he)) {
 
                     if (current_partition != phg.partID(incident_hn)) {
                         this->has_connection_to_other_partition.set((size_t) hn);
                         break;
+                    }
+                }
+
+                if (this->has_connection_to_other_partition.isSet((size_t) hn)) {
+                    // now all the nodes have connections to different partitions as well
+
+                    for (const HypernodeID& incident_hn : phg.pins(he)) {
+                        this->has_connection_to_other_partition.set((size_t) incident_hn);
                     }
                 }
             }
@@ -405,8 +422,7 @@ namespace ds {
         Bitset node_colored;
         node_colored.resize(phg.initialNumNodes());
         
-        Bitset edge_colored;
-        edge_colored.resize(phg.initialNumEdges());
+       edge_colored.reset();
 
         std::queue<HypernodeID> node_queue;
         std::queue<HypernodeID> colored_node_queue;
@@ -566,7 +582,14 @@ namespace ds {
         if (hn != this->current_node) {
             this->initialize_can_move_current_node_to_partition(hypergraph, _context, hn);
         }
-        return this->can_move_current_node_to_partition.isSet((size_t) to);
+        if (
+            _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs
+            || _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree
+            || _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st
+        ) {
+            return this->can_move_current_node_to_partition.isSet((size_t) to);
+        }
+        return true; // default
     }
 
     template<typename PartitionedHypergraph>

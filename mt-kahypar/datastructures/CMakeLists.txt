@@ -1,6 +1,7 @@
 set(DatastructureSources
       graph.cpp
-      fixed_vertex_support.cpp)
+      fixed_vertex_support.cpp
+      dynamic_connectivity_datastructures.cpp)
 
 set(MultilevelDatastructureSources
       static_hypergraph_factory.cpp
@@ -14,8 +15,7 @@ set(NLevelDatastructureSources
       contraction_tree.cpp
       dynamic_hypergraph.cpp
       dynamic_hypergraph_factory.cpp
-      incident_net_array.cpp
-      dynamic_connectivity_datastructures.cpp)
+      incident_net_array.cpp)
 
 set(NLevelGraphDatastructureSources
       contraction_tree.cpp
