@@ -575,6 +575,7 @@ class PartitionedHypergraph {
     ASSERT(p != kInvalidPartition && p < _k);
     ASSERT(_part_ids[u] == kInvalidPartition);
     _part_ids[u] = p;
+    LOG << "Moved hypernode " << u << " into partition " << p;
   }
 
   void setNodePart(const HypernodeID u, PartitionID p) {
@@ -594,6 +595,7 @@ class PartitionedHypergraph {
                       PartitionID to,
                       HypernodeWeight max_weight_to,
                       SuccessFunc&& report_success,
+                      bool do_connectivity,
                       const DeltaFunction& delta_func,
                       const NotificationFunc& notify_func = NOOP_NOTIFY_FUNC,
                       const bool force_moving_fixed_vertices = false) {
@@ -603,7 +605,19 @@ class PartitionedHypergraph {
     ASSERT(force_moving_fixed_vertices || !isFixed(u));
     const HypernodeWeight wu = nodeWeight(u);
     const HypernodeWeight to_weight_after = _part_weights[to].add_fetch(wu, std::memory_order_relaxed);
+
     if (to_weight_after <= max_weight_to) {
+      if (do_connectivity) {
+        LOG << "Moved node WITH connectivity: " << u << " to partition " << to;
+
+        this->move_node_out_of_partition(DynamicConnectivityStrategy::st, u, to);
+      }
+      else {
+        LOG << "Moved node without connectivity: " << u << " to partition " << to;
+
+        this->was_changed_without_connectivity = true;
+      }
+
       _part_ids[u] = to;
       _part_weights[from].fetch_sub(wu, std::memory_order_relaxed);
       report_success();
@@ -615,6 +629,7 @@ class PartitionedHypergraph {
       for ( const HyperedgeID he : incidentEdges(u) ) {
         updatePinCountOfHyperedge(he, from, to, sync_update, delta_func, notify_func);
       }
+      this->set_expected_partition();
       return true;
     } else {
       _part_weights[to].fetch_sub(wu, std::memory_order_relaxed);
@@ -627,9 +642,10 @@ class PartitionedHypergraph {
   bool changeNodePartNoSync(const HypernodeID u,
                             PartitionID from,
                             PartitionID to,
+                            bool do_connectivity,
                             const bool force_moving_fixed_vertex = false) {
     return changeNodePart(u, from, to,
-      std::numeric_limits<HypernodeWeight>::max(), []{},
+      std::numeric_limits<HypernodeWeight>::max(), []{}, do_connectivity,
         NOOP_FUNC, NOOP_NOTIFY_FUNC, force_moving_fixed_vertex);
   }
 
@@ -639,18 +655,22 @@ class PartitionedHypergraph {
                             PartitionID from,
                             PartitionID to,
                             HypernodeWeight max_weight_to,
-                            SuccessFunc&& report_success) {
+                            SuccessFunc&& report_success,
+                            bool do_connectivity
+                          ) {
     return changeNodePart(u, from, to,
-      max_weight_to, report_success, NOOP_FUNC, NOOP_NOTIFY_FUNC);
+      max_weight_to, report_success, do_connectivity, NOOP_FUNC, NOOP_NOTIFY_FUNC);
   }
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   bool changeNodePart(const HypernodeID u,
                       PartitionID from,
                       PartitionID to,
-                      const DeltaFunction& delta_func) {
+                      const DeltaFunction& delta_func,
+                      bool do_connectivity
+                    ) {
     return changeNodePart(u, from, to,
-      std::numeric_limits<HypernodeWeight>::max(), []{}, delta_func, NOOP_NOTIFY_FUNC);
+      std::numeric_limits<HypernodeWeight>::max(), []{}, do_connectivity, delta_func, NOOP_NOTIFY_FUNC);
   }
 
   template<typename GainCache, typename SuccessFunc>
@@ -660,16 +680,18 @@ class PartitionedHypergraph {
                       PartitionID from,
                       PartitionID to,
                       HypernodeWeight max_weight_to,
+                      bool do_connectivity,
                       SuccessFunc&& report_success,
-                      const DeltaFunction& delta_func) {
+                      const DeltaFunction& delta_func
+                    ) {
     auto my_delta_func = [&](const SynchronizedEdgeUpdate& sync_update) {
       delta_func(sync_update);
       gain_cache.deltaGainUpdate(*this, sync_update);
     };
     if constexpr ( !GainCache::requires_notification_before_update ) {
-      return changeNodePart(u, from, to, max_weight_to, report_success, my_delta_func);
+      return changeNodePart(u, from, to, max_weight_to, report_success, do_connectivity, my_delta_func);
     } else {
-      return changeNodePart(u, from, to, max_weight_to, report_success, my_delta_func,
+      return changeNodePart(u, from, to, max_weight_to, report_success, do_connectivity, my_delta_func,
         [&](SynchronizedEdgeUpdate& sync_update) {
           sync_update.pin_count_in_from_part_after = pinCountInPart(sync_update.he, from) - 1;
           sync_update.pin_count_in_to_part_after = pinCountInPart(sync_update.he, to) + 1;
@@ -681,9 +703,11 @@ class PartitionedHypergraph {
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   bool changeNodePart(const HypernodeID u,
                             PartitionID from,
-                            PartitionID to) {
+                            PartitionID to,
+                            bool do_connectivity
+                          ) {
     return changeNodePart(u, from, to,
-      std::numeric_limits<HypernodeWeight>::max(), []{},
+      std::numeric_limits<HypernodeWeight>::max(), []{}, do_connectivity, 
         NOOP_FUNC, NOOP_NOTIFY_FUNC, false);
   }
 
@@ -692,9 +716,11 @@ class PartitionedHypergraph {
   bool changeNodePart(GainCache& gain_cache,
                       const HypernodeID u,
                       PartitionID from,
-                      PartitionID to) {
+                      PartitionID to,
+                      bool do_connectivity
+                    ) {
     return changeNodePart(gain_cache, u, from, to,
-      std::numeric_limits<HypernodeWeight>::max(), []{}, NoOpDeltaFunc());
+      std::numeric_limits<HypernodeWeight>::max(), do_connectivity, []{}, NoOpDeltaFunc());
   }
 
   // ! Weight of a block
@@ -1280,76 +1306,129 @@ class PartitionedHypergraph {
 
 public:
   bool canMoveVertex(
+    const DynamicConnectivityStrategy& strategy,
     const Context& context,
     HypernodeID hn
   ) const {
-    if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
-      if (!_st) {
+    assert(hn < this->initialNumNodes());
+
+    if (strategy == DynamicConnectivityStrategy::st) {
+      if (this->was_changed_without_connectivity) {
+        reset_connectivity();
+        this->was_changed_without_connectivity = false;
+      }
+
+      if (!_st || last_size != _st->size()) {
         _st.emplace(*this, context);
       }
-      return _st->canMoveVertex(context, hn);
+
+      last_size = this->initialNumNodes();
+
+      return _st->canMoveVertex(*this, context, hn);
     }
 
     return true;
   }
 
   void moveVertex(
-    const Context& context,
+    const DynamicConnectivityStrategy& strategy,
     HypernodeID hn,
     PartitionID to
   ) const {
-    if (context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
-      if (!_st) {
-        _st.emplace(*this, context); 
+    if (strategy == DynamicConnectivityStrategy::st) {
+      if (!matches_expected()) {
+        LOG << "Does not match expected partitioning";
+        while (true);        
       }
-      _st->moveVertex(*this, context, hn, to);
+
+      if (this->was_changed_without_connectivity) {
+        reset_connectivity();
+        this->was_changed_without_connectivity = false;
+      }
+
+      if (!_st || last_size != _st->size()) {
+        _st.emplace(*this, NULL); 
+      }
+
+      last_size = this->initialNumNodes();
+
+      _st->moveVertex(*this, NULL, hn, to);
     }
   }
 
   void deleteST() const {
+    _st.reset();
+  }
+
+  void reset_connectivity() const {
+    this->_cf.reset();
     this->_st.reset();
   }
 
-  bool can_move_node_out_of_partition(
+  bool can_move_node(
+    const DynamicConnectivityStrategy& strategy,
     const Context& _context,
-    const HypernodeID hn
+    const HypernodeID hn,
+    const PartitionID to
   ) const {
-    if (!_cf) {
+    if (!_cf  || last_size != this->initialNumNodes()) {
       _cf.emplace();
     }
 
-    return _cf->can_move_out_of_partition(*this, _context, hn);
+    last_size = this->initialNumNodes();
+
+    return _cf->can_move_out_of_partition(strategy, *this, _context, hn) && _cf->can_move_into_partition(strategy, *this, _context, hn, to);
   }
 
   void move_node_out_of_partition(
-    const Context& _context,
+    const DynamicConnectivityStrategy& strategy,
     const HypernodeID& hn,
     const PartitionID& to
   ) const {
-    if (!_cf) {
+    if (!_cf  || last_size != this->initialNumNodes()) {
       _cf.emplace();
     }
 
-    _cf->move_out_of_partition(*this, _context, hn, to);
-  }
+    last_size = this->initialNumNodes();
 
-  bool can_move_node_into_partition(
-    const Context& _context,
-    const HypernodeID& hn,
-    const PartitionID& to
-  ) const {
-    if (!_cf) {
-      _cf.emplace();
-    }
-
-    return _cf->can_move_into_partition(*this, _context, hn, to);
+    _cf->move_out_of_partition(strategy, *this, hn, to);
   }
 
 private:
+  void set_expected_partition() const {
+    if (this->expected_partition.size() != this->initialNumNodes()) {
+      this->expected_partition.resize(initialNumNodes());
+    }
+
+    for (const HypernodeID& node : nodes()) {
+      this->expected_partition[node] = partID(node);
+    }
+  }
+
+  bool matches_expected() const {
+    if (this->expected_partition.size() != this->initialNumNodes()) {
+      set_expected_partition();
+    }
+
+    for (const HypernodeID& node : nodes()) {
+      if (this->expected_partition[node] != partID(node)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   // ! Dynamic connectivity
   mutable std::optional<BFSSpanningTreeConnectivity<PartitionedHypergraph>> _st;
   
   mutable std::optional<ConnectivityFacade<PartitionedHypergraph>> _cf;
+
+  mutable size_t last_size;
+
+  mutable bool was_changed_without_connectivity = false;
+
+  mutable vec<PartitionID> expected_partition;
 //
   // ! Number of nodes of the top level hypergraph
   HypernodeID _input_num_nodes = 0;

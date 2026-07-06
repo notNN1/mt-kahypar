@@ -52,7 +52,7 @@ namespace mt_kahypar {
 
       Move best_move = _gain.computeMaxGainMove(hypergraph, hn, false, false, unconstrained);
 
-      if (!hypergraph.can_move_node_out_of_partition(_context, hn)) {
+      if (!hypergraph.can_move_node(DynamicConnectivityStrategy::st, _context, hn, best_move.to)) {
         return false;
       }
 
@@ -71,7 +71,13 @@ namespace mt_kahypar {
         PartitionID to = best_move.to;
 
         Gain delta_before = _gain.localDelta();
-        bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta);
+
+        int c1 = ds::ConnectivityFacade<PartitionedHypergraph>::extra_component_count(hypergraph, _context);
+
+        vec<vec<connected_components::ConnectedComponent>> components1;
+        connected_components::compute_components_per_block(hypergraph, _context, components1);
+
+        bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta, true);
         ASSERT(!unconstrained || changed_part);
         is_moved = true;
         if (unconstrained || changed_part) {
@@ -82,18 +88,39 @@ namespace mt_kahypar {
           bool accept_move = (move_delta == best_move.gain || move_delta <= 0);
           if (accept_move) {
 
-            hypergraph.move_node_out_of_partition(_context, hn, to);
-
             if constexpr (!unconstrained) {
+              LOG << "UNCONSTRAINED";
               // in unconstrained case, we don't want to activate neighbors if the move is undone
               // by the rebalancing
-              activateNodeAndNeighbors(hypergraph, next_active_nodes, hn, true);
+            //  activateNodeAndNeighbors(hypergraph, next_active_nodes, hn, true);
             }
+
+
+
+            int c2 = ds::ConnectivityFacade<PartitionedHypergraph>::extra_component_count(hypergraph, _context);
+            LOG << "Hypergraph instance: " << static_cast<const void*>(&hypergraph);
+            if (c1 < c2) {
+              // check how the new component gets generated
+              LOG << "From: " << from;
+              LOG << "To:   " << to;
+
+              vec<vec<connected_components::ConnectedComponent>> components2;
+              connected_components::compute_components_per_block(hypergraph, _context, components2);
+
+              LOG << "Size From: " << components1[from].size() << " before, " << components2[from].size() << " after";
+              LOG << "Size To:   " << components1[to].size() << " before, " << components2[to].size() << " after";
+
+              while (true) {
+                
+              }
+            }
+
+
           } else {
             // If the real gain is not equal with the computed gain and
             // worsens the solution quality we revert the move.
             ASSERT(hypergraph.partID(hn) == to);
-            changeNodePart<unconstrained>(hypergraph, hn, to, from, objective_delta);
+            changeNodePart<unconstrained>(hypergraph, hn, to, from, objective_delta, false);
           }
         }
       }
@@ -127,10 +154,6 @@ namespace mt_kahypar {
 
     // Update metrics statistics
     Gain delta = old_metric.quality - best_metrics.quality;
-    if (!best_metrics.isBetter(old_metric)) {
-      best_metrics.log();
-      old_metric.log();
-    }
     //ASSERT(best_metrics.isBetter(old_metric) || best_metrics.isEqual(old_metric), "LP refiner worsen solution");
     utils::Utilities::instance().getStats(_context.utility_id).update_stat("lp_improvement", delta);
     return best_metrics.isBetter(old_metric);
@@ -307,7 +330,7 @@ namespace mt_kahypar {
         const HypernodeID hn = _active_nodes[j];
         ASSERT(!_might_be_uninitialized || _old_part_is_initialized[hn]);
         if (hypergraph.partID(hn) != _old_part[hn]) {
-          changeNodePart<true>(hypergraph, hn, hypergraph.partID(hn), _old_part[hn], noop_obj_fn);
+          changeNodePart<true>(hypergraph, hn, hypergraph.partID(hn), _old_part[hn], noop_obj_fn, false);
         }
       });
       return true;

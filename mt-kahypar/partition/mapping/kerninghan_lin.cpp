@@ -42,8 +42,8 @@ MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void vertex_swap(CommunicationHypergraph& com
   const PartitionID block_of_u = communication_hg.partID(u);
   const PartitionID block_of_v = communication_hg.partID(v);
   ASSERT(block_of_u != block_of_v);
-  communication_hg.changeNodePart(u, block_of_u, block_of_v);
-  communication_hg.changeNodePart(v, block_of_v, block_of_u);
+  communication_hg.changeNodePart(u, block_of_u, block_of_v, false);
+  communication_hg.changeNodePart(v, block_of_v, block_of_u, false);
 }
 
 MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HyperedgeWeight swap_gain(const TargetGraph& target_graph,

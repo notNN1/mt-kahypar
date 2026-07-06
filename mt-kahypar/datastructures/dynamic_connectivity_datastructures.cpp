@@ -27,6 +27,7 @@
 #include <queue>
 #include <cassert>
 #include "mt-kahypar/definitions.h"
+#include <signal.h>
 
 namespace mt_kahypar {
 namespace ds {
@@ -34,10 +35,8 @@ namespace ds {
     template<typename PartitionedHypergraph>    
     bool BFSConnectivity<PartitionedHypergraph>::moveVertex(
         const PartitionedHypergraph& phg, 
-        const Context& context,
-        HypernodeID hn
+        const HypernodeID& hn
     ) {
-        (void) context;
 
         // compute components with hn set, so we can't move over hn
         int components = 0;
@@ -334,7 +333,7 @@ namespace ds {
     template<typename PartitionedHypergraph>    
     bool SpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(
         const Context& context,
-        HypernodeID hn
+        const HypernodeID& hn
     ) {
         if (this->vertex_to_parent_compressed[hn] == hn) {
             return false;   
@@ -345,9 +344,8 @@ namespace ds {
     template<typename PartitionedHypergraph>    
     void SpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
         const PartitionedHypergraph& phg,
-        const Context& context,
-        HypernodeID hn,
-        PartitionID to
+        const HypernodeID& hn,
+        const PartitionID& to
     ) {
         assert(this->connected_to[hn].size() == 1);
         assert(this->vertex_to_parent_compressed[hn] != hn);
@@ -377,12 +375,17 @@ namespace ds {
 
     template<typename PartitionedHypergraph>
     BFSSpanningTreeConnectivity<PartitionedHypergraph>::BFSSpanningTreeConnectivity(const PartitionedHypergraph& phg, const Context& context) {
-        
+
+        LOG << "initialized on Hypergraph instance: " << static_cast<const void*>(&phg) << " with " << phg.initialNumNodes() << " nodes";
         (void)context;
 
         this->hn_to_num_children.resize(phg.initialNumNodes());
         this->hn_to_parent.resize(phg.initialNumNodes());
         this->has_connection_to_other_partition.resize(phg.initialNumNodes());
+
+        for (const HypernodeID& node : phg.nodes()) {
+            this->hn_to_parent[node] = node;
+        }
 
         // find nodes that have connections to other partitions
         Bitset edge_colored;
@@ -422,7 +425,7 @@ namespace ds {
         Bitset node_colored;
         node_colored.resize(phg.initialNumNodes());
         
-       edge_colored.reset();
+        edge_colored.reset();
 
         std::queue<HypernodeID> node_queue;
         std::queue<HypernodeID> colored_node_queue;
@@ -441,7 +444,8 @@ namespace ds {
             else {
                 node_queue.push(hn);
             }
-            
+
+            node_colored.set((size_t) hn);
             
             edge_colored.reset();
 
@@ -476,6 +480,10 @@ namespace ds {
                             continue;
                         }
 
+                        if (incident_hn == current) {
+                           continue;
+                        }
+
                         node_colored.set((size_t) incident_hn);
 
                         if (this->has_connection_to_other_partition.isSet((size_t) incident_hn)) {
@@ -491,22 +499,70 @@ namespace ds {
                 }
             }   
         }
+        int count1 = 0;
+        for (const HypernodeID& node : phg.nodes()) {
+            if (this->hn_to_parent[node] == node) {
+                count1++;
+            }
+        }
+
+        int count2 = ConnectivityFacade<PartitionedHypergraph>::extra_component_count(phg, context);
+
+        if (count1 != count2) {
+            while (true)
+            {
+               LOG << "Too many roots: " << count1 << "roots and " << count2 << " components";
+            }
+            
+        }
+        is_tree_valid(phg);
     }
 
     template<typename PartitionedHypergraph>
-    bool BFSSpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(const Context& context, HypernodeID hn) {
+    bool BFSSpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(const PartitionedHypergraph& phg, const Context& context, const HypernodeID& hn) {
         (void) context;
-        return this->hn_to_num_children[hn] <= 1;
+        //LOG << "The size is wron: " << this->hn_to_num_children.size();
+        //LOG << "HN: " << hn;
+        assert(hn < this->hn_to_num_children.size());
+
+        if (this->hn_to_parent[hn] == hn) {
+            return false;
+        }
+
+        return this->hn_to_num_children[hn] == 0;
     }
+
 
     template<typename PartitionedHypergraph>
     void BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
         const PartitionedHypergraph& phg,
         const Context& context,
-        HypernodeID hn,
-        PartitionID to
+        const HypernodeID& hn,
+        const PartitionID& to
     ) {
-        assert(canMoveVertex(context, hn));
+        vec<std::string> res = is_tree_valid(phg);
+        if (res.size() != 0) {
+
+            LOG << "Beginning of moveVertex";
+            for (const std::string& err : res) {
+                LOG << err;
+            }
+
+            raise(SIGTRAP); 
+        }
+        
+        if (!canMoveVertex(phg, context, hn)) {
+            LOG << "Move node without canMoveVertex being true";
+            raise(SIGTRAP); 
+        }
+
+        if (phg.partID(hn) == to) {
+
+            LOG << "Node is already in the selected partition";
+
+            raise(SIGTRAP); 
+        }
+
 
         // find candidate to attach to 
         for (const HyperedgeID& he : phg.incidentEdges(hn)) {
@@ -515,7 +571,7 @@ namespace ds {
                     continue;
                 }
 
-                bool can_move_to_colored_node = this->has_connection_to_other_partition.isSet((size_t) incident_hn) && this->hn_to_num_children[incident_hn] > 1;
+                bool can_move_to_colored_node = this->has_connection_to_other_partition.isSet((size_t) incident_hn) && this->hn_to_num_children[incident_hn] > 0;
                 bool can_move_to_regular_node = !this->has_connection_to_other_partition.isSet((size_t) incident_hn);
                 
                 if (can_move_to_colored_node || can_move_to_regular_node) {
@@ -524,6 +580,8 @@ namespace ds {
 
                     this->hn_to_parent[hn] = incident_hn;
                     this->hn_to_num_children[incident_hn]++;
+
+                    LOG << "special attachment";
 
                     return;
                 }
@@ -543,50 +601,73 @@ namespace ds {
                 this->hn_to_parent[hn] = incident_hn;
                 this->hn_to_num_children[incident_hn]++;
 
+                LOG << "default attachment";
                 return;
-                
             }
         }
+
+        LOG << "There has not been found a node to attach to for node " << hn;
+        while(true);
     }
 
     template<typename PartitionedHypergraph>
     void ConnectivityFacade<PartitionedHypergraph>::initialize_can_move_current_node_to_partition(
         const PartitionedHypergraph& hypergraph,
-        const Context& _context,
+        const DynamicConnectivityStrategy& strategy,
         const HypernodeID& hn
     ) {
+        this->can_move_current_node_to_partition.reset();
         this->can_move_current_node_to_partition.resize(hypergraph.k());
 
         if (
-        _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs
-        || _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree
-        || _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st
+        strategy == DynamicConnectivityStrategy::bfs
+        || strategy == DynamicConnectivityStrategy::h_vertex_degree
+        || strategy == DynamicConnectivityStrategy::st
         ) {
             for (const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
                 for (const PartitionID& partition : hypergraph.connectivitySet(he)) {
                     this->can_move_current_node_to_partition.set((size_t) partition); 
                 }
             }
+
+            this->current_node = hn;
+        }
+    }
+
+    template<typename PartitionedHypergraph>
+    static int ConnectivityFacade<PartitionedHypergraph>::extra_component_count(
+        const PartitionedHypergraph& hypergraph,
+        const Context& _context
+    ) {
+        vec<vec<ConnectedComponent>> components;
+        connected_components::compute_components_per_block(hypergraph, _context, components);
+
+
+        int count = 0;
+        for (const vec<ConnectedComponent>& components_per_partition : components) {
+            count += components_per_partition.size();
         }
 
-        this->current_node = hn;
+        return count;
     }
 
     template<typename PartitionedHypergraph>
     bool ConnectivityFacade<PartitionedHypergraph>::can_move_into_partition(
+        const DynamicConnectivityStrategy& strategy,
         const PartitionedHypergraph& hypergraph,
         const Context& _context,
         const HypernodeID& hn,
         const PartitionID& to
     ) {
-        if (hn != this->current_node) {
-            this->initialize_can_move_current_node_to_partition(hypergraph, _context, hn);
-        }
         if (
-            _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs
-            || _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree
-            || _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st
+            strategy == DynamicConnectivityStrategy::bfs
+            || strategy == DynamicConnectivityStrategy::h_vertex_degree
+            || strategy == DynamicConnectivityStrategy::st
         ) {
+            if (hn != this->current_node) {
+                this->initialize_can_move_current_node_to_partition(hypergraph, strategy, hn);
+            }
+
             return this->can_move_current_node_to_partition.isSet((size_t) to);
         }
         return true; // default
@@ -594,22 +675,23 @@ namespace ds {
 
     template<typename PartitionedHypergraph>
     bool ConnectivityFacade<PartitionedHypergraph>::can_move_out_of_partition(
+        const DynamicConnectivityStrategy& strategy,
         const PartitionedHypergraph& hypergraph,
         const Context& _context,
-        const HypernodeID hn
+        const HypernodeID& hn
     ) {
         bool can_move_node = true;
 
-        if (_context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy == DynamicConnectivityStrategy::bfs) {
+        if (strategy == DynamicConnectivityStrategy::bfs) {
             mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
-            can_move_node = dcd.moveVertex(hypergraph, _context, hn);
+            can_move_node = dcd.moveVertex(hypergraph, hn);
         }
-        else if (_context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy == DynamicConnectivityStrategy::h_vertex_degree) {
+        else if (strategy == DynamicConnectivityStrategy::h_vertex_degree) {
             auto range = hypergraph.incidentEdges(hn);
             can_move_node = std::distance(range.begin(), range.end()) > 4;
         }
-        else if (_context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
-            can_move_node = hypergraph.canMoveVertex(_context, hn);
+        else if (strategy == DynamicConnectivityStrategy::st) {
+            can_move_node = hypergraph.canMoveVertex(strategy, _context, hn);
         }
 
         return can_move_node;
@@ -617,14 +699,16 @@ namespace ds {
 
     template<typename PartitionedHypergraph>
     void ConnectivityFacade<PartitionedHypergraph>::move_out_of_partition(
+        const DynamicConnectivityStrategy& strategy,
         const PartitionedHypergraph& hypergraph,
-        const Context& _context,
         const HypernodeID& hn,
         const PartitionID& to
     ) {
-        if (_context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy == DynamicConnectivityStrategy::st) {
-            hypergraph.moveVertex(_context, hn, to);
+        if (strategy == DynamicConnectivityStrategy::st) {
+            hypergraph.moveVertex(strategy, hn, to);
         }
+
+        this->current_node = -1;
     }
 
 

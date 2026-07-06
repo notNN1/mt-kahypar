@@ -49,6 +49,13 @@ void compute_components_per_block(
 );
 
 template<typename PartitionedHypergraph>
+void compute_components(
+  const PartitionedHypergraph& phg,
+  const Context& context,
+  vec<ConnectedComponent>& result
+);
+
+template<typename PartitionedHypergraph>
 void compute_super_components(
   const PartitionedHypergraph& phg,                                     
   const Context& context,

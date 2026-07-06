@@ -40,7 +40,6 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl() {
     HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
-
     _ip_data.reset_unassigned_hypernodes(_rng);
     _ip_data.preassignFixedVertices(hg);
     vec<vec<HypernodeID>> start_nodes =
@@ -118,7 +117,7 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl() {
               converged = false;
 
               #ifndef KAHYPAR_ENABLE_HEAVY_INITIAL_PARTITIONING_ASSERTIONS
-              hg.changeNodePartNoSync(hn, from, to);
+              hg.changeNodePartNoSync(hn, from, to, false);
               #else
               Gain expected_gain = 0;
               auto cut_delta = [&](const HyperedgeID he,
@@ -136,7 +135,7 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl() {
                   he, edge_weight, adjusted_edge_size,
                   pin_count_in_from_part_after, pin_count_in_to_part_after);
               };
-              hg.changeNodePart(hn, from, to, cut_delta);
+              hg.changeNodePart(hn, from, to, cut_delta, false);
               ASSERT(expected_gain == max_gain_move.gain, "Gain calculation failed"
                 << V(expected_gain) << V(max_gain_move.gain));
               #endif

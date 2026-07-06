@@ -253,7 +253,7 @@ bool DeterministicRebalancer<GraphAndGainTypes>::changeNodePart(PartitionedHyper
   };
 
   bool success = false;
-  success = PartitionedHypergraph::is_graph ? phg.changeNodePartNoSync(hn, from, to) : phg.changeNodePart(hn, from, to, objective_delta);
+  success = PartitionedHypergraph::is_graph ? phg.changeNodePartNoSync(hn, from, to, false) : phg.changeNodePart(hn, from, to, objective_delta, false);
   ASSERT(success);
   return success;
 }

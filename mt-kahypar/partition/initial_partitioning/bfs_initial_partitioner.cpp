@@ -37,6 +37,7 @@ void BFSInitialPartitioner<TypeTraits>::partitionImpl() {
   if ( _ip_data.should_initial_partitioner_run(InitialPartitioningAlgorithm::bfs) ) {
     HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     PartitionedHypergraph& hypergraph = _ip_data.local_partitioned_hypergraph();
+
     kahypar::ds::FastResetFlagArray<>& hypernodes_in_queue =
             _ip_data.local_hypernode_fast_reset_flag_array();
     kahypar::ds::FastResetFlagArray<>& hyperedges_in_queue =

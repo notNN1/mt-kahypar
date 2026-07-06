@@ -193,7 +193,7 @@ namespace mt_kahypar {
             const Move& local_move = localMoves[i].first;
             phg.changeNodePart(
                     gain_cache, local_move.node, local_move.from, local_move.to,
-                    std::numeric_limits<HypernodeWeight>::max(),
+                    std::numeric_limits<HypernodeWeight>::max(), false, 
                     [&] { sharedData.moveTracker.insertMove(local_move); },
                     [&](const SynchronizedEdgeUpdate& ) {});
           }

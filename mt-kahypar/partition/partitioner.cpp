@@ -300,7 +300,7 @@ namespace mt_kahypar {
                   << ", but it is assigned to block" << from << "!"
                   << "It is now moved to its fixed vertex block." << END;
             }
-            partitioned_hg.changeNodePartNoSync(hn, from, to, true);
+            partitioned_hg.changeNodePartNoSync(hn, from, to, false);
           }
         }
       });

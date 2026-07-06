@@ -59,12 +59,7 @@ namespace impl {
     HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
     
-    for (PartitionID i = 0; i < context.partition.k && phg.can_move_node_out_of_partition(context, u); ++i) {
-
-      // check if new partition would break
-      if (!phg.can_move_node_into_partition(context, u, i)) {
-        continue;
-      }
+    for (PartitionID i = 0; i < context.partition.k && phg.can_move_node(DynamicConnectivityStrategy::st, context, u, i); ++i) {
 
       if (i != from) {
         const HypernodeWeight to_weight = phg.partWeight(i);
@@ -89,8 +84,6 @@ namespace impl {
     Gain gain = std::numeric_limits<Gain>::min();
     if (to != kInvalidPartition) {
       gain = to_benefit - gain_cache.penaltyTerm(u, phg.partID(u));
-
-      phg.move_node_out_of_partition(context, u, to);
     }
 
     return std::make_pair(to, transformGain(gain, wu));
@@ -106,26 +99,28 @@ namespace impl {
     HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
     
-    if (phg.can_move_node_out_of_partition(context, u)) {
-      for (PartitionID i : parts) {
+    
+    for (PartitionID i : parts) {
 
-        if (i != from && i != kInvalidPartition && phg.can_move_node_into_partition(context, u, i)) {
-          const HypernodeWeight to_weight = phg.partWeight(i);
-          const HyperedgeWeight benefit = gain_cache.blockIsAdjacent(u, i) ? gain_cache.benefitTerm(u, i) : gain_cache.recomputeBenefitTerm(phg, u, i);
-          if ((benefit > to_benefit || (benefit == to_benefit && to_weight < best_to_weight)) &&
-              to_weight + wu <= context.partition.max_part_weights[i]) {
-            to_benefit = benefit;
-            to = i;
-            best_to_weight = to_weight;
-          }
+      if (!phg.can_move_node(DynamicConnectivityStrategy::st, context, u, i)) {
+        continue;
+      }
+
+      if (i != from && i != kInvalidPartition && phg.can_move_node(DynamicConnectivityStrategy::st, context, u, i)) {
+        const HypernodeWeight to_weight = phg.partWeight(i);
+        const HyperedgeWeight benefit = gain_cache.blockIsAdjacent(u, i) ? gain_cache.benefitTerm(u, i) : gain_cache.recomputeBenefitTerm(phg, u, i);
+        if ((benefit > to_benefit || (benefit == to_benefit && to_weight < best_to_weight)) &&
+            to_weight + wu <= context.partition.max_part_weights[i]) {
+          to_benefit = benefit;
+          to = i;
+          best_to_weight = to_weight;
         }
       }
     }
+    
 
     if (to != kInvalidPartition) {
       Gain gain = to_benefit - gain_cache.penaltyTerm(u, phg.partID(u));
-
-      phg.move_node_out_of_partition(context, u, to);
 
       return std::make_pair(to, transformGain(gain, wu));
     } else {
@@ -370,6 +365,7 @@ namespace impl {
         bool moved = phg.changeNodePart(
                       _gain_cache, m.node, m.from, m.to,
                       _context.partition.max_part_weights[m.to],
+                      false,
                       [&] { move_id = __atomic_fetch_add(&global_move_id, 1, __ATOMIC_RELAXED); },
                       [&](const SynchronizedEdgeUpdate& sync_update) {
                         local_attributed_gain += AttributedGains::gain(sync_update);
@@ -467,6 +463,7 @@ namespace impl {
       bool success = phg.changeNodePart(
         _gain_cache, m.node, m.from, m.to,
         _context.partition.max_part_weights[m.to],
+        false,
         [&] { _moves[global_move_id++] = m; },
         [&](const SynchronizedEdgeUpdate& sync_update) {
           attributed_gain += AttributedGains::gain(sync_update);

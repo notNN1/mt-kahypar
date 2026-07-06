@@ -132,7 +132,7 @@ void applyPartition(PartitionedHypergraph& phg,
     const PartitionID from = target_phg.partID(hn);
     const PartitionID to = phg.partID(hn);
     if ( from != to ) {
-      target_phg.changeNodePart(hn, from, to);
+      target_phg.changeNodePart(hn, from, to, false);
     }
   });
 }
@@ -234,7 +234,7 @@ void map_to_target_graph(PartitionedHypergraph& communication_hg,
       const PartitionID from = communication_hg.partID(hn);
       const PartitionID to = contracted_phg.partID(mapping[hn]);
       if ( from != to ) {
-        communication_hg.changeNodePart(hn, from, to);
+        communication_hg.changeNodePart(hn, from, to, false);
       }
     });
   } else if ( context.partition.enable_logging

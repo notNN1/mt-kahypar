@@ -598,7 +598,9 @@ private:
                       PartitionID to,
                       HypernodeWeight max_weight_to,
                       SuccessFunc&& report_success,
+                      bool do_connectivity,
                       const DeltaFunction& delta_func) {
+    unused(do_connectivity);
     return changeNodePartImpl<true, false>(u, from, to,
       max_weight_to, report_success, delta_func, NOOP_NOTIFY_FUNC);
   }
@@ -606,7 +608,10 @@ private:
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   bool changeNodePart(const HypernodeID u,
                             PartitionID from,
-                            PartitionID to) {
+                            PartitionID to,
+                            bool do_connectivity
+                          ) {
+    unused(do_connectivity);
     return changeNodePartImpl<true, false>(u, from, to,
       std::numeric_limits<HypernodeWeight>::max(), []{}, NOOP_FUNC, NOOP_NOTIFY_FUNC);
   }
@@ -615,7 +620,10 @@ private:
   bool changeNodePart(const HypernodeID u,
                       PartitionID from,
                       PartitionID to,
-                      const DeltaFunction& delta_func) {
+                      const DeltaFunction& delta_func,
+                      bool do_connectivity
+                    ) {
+    unused(do_connectivity);
     return changeNodePartImpl<true, false>(u, from, to,
       std::numeric_limits<HypernodeWeight>::max(), []{}, delta_func, NOOP_NOTIFY_FUNC);
   }
@@ -627,8 +635,10 @@ private:
                       PartitionID from,
                       PartitionID to,
                       HypernodeWeight max_weight_to,
+                      bool do_connectivity, 
                       SuccessFunc&& report_success,
                       const DeltaFunction& delta_func) {
+    unused(do_connectivity);
     auto my_delta_func = [&](const SynchronizedEdgeUpdate& sync_update) {
       delta_func(sync_update);
       gain_cache.deltaGainUpdate(*this, sync_update);
@@ -649,9 +659,12 @@ private:
   bool changeNodePart(GainCache& gain_cache,
                       const HypernodeID u,
                       PartitionID from,
-                      PartitionID to) {
+                      PartitionID to,
+                      bool do_connectivity
+                    ) {
+    unused(do_connectivity);
     return changeNodePart(gain_cache, u, from, to,
-      std::numeric_limits<HypernodeWeight>::max(), []{}, NoOpDeltaFunc());
+      std::numeric_limits<HypernodeWeight>::max(), do_connectivity, []{}, NoOpDeltaFunc());
   }
 
   // ! Weight of a block
@@ -1227,6 +1240,7 @@ private:
 
 public:
   bool canMoveVertex(
+    const DynamicConnectivityStrategy& strategy,
     const Context& context,
     HypernodeID hn
   ) const {
@@ -1234,7 +1248,7 @@ public:
   }
 
   void moveVertex(
-    const Context& context,
+    const DynamicConnectivityStrategy& strategy,
     HypernodeID hn,
     PartitionID to
   ) const {
@@ -1245,27 +1259,25 @@ public:
    
   }
 
-  bool can_move_node_out_of_partition(
+  void reset_connectivity() const {
+    
+  }
+
+  bool can_move_node(
+    const DynamicConnectivityStrategy& strategy,
     const Context& _context,
-    const HypernodeID hn
+    const HypernodeID hn,
+    const PartitionID to
   ) const {
     return true;
   }
 
   void move_node_out_of_partition(
-    const Context& _context,
+    const DynamicConnectivityStrategy& strategy,
     const HypernodeID& hn,
     const PartitionID& to
   ) const {
     
-  }
-
-  bool can_move_node_into_partition(
-    const Context& _context,
-    const HypernodeID& hn,
-    const PartitionID& to
-  ) const {
-    return true;
   }
 
 private:
@@ -1274,9 +1286,6 @@ private:
   HyperedgeID _input_num_edges = 0;
 
   HyperedgeID _input_unique_ids = 0;
-
-  // ! Dynamic connectivity
-  SpanningTreeConnectivity<PartitionedGraph>_st;
 
   // ! Number of blocks
   PartitionID _k = 0;

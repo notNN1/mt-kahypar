@@ -26,6 +26,7 @@
 
 #include "mt-kahypar/definitions.h"
 #include <tbb/task_group.h>
+#include <set>
 
 namespace mt_kahypar {
 namespace connected_components {
@@ -59,6 +60,7 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
 
     current_partition = phg.partID(hn);
     node_queue.push(hn);
+    node_colored.set((size_t) hn);
     
     ConnectedComponent cc = { };
     edge_colored.reset();
@@ -92,6 +94,62 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
     }
     
     result[current_partition].push_back(cc);
+  }
+}
+
+template<typename PartitionedHypergraph>
+void compute_components(
+  const PartitionedHypergraph& phg,
+  const Context& context,
+  vec<ConnectedComponent>& result
+) {
+  (void)context;
+
+  Bitset node_colored;
+  node_colored.resize(phg.initialNumNodes());
+  
+  Bitset edge_colored;
+  edge_colored.resize(phg.initialNumEdges());
+
+  std::queue<HypernodeID> node_queue;
+  PartitionID current_partition;
+
+  for (const HypernodeID& hn : phg.nodes()) {
+    if (node_colored.isSet((size_t) hn)) {
+      continue;
+    }
+
+    node_queue.push(hn);
+    node_colored.set((size_t) hn);
+    
+    ConnectedComponent cc = { };
+    edge_colored.reset();
+
+    while (node_queue.size() > 0) {
+      HypernodeID current = node_queue.front();
+      cc.nodes.push_back(current);
+      node_queue.pop();
+
+      for (const HyperedgeID& he : phg.incidentEdges(current)) {
+
+        if (edge_colored.isSet((size_t) he)) {
+          continue;
+        }
+
+        edge_colored.set((size_t) he);
+
+        for (const HypernodeID& incident_hn : phg.pins(he)) {
+          if (node_colored.isSet((size_t) incident_hn)) {
+            continue;
+          }
+
+          node_colored.set((size_t) incident_hn);
+          node_queue.push(incident_hn);
+        }
+      }
+    }
+
+    result.push_back(cc);
   }
 }
 
@@ -209,10 +267,12 @@ void find_inefficient_super_components(
 
 namespace {
 #define COMPUTE_COMPONENTS_PER_BLOCK(X) void compute_components_per_block(const X& phg, const Context& context, vec<vec<ConnectedComponent>>& result)
+#define COMPUTE_COMPONENTS(X) void compute_components(const X& phg, const Context& context, vec<ConnectedComponent>& result)
 #define COMPUTE_VC(X) void compute_super_components(const X& phg, const Context& context, const vec<vec<ConnectedComponent>>& components, vec<vec<ComponentInfo>>& result)
 }
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_COMPONENTS_PER_BLOCK)
+INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_COMPONENTS)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_VC)
 
 }  // namespace connected_components
