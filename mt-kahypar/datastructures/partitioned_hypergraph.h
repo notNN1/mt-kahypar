@@ -415,6 +415,8 @@ class PartitionedHypergraph {
    */
   template<typename GainCache>
   void uncontract(const Batch& batch, GainCache& gain_cache) {
+    // reset connectivity
+
     // Set block ids of contraction partners
     tbb::parallel_for(UL(0), batch.size(), [&](const size_t i) {
       const Memento& memento = batch[i];
@@ -610,7 +612,12 @@ class PartitionedHypergraph {
       if (do_connectivity) {
         LOG << "Moved node WITH connectivity: " << u << " to partition " << to;
 
+        if (this->was_changed_without_connectivity) {
+          
+        }
+
         this->move_node_out_of_partition(DynamicConnectivityStrategy::st, u, to);
+        this->was_changed_without_connectivity = false;
       }
       else {
         LOG << "Moved node without connectivity: " << u << " to partition " << to;
@@ -1348,6 +1355,7 @@ public:
 
       if (!_st || last_size != _st->size()) {
         _st.emplace(*this, NULL); 
+        _cf.emplace();
       }
 
       last_size = this->initialNumNodes();
@@ -1361,8 +1369,13 @@ public:
   }
 
   void reset_connectivity() const {
-    this->_cf.reset();
-    this->_st.reset();
+    if (_cf) {
+      this->_cf.reset();
+    }
+
+    if (_st) {
+      this->_st.reset();
+    }
   }
 
   bool can_move_node(

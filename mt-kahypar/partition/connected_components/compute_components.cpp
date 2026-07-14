@@ -59,6 +59,11 @@ void compute_components_per_block(const PartitionedHypergraph& phg,
     }
 
     current_partition = phg.partID(hn);
+
+    if (current_partition == -1) {
+      continue;
+    }
+
     node_queue.push(hn);
     node_colored.set((size_t) hn);
     

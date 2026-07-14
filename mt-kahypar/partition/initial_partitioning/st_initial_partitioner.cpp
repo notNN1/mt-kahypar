@@ -54,7 +54,10 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
         Bitset covered;
         covered.resize(hg.initialNumNodes());
 
-        vec<size_t> subtree_size(hg.initialNumNodes(), 1);
+        vec<size_t> subtree_size(hg.initialNumNodes());
+        for (const HypernodeID& hn : hg.nodes()) {
+            subtree_size[hn] = hg->nodeWeight(hn);
+        }
 
         size_t target_size = (hg.initialNumNodes() / _context.partition.k);
         size_t upper_bound = (size_t)((double)target_size * (1.0 + this->_context.partition.epsilon));
@@ -173,7 +176,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 
     
     for (const HypernodeID& node : component.nodes) {
-        subtree_size[node] = 1;
+        subtree_size[node] = hg.nodeWeight(node);
         hn_to_children[node].clear();
         hn_to_parent[node] = node;
     }

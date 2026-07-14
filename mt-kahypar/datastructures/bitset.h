@@ -72,7 +72,9 @@ class Bitset {
   }
 
   void reset() {
-    memset(_bitset.data(), 0, sizeof(Block) * _bitset.size());
+    if (!_bitset.empty()) {
+      std::memset(_bitset.data(), 0, sizeof(Block) * _bitset.size());
+    }
   }
 
   void resize(const size_t size) {

@@ -375,7 +375,14 @@ namespace ds {
 
     template<typename PartitionedHypergraph>
     BFSSpanningTreeConnectivity<PartitionedHypergraph>::BFSSpanningTreeConnectivity(const PartitionedHypergraph& phg, const Context& context) {
+        reset(phg, context);
+    }
 
+    template<typename PartitionedHypergraph>
+    void BFSSpanningTreeConnectivity<PartitionedHypergraph>::reset(
+        const PartitionedHypergraph& phg, 
+        const Context& context
+    ) {
         LOG << "initialized on Hypergraph instance: " << static_cast<const void*>(&phg) << " with " << phg.initialNumNodes() << " nodes";
         (void)context;
 
@@ -635,23 +642,6 @@ namespace ds {
     }
 
     template<typename PartitionedHypergraph>
-    static int ConnectivityFacade<PartitionedHypergraph>::extra_component_count(
-        const PartitionedHypergraph& hypergraph,
-        const Context& _context
-    ) {
-        vec<vec<ConnectedComponent>> components;
-        connected_components::compute_components_per_block(hypergraph, _context, components);
-
-
-        int count = 0;
-        for (const vec<ConnectedComponent>& components_per_partition : components) {
-            count += components_per_partition.size();
-        }
-
-        return count;
-    }
-
-    template<typename PartitionedHypergraph>
     bool ConnectivityFacade<PartitionedHypergraph>::can_move_into_partition(
         const DynamicConnectivityStrategy& strategy,
         const PartitionedHypergraph& hypergraph,
@@ -710,6 +700,7 @@ namespace ds {
 
         this->current_node = -1;
     }
+
 
 
 INSTANTIATE_CLASS_WITH_PARTITIONED_HG(BFSConnectivity)

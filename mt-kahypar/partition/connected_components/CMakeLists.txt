@@ -1,5 +1,6 @@
 set(ConnectedComponentsSources
-        compute_components.cpp)
+        compute_components.cpp
+        connectivity_facade.cpp)
 
 target_sources(MtKaHyPar-Sources INTERFACE ${ConnectedComponentsSources})
 
