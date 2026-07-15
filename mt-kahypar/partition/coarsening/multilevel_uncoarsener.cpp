@@ -89,7 +89,6 @@ namespace mt_kahypar {
 
     if ( _context.partition.connected_blocks && _context.type == ContextType::main ) {
       logConnectivityInformation(partitioned_hg, _context, _current_level);
-      partitioned_hg.deleteST();
     }
     
     if ( _current_level == _num_levels ) {

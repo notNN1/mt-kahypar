@@ -52,10 +52,6 @@ namespace mt_kahypar {
 
       Move best_move = _gain.computeMaxGainMove(hypergraph, hn, false, false, unconstrained);
 
-      if (!hypergraph.can_move_node(DynamicConnectivityStrategy::st, _context, hn, best_move.to)) {
-        return false;
-      }
-
       // We perform a move if it either improves the solution quality or, in case of a
       // zero gain move, the balance of the solution.
       const bool positive_gain = best_move.gain < 0;
@@ -71,8 +67,6 @@ namespace mt_kahypar {
         PartitionID to = best_move.to;
 
         Gain delta_before = _gain.localDelta();
-
-        int c1 = ds::ConnectivityFacade<PartitionedHypergraph>::extra_component_count(hypergraph, _context);
 
         vec<vec<connected_components::ConnectedComponent>> components1;
         connected_components::compute_components_per_block(hypergraph, _context, components1);
@@ -97,9 +91,9 @@ namespace mt_kahypar {
 
 
 
-            int c2 = ds::ConnectivityFacade<PartitionedHypergraph>::extra_component_count(hypergraph, _context);
+            
             LOG << "Hypergraph instance: " << static_cast<const void*>(&hypergraph);
-            if (c1 < c2) {
+            if (false) {
               // check how the new component gets generated
               LOG << "From: " << from;
               LOG << "To:   " << to;

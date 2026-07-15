@@ -89,10 +89,6 @@ bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics& best_metrics, std::m
     PartitionID from = _phg.partID(hn);
     _vertex_state[hn] = VertexState::MOVED;
 
-    if (!_phg.can_move_node(DynamicConnectivityStrategy::st, _context, hn, to)) {
-      continue;
-    }
-
     if ( _phg.changeNodePart(hn, from, to,
           _context.partition.max_part_weights[to], []{}, false, border_vertex_update) ) {
 

@@ -35,6 +35,8 @@
 namespace mt_kahypar {
 namespace connected_components {
 
+using Bitset = mt_kahypar::ds::Bitset;
+    
 template<typename PartitionedHypergraph>
 class BFSSpanningTreeConnectivity {
 private:
@@ -43,8 +45,6 @@ private:
 
     Bitset has_connection_to_other_partition;
 public:
-    BFSSpanningTreeConnectivity(const PartitionedHypergraph& phg,
-                                const Context& context);
     
     int size() const {
         return hn_to_num_children.size();
@@ -159,20 +159,17 @@ public:
 
     bool canMoveVertex(
         const PartitionedHypergraph& phg,
-        const Context& context,
         const HypernodeID& hn
     );
 
     void moveVertex(
         const PartitionedHypergraph& phg,
-        const Context& context,
         const HypernodeID& hn,
         const PartitionID& to
     );
 
     void reset(
-        const PartitionedHypergraph& phg, 
-        const Context& context
+        const PartitionedHypergraph& phg
     );
 };
 

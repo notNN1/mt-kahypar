@@ -23,92 +23,24 @@
  ******************************************************************************/
 
 #include "mt-kahypar/partition/connected_components/spanning_tree_connectivity.h"
+#include <signal.h>
 
 namespace mt_kahypar {
 namespace connected_components {
 
 using Bitset = mt_kahypar::ds::Bitset;
 
-template<typename PartitionedHypergraph>    
-bool BFSConnectivity<PartitionedHypergraph>::moveVertex(
-    const PartitionedHypergraph& phg, 
-    const HypernodeID& hn
-) {
-
-    // compute components with hn set, so we can't move over hn
-    int components = 0;
-
-    Bitset node_colored;
-    node_colored.resize(phg.initialNumNodes());
-    node_colored.set((size_t) hn);
-
-    Bitset edge_colored;
-    edge_colored.resize(phg.initialNumEdges());
-    
-    std::queue<HypernodeID> node_queue;
-    PartitionID current_partition = phg.partID(hn);
-
-    for (const HypernodeID& hn_ : phg.nodes()) {
-        if (node_colored.isSet((size_t) hn_) || phg.partID(hn_) != current_partition) {
-            continue;
-        }
-
-        node_queue.push(hn_);
-        node_colored.set((size_t) hn_);
-
-        edge_colored.reset();
-
-        while (node_queue.size() > 0) {
-            HypernodeID current = node_queue.front();
-            node_queue.pop();
-
-            for (const HyperedgeID& he : phg.incidentEdges(current)) {
-
-                if (edge_colored.isSet((size_t) he)) {
-                    continue;
-                }
-
-                edge_colored.set((size_t) he);
-
-                for (const HypernodeID& incident_hn : phg.pins(he)) {
-                    if (node_colored.isSet((size_t) incident_hn)) {
-                        continue;
-                    }
-                    
-                    if (phg.partID(incident_hn) != current_partition) {
-                        continue;
-                    }
-
-                    node_queue.push(incident_hn);
-                    node_colored.set((size_t) incident_hn);
-                }
-            }
-        }
-        
-        components++;
-        if (components > 1) {
-            return false;
-        }
-    }
-    return true;
-};
-
-
-template<typename PartitionedHypergraph>
-BFSSpanningTreeConnectivity<PartitionedHypergraph>::BFSSpanningTreeConnectivity(const PartitionedHypergraph& phg, const Context& context) {
-    reset(phg, context);
-}
-
 template<typename PartitionedHypergraph>
 void BFSSpanningTreeConnectivity<PartitionedHypergraph>::reset(
-    const PartitionedHypergraph& phg, 
-    const Context& context
+    const PartitionedHypergraph& phg
 ) {
     LOG << "initialized on Hypergraph instance: " << static_cast<const void*>(&phg) << " with " << phg.initialNumNodes() << " nodes";
-    (void)context;
 
+    this->hn_to_num_children.clear();
     this->hn_to_num_children.resize(phg.initialNumNodes());
+    this->hn_to_parent.clear();
     this->hn_to_parent.resize(phg.initialNumNodes());
+    this->has_connection_to_other_partition.reset();
     this->has_connection_to_other_partition.resize(phg.initialNumNodes());
 
     for (const HypernodeID& node : phg.nodes()) {
@@ -227,28 +159,14 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::reset(
             }
         }   
     }
-    int count1 = 0;
-    for (const HypernodeID& node : phg.nodes()) {
-        if (this->hn_to_parent[node] == node) {
-            count1++;
-        }
-    }
-
-    int count2 = ConnectivityFacade<PartitionedHypergraph>::extra_component_count(phg, context);
-
-    if (count1 != count2) {
-        while (true)
-        {
-            LOG << "Too many roots: " << count1 << "roots and " << count2 << " components";
-        }
-        
-    }
     is_tree_valid(phg);
 }
 
 template<typename PartitionedHypergraph>
-bool BFSSpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(const PartitionedHypergraph& phg, const Context& context, const HypernodeID& hn) {
-    (void) context;
+bool BFSSpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(
+    const PartitionedHypergraph& phg, 
+    const HypernodeID& hn
+) {
     //LOG << "The size is wron: " << this->hn_to_num_children.size();
     //LOG << "HN: " << hn;
     assert(hn < this->hn_to_num_children.size());
@@ -264,7 +182,6 @@ bool BFSSpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(const Par
 template<typename PartitionedHypergraph>
 void BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
     const PartitionedHypergraph& phg,
-    const Context& context,
     const HypernodeID& hn,
     const PartitionID& to
 ) {
@@ -279,7 +196,7 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
         raise(SIGTRAP); 
     }
     
-    if (!canMoveVertex(phg, context, hn)) {
+    if (!canMoveVertex(phg, hn)) {
         LOG << "Move node without canMoveVertex being true";
         raise(SIGTRAP); 
     }
@@ -292,7 +209,7 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
     }
 
 
-    // find candidate to attach to 
+    // find candidate to attach to
     for (const HyperedgeID& he : phg.incidentEdges(hn)) {
         for (const HypernodeID& incident_hn : phg.pins(he)) {
             if (phg.partID(incident_hn) != to) {
@@ -338,6 +255,7 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
     while(true);
 }
 
+INSTANTIATE_CLASS_WITH_PARTITIONED_HG(BFSSpanningTreeConnectivity)
 
 }  // namespace connected_components
 }  // namespace mt_kahypar

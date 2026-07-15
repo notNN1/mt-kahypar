@@ -56,7 +56,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
 
         vec<size_t> subtree_size(hg.initialNumNodes());
         for (const HypernodeID& hn : hg.nodes()) {
-            subtree_size[hn] = hg->nodeWeight(hn);
+            subtree_size[hn] = hg.nodeWeight(hn);
         }
 
         size_t target_size = (hg.initialNumNodes() / _context.partition.k);

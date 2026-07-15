@@ -27,10 +27,13 @@
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/parallel/stl/scalable_vector.h"
 #include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/partition/connected_components/compute_components.h"
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/datastructures/bitset.h"
-#include "mt-kahypar/datastructures/dynamic_connectivity_datastructures.h"
+#include "mt-kahypar/partition/connected_components/compute_components.h"
+#include "mt-kahypar/partition/connected_components/connectivity_facade.h"
+#include "mt-kahypar/partition/connected_components/spanning_tree_connectivity.h"
+#include "mt-kahypar/partition/connected_components/bfs_connectivity.h"
+
 
 
 namespace mt_kahypar {
@@ -42,9 +45,8 @@ using ConnectedComponent = mt_kahypar::connected_components::ConnectedComponent;
 template<typename PartitionedHypergraph>
 class ConnectivityFacade {
 private:
-    Context                     _context;
-
-    mt_kahypar::ds::BFSSpanningTreeConnectivity<PartitionedHypergraph> stc;                            // reset when: moved without connectivity, uncoarsening 
+    BFSSpanningTreeConnectivity<PartitionedHypergraph>  stc;                            // reset when: moved without connectivity, uncoarsening 
+    BFSConnectivity<PartitionedHypergraph>              bfs;
 
     Bitset          can_move_current_node_to_partition;         // reset when: moveVertex || last_viewed_node != current_node  
     HypernodeID     last_viewed_node;                           //
@@ -63,29 +65,40 @@ private:
         const HypernodeID& hn,
         const PartitionID& to
     );
+
 public:
-    ConnectivityFacade(Context _context) : _context(_context) {}
+    void initialize_spanning_tree(const PartitionedHypergraph& hypergraph) {
+        this->stc.reset(hypergraph);
+    }
 
     bool canMoveVertex(
         const DynamicConnectivityStrategy& strategy,
-        HypernodeID hn
-    ) const;
+        const PartitionedHypergraph& hypergraph,
+        const HypernodeID& hn,
+        const PartitionID& to
+    );
 
     void moveVertex(
         const DynamicConnectivityStrategy& strategy,
-        HypernodeID hn,
-        PartitionID to
+        const PartitionedHypergraph& hypergraph,
+        const HypernodeID& hn,
+        const PartitionID& to
     );
 
     void reset_connectivity_out(
-        const PartitionedHypergraph& hypergraph,
-        const HypernodeID& hn
-    );
+        const PartitionedHypergraph& hypergraph
+    ) {
+        this->stc.reset(hypergraph);
+    }
 
     void reset_connectivity_in(
         const PartitionedHypergraph& hypergraph,
         const HypernodeID& hn
     );
+
+    void set_graph_was_changed() {
+        this->graph_was_changed = true;
+    }
 };
 
 }  // namespace connected_components

@@ -42,15 +42,7 @@ void ConnectivityFacade<PartitionedHypergraph>::reset_connectivity_in(
         }
     }
 
-    this->current_node = hn;
-}
-
-template<typename PartitionedHypergraph>
-void ConnectivityFacade<PartitionedHypergraph>::reset_connectivity_out(
-    const PartitionedHypergraph& hypergraph,
-    const HypernodeID& hn
-) {
-    this->stc.reset(hypergraph, _context);
+    this->last_viewed_node = hn;
 }
 
 
@@ -66,8 +58,9 @@ bool ConnectivityFacade<PartitionedHypergraph>::can_move_into_partition(
         || strategy == DynamicConnectivityStrategy::h_vertex_degree
         || strategy == DynamicConnectivityStrategy::st
     ) {
-        if (hn != this->current_node) {
-            this->initialize_can_move_current_node_to_partition(hypergraph, strategy, hn);
+        if (hn != this->last_viewed_node || this->graph_was_changed) {
+            this->reset_connectivity_in(hypergraph, hn);
+            this->graph_was_changed = false;
         }
 
         return this->can_move_current_node_to_partition.isSet((size_t) to);
@@ -84,15 +77,14 @@ bool ConnectivityFacade<PartitionedHypergraph>::can_move_out_of_partition(
     bool can_move_node = true;
 
     if (strategy == DynamicConnectivityStrategy::bfs) {
-        mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph> dcd = mt_kahypar::ds::BFSConnectivity<PartitionedHypergraph>();
-        can_move_node = dcd.moveVertex(hypergraph, hn);
+        can_move_node = this-bfs.moveVertex(hypergraph, hn);
     }
     else if (strategy == DynamicConnectivityStrategy::h_vertex_degree) {
         auto range = hypergraph.incidentEdges(hn);
         can_move_node = std::distance(range.begin(), range.end()) > 4;
     }
     else if (strategy == DynamicConnectivityStrategy::st) {
-        can_move_node = this->stc.canMoveVertex(hypergraph, _context, hn);
+        can_move_node = this->stc.canMoveVertex(hypergraph, hn);
     }
 
     return can_move_node;
@@ -106,11 +98,23 @@ void ConnectivityFacade<PartitionedHypergraph>::moveVertex(
     const PartitionID& to
 ) {
     if (strategy == DynamicConnectivityStrategy::st) {
-        this->stc.moveVertex();
+        this->stc.moveVertex(hypergraph, hn, to);
     }
 
     this->graph_was_changed = true;
 }
+
+template<typename PartitionedHypergraph>
+bool ConnectivityFacade<PartitionedHypergraph>::canMoveVertex(
+    const DynamicConnectivityStrategy& strategy,
+    const PartitionedHypergraph& hypergraph,
+    const HypernodeID& hn,
+    const PartitionID& to
+) {
+    return can_move_out_of_partition(strategy, hypergraph, hn) && can_move_into_partition(strategy, hypergraph, hn, to);
+}
+
+INSTANTIATE_CLASS_WITH_PARTITIONED_HG(ConnectivityFacade)
 
 }  // namespace connected_components
 }  // namespace mt_kahypar

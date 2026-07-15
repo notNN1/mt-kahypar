@@ -59,7 +59,7 @@ namespace impl {
     HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
     
-    for (PartitionID i = 0; i < context.partition.k && phg.can_move_node(DynamicConnectivityStrategy::st, context, u, i); ++i) {
+    for (PartitionID i = 0; i < context.partition.k; ++i) {
 
       if (i != from) {
         const HypernodeWeight to_weight = phg.partWeight(i);
@@ -102,11 +102,7 @@ namespace impl {
     
     for (PartitionID i : parts) {
 
-      if (!phg.can_move_node(DynamicConnectivityStrategy::st, context, u, i)) {
-        continue;
-      }
-
-      if (i != from && i != kInvalidPartition && phg.can_move_node(DynamicConnectivityStrategy::st, context, u, i)) {
+      if (i != from && i != kInvalidPartition) {
         const HypernodeWeight to_weight = phg.partWeight(i);
         const HyperedgeWeight benefit = gain_cache.blockIsAdjacent(u, i) ? gain_cache.benefitTerm(u, i) : gain_cache.recomputeBenefitTerm(phg, u, i);
         if ((benefit > to_benefit || (benefit == to_benefit && to_weight < best_to_weight)) &&
