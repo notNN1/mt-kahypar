@@ -29,6 +29,7 @@
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/randomize.h"
 #include <signal.h>
+#include <algorithm>
 
 namespace mt_kahypar {
 
@@ -71,7 +72,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
         size_t real_component_size;
 
 
-        for (const connected_components::ConnectedComponent& component : components) {
+        for (connected_components::ConnectedComponent& component : components) {
             size_t upper_bound = (size_t)((double)target_size * (1.0 + this->_context.partition.epsilon));
             size_t lower_bound = (size_t)((double)target_size * (1.0 - this->_context.partition.epsilon)) + 1;
 
@@ -110,6 +111,8 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                 if (current_size + real_component_size > upper_bound) {
                     size_t target = upper_bound - current_size;
                     
+                    LOG << "Target: " << target;
+
                     int max = 3;
                     int count = 0;
 
@@ -170,7 +173,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
 template<typename TypeTraits>
 void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
     const PartitionedHypergraph& hg,
-    const ConnectedComponent& component,
+    ConnectedComponent& component,
     vec<HypernodeID>& hn_to_parent,
     vec<vec<HypernodeID>>& hn_to_children,
     vec<size_t>& subtree_size,
@@ -178,26 +181,40 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 ) {
     assert(component.nodes.size() > 0);
 
+    // find nodes that are in more than one edge
+    Bitset is_in_multiple_edges;
+    is_in_multiple_edges.resize(hg.initialNumNodes());
+    for (const HypernodeID& node : component.nodes) {
+        if (hg.incidentEdges(node).size() > 1) {
+            is_in_multiple_edges.set((size_t) node);
+        }
+    }
+
     // setup datastructures for BFS
     std::deque<HypernodeID> queue;
-    queue.push_back(component.nodes[0]);
-
     std::deque<HypernodeID> calculation_queue;
 
+    Bitset node_colored;
+    node_colored.resize(hg.initialNumNodes());
+
     // find first node, that is not covered
+    
+    std::shuffle(component.nodes.begin(), component.nodes.end(), _rng);
+
     for (const HypernodeID& node : component.nodes) {
         if (!covered.isSet((size_t) node)) {
             calculation_queue.push_back(node);
+            queue.push_back(node);
+            node_colored.set((size_t) node);
             break;
         }
     }
 
-    Bitset node_colored;
-    node_colored.resize(hg.initialNumNodes());
-    node_colored.set((size_t) component.nodes[0]);
 
     Bitset edge_colored;
     edge_colored.resize(hg.initialNumEdges());
+
+    size_t max_amount_of_branching = 2;
 
     
     for (const HypernodeID& node : component.nodes) {
@@ -218,18 +235,143 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 
             edge_colored.set((size_t) he);
 
+            size_t available_size = 0;
             for (const HypernodeID& incident_hn : hg.pins(he)) {
                 if (node_colored.isSet((size_t) incident_hn) || covered.isSet((size_t) incident_hn)) {
                     continue;
                 }
 
+                available_size++;
+            }
+
+
+            size_t branch_node_count = (available_size > max_amount_of_branching ? max_amount_of_branching : available_size);
+            
+            vec<HypernodeID> branch_nodes;
+            branch_nodes.resize(branch_node_count);
+            branch_nodes[0] = current_node;
+
+            vec<std::pair<size_t, HypernodeID>> sizes;
+            sizes.resize(branch_node_count);
+
+            vec<std::pair<size_t, HypernodeID>> in_multiple_edges_sizes;
+            in_multiple_edges_sizes.resize(branch_node_count);
+
+            size_t target = available_size / branch_node_count;
+
+            size_t found_branch_nodes = 1;
+
+            // find branch nodes without multiple edges
+            for (const HypernodeID& incident_hn : hg.pins(he)) {
+                if (found_branch_nodes == branch_node_count) {
+                    break;
+                }
+
+                if (node_colored.isSet((size_t) incident_hn) || covered.isSet((size_t) incident_hn)) {
+                    continue;
+                }
+
+                if (is_in_multiple_edges.isSet(incident_hn)) {
+                    continue;
+                }
+
                 node_colored.set((size_t) incident_hn);
 
-                queue.push_back(incident_hn);
+                branch_nodes[found_branch_nodes] = incident_hn;
+                found_branch_nodes++;
+
                 calculation_queue.push_back(incident_hn);
 
                 hn_to_children[current_node].push_back(incident_hn);
                 hn_to_parent[incident_hn] = current_node;
+            }
+
+            // find branch nodes with multiple edges
+            for (const HypernodeID& incident_hn : hg.pins(he)) {
+                if (found_branch_nodes == branch_node_count) {
+                    break;
+                }
+
+                if (node_colored.isSet((size_t) incident_hn) || covered.isSet((size_t) incident_hn)) {
+                    continue;
+                }
+
+                if (!is_in_multiple_edges.isSet(incident_hn)) {
+                    continue;
+                }
+
+                node_colored.set((size_t) incident_hn);
+
+                branch_nodes[found_branch_nodes] = incident_hn;
+                found_branch_nodes++;
+
+                calculation_queue.push_back(incident_hn);
+
+                hn_to_children[current_node].push_back(incident_hn);
+                hn_to_parent[incident_hn] = current_node;
+            }
+
+            if (found_branch_nodes != branch_node_count) {
+                LOG << "Branch node count: " << branch_node_count;
+                LOG << "found_branch_nodes: " << found_branch_nodes;
+                LOG << "available size: " << available_size;
+                LOG << "rawr";
+                while(true);
+            }
+
+            for (size_t i = 0; i < branch_node_count; i++) {
+                sizes[i]                    = {0, branch_nodes[i]};
+                in_multiple_edges_sizes[i]  = {0, branch_nodes[i]};
+            }
+
+            // distrbute nodes with multiple edges
+            for (const HypernodeID& incident_hn : hg.pins(he)) {
+                if (node_colored.isSet((size_t) incident_hn) || covered.isSet((size_t) incident_hn)) {
+                    continue;
+                }
+
+                if (!is_in_multiple_edges.isSet(incident_hn)) {
+                    continue;
+                }
+
+                node_colored.set((size_t) incident_hn);
+
+                std::sort(in_multiple_edges_sizes.begin(), in_multiple_edges_sizes.end());
+
+                HypernodeID attachment_node = in_multiple_edges_sizes[0].second;
+                in_multiple_edges_sizes[0] = {in_multiple_edges_sizes[0].first + hg.nodeWeight(incident_hn), attachment_node};
+
+
+                queue.push_back(incident_hn);
+                calculation_queue.push_back(incident_hn);
+
+                hn_to_children[attachment_node].push_back(incident_hn);
+                hn_to_parent[incident_hn] = attachment_node;
+            }
+
+            // distrbute nodes with multiple edges
+            for (const HypernodeID& incident_hn : hg.pins(he)) {
+                if (node_colored.isSet((size_t) incident_hn) || covered.isSet((size_t) incident_hn)) {
+                    continue;
+                }
+
+                if (!is_in_multiple_edges.isSet(incident_hn)) {
+                    continue;
+                }
+
+                node_colored.set((size_t) incident_hn);
+
+                std::sort(sizes.begin(), sizes.end());
+
+                HypernodeID attachment_node = sizes[0].second;
+                sizes[0] = {sizes[0].first + hg.nodeWeight(incident_hn), attachment_node};
+
+
+                queue.push_back(incident_hn);
+                calculation_queue.push_back(incident_hn);
+
+                hn_to_children[attachment_node].push_back(incident_hn);
+                hn_to_parent[incident_hn] = attachment_node;
             }
         }
     }
@@ -273,6 +415,9 @@ std::pair<HypernodeID, size_t> STInitialPartitioner<TypeTraits>::find_best_node_
         }
     }
 
+    LOG << "Best node: " << best_node;
+    LOG << "Best size: " << best_size;
+
     return {best_node, best_size};
 }
 
@@ -288,6 +433,8 @@ void STInitialPartitioner<TypeTraits>::assign_subtree_of_hn(
     std::queue<HypernodeID> queue;
     queue.push(hn);
     
+    int count = 0;
+
     while (queue.size() > 0) {
         HypernodeID current_node = queue.front();
         queue.pop();
@@ -298,10 +445,13 @@ void STInitialPartitioner<TypeTraits>::assign_subtree_of_hn(
             if (child == current_node) {
                 continue;
             }
+            count++;
 
             queue.push(child);
         }
     }
+
+    //LOG << "RRRRRRRRR flo: " << count;
 }
 
 INSTANTIATE_CLASS_WITH_TYPE_TRAITS(STInitialPartitioner)

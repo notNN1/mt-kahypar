@@ -62,7 +62,7 @@ public:
 
     void calculate_spanning_tree(
         const PartitionedHypergraph& hg,
-        const ConnectedComponent& component,
+        ConnectedComponent& component,
         vec<HypernodeID>& hn_to_parent,
         vec<vec<HypernodeID>>& hn_to_children,
         vec<size_t>& subtree_size,

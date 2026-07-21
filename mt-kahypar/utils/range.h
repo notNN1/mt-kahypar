@@ -54,7 +54,7 @@ class IteratorRange {
   }
 
   size_t size() const {
-    return __end - __begin;
+    return std::distance(__begin, __end);
   }
 
   reference operator[](size_t n) const {

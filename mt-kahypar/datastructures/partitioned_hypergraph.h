@@ -581,7 +581,6 @@ class PartitionedHypergraph {
     ASSERT(p != kInvalidPartition && p < _k);
     ASSERT(_part_ids[u] == kInvalidPartition);
     _part_ids[u] = p;
-    //LOG << "Moved hypernode " << u << " into partition " << p;
 
     this->was_changed_without_connectivity = true;
   }
@@ -623,17 +622,10 @@ class PartitionedHypergraph {
 
     if (to_weight_after <= max_weight_to && (!do_connectivity || this->_cf.canMoveVertex(DynamicConnectivityStrategy::st, *this, u, to))) {
       if (do_connectivity) {
-        //component_count_before = connected_components::total_component_count<PartitionedHypergraph>(*this, NULL);
-        // LOG << "Moved node WITH connectivity: " << u << " to partition " << to;
-
         this->_cf.moveVertex(DynamicConnectivityStrategy::st, *this, u, to);
-        this->was_changed_without_connectivity = false;
       }
-      else {
-        // LOG << "Moved node without connectivity: " << u << " to partition " << to;
 
-        this->was_changed_without_connectivity = true;
-      }
+      this->was_changed_without_connectivity = !do_connectivity;
 
       _part_ids[u] = to;
       _part_weights[from].fetch_sub(wu, std::memory_order_relaxed);
@@ -645,15 +637,6 @@ class PartitionedHypergraph {
       sync_update.edge_locks = &_pin_count_update_ownership;
       for ( const HyperedgeID he : incidentEdges(u) ) {
         updatePinCountOfHyperedge(he, from, to, sync_update, delta_func, notify_func);
-      }
-
-      if (do_connectivity) {
-        //size_t component_count_after = connected_components::total_component_count<PartitionedHypergraph>(*this, NULL);
-
-        if (component_count_after > component_count_before) {
-          // LOG << "Component count got worse";
-          while(true);
-        }
       }
 
       return true;
