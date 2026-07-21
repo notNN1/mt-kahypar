@@ -235,7 +235,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 
             edge_colored.set((size_t) he);
 
-            size_t available_size = 0;
+            size_t available_size = 1;
             for (const HypernodeID& incident_hn : hg.pins(he)) {
                 if (node_colored.isSet((size_t) incident_hn) || covered.isSet((size_t) incident_hn)) {
                     continue;
@@ -246,7 +246,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 
 
             size_t branch_node_count = (available_size > max_amount_of_branching ? max_amount_of_branching : available_size);
-            
+
             vec<HypernodeID> branch_nodes;
             branch_nodes.resize(branch_node_count);
             branch_nodes[0] = current_node;
@@ -415,9 +415,6 @@ std::pair<HypernodeID, size_t> STInitialPartitioner<TypeTraits>::find_best_node_
         }
     }
 
-    LOG << "Best node: " << best_node;
-    LOG << "Best size: " << best_size;
-
     return {best_node, best_size};
 }
 
@@ -440,6 +437,8 @@ void STInitialPartitioner<TypeTraits>::assign_subtree_of_hn(
         queue.pop();
 
         covered.set((size_t) current_node);
+
+        LOG << "partition: " << partition;
         hg.setNodePart(current_node, partition);
         for (const HypernodeID& child : hn_to_children[current_node]) {
             if (child == current_node) {
@@ -450,8 +449,6 @@ void STInitialPartitioner<TypeTraits>::assign_subtree_of_hn(
             queue.push(child);
         }
     }
-
-    //LOG << "RRRRRRRRR flo: " << count;
 }
 
 INSTANTIATE_CLASS_WITH_TYPE_TRAITS(STInitialPartitioner)
