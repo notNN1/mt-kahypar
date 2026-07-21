@@ -85,6 +85,10 @@ bool ConnectivityFacade<PartitionedHypergraph>::can_move_out_of_partition(
     }
     else if (strategy == DynamicConnectivityStrategy::st) {
         can_move_node = this->stc.canMoveVertex(hypergraph, hn);
+
+        /*if (can_move_node && !this-bfs.moveVertex(hypergraph, hn)) {
+            LOG << "Help";
+        }*/
     }
 
     return can_move_node;

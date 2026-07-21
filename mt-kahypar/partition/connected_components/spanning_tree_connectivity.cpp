@@ -34,14 +34,16 @@ template<typename PartitionedHypergraph>
 void BFSSpanningTreeConnectivity<PartitionedHypergraph>::reset(
     const PartitionedHypergraph& phg
 ) {
-    LOG << "initialized on Hypergraph instance: " << static_cast<const void*>(&phg) << " with " << phg.initialNumNodes() << " nodes";
+    DBG << "Initialized spanning tree on hypergraph instance: " << static_cast<const void*>(&phg) << " with " << phg.initialNumNodes() << " nodes";
 
     this->hn_to_num_children.clear();
-    this->hn_to_num_children.resize(phg.initialNumNodes());
+    this->hn_to_num_children.resize(phg.initialNumNodes(), 0);
     this->hn_to_parent.clear();
     this->hn_to_parent.resize(phg.initialNumNodes());
     this->has_connection_to_other_partition.reset();
     this->has_connection_to_other_partition.resize(phg.initialNumNodes());
+    this->hn_is_locked.reset();
+    this->hn_is_locked.resize(phg.initialNumNodes());
 
     for (const HypernodeID& node : phg.nodes()) {
         this->hn_to_parent[node] = node;
@@ -126,7 +128,7 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::reset(
             for (const HyperedgeID& he : phg.incidentEdges(current)) {
 
                 if (edge_colored.isSet((size_t) he)) {
-                continue;
+                    continue;
                 }
 
                 edge_colored.set((size_t) he);
@@ -159,7 +161,6 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::reset(
             }
         }   
     }
-    is_tree_valid(phg);
 }
 
 template<typename PartitionedHypergraph>
@@ -169,9 +170,12 @@ bool BFSSpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(
 ) {
     //LOG << "The size is wron: " << this->hn_to_num_children.size();
     //LOG << "HN: " << hn;
-    assert(hn < this->hn_to_num_children.size());
+    if(hn >= this->hn_to_num_children.size()) {
+        LOG << "hn nonexistant in array";
+        raise(SIGSEGV);
+    }
 
-    if (this->hn_to_parent[hn] == hn) {
+    if (this->hn_to_parent[hn] == hn || this->hn_is_locked.isSet((size_t) hn)) {
         return false;
     }
 
@@ -208,6 +212,7 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
         raise(SIGTRAP); 
     }
 
+    this->hn_is_locked.set((size_t) hn);
 
     // find candidate to attach to
     for (const HyperedgeID& he : phg.incidentEdges(hn)) {
@@ -225,8 +230,6 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
 
                 this->hn_to_parent[hn] = incident_hn;
                 this->hn_to_num_children[incident_hn]++;
-
-                LOG << "special attachment";
 
                 return;
             }
@@ -246,7 +249,6 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
             this->hn_to_parent[hn] = incident_hn;
             this->hn_to_num_children[incident_hn]++;
 
-            LOG << "default attachment";
             return;
         }
     }

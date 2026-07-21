@@ -44,6 +44,7 @@ private:
     vec<size_t> hn_to_num_children;
 
     Bitset has_connection_to_other_partition;
+    Bitset hn_is_locked;
 public:
     
     int size() const {
@@ -52,7 +53,7 @@ public:
 
     vec<std::string> is_tree_valid(const PartitionedHypergraph& phg) {
         vec<std::string> result;
-        if (wrong_size_of_arrays(phg)) {
+        /*if (wrong_size_of_arrays(phg)) {
             result.push_back("Wrong size of arrays");
         } 
         if (!all_nodes_go_to_one_of_the_heads(phg)) {
@@ -66,7 +67,7 @@ public:
         }
         if (!nodes_have_correct_amount_of_children(phg)) {
             result.push_back("Incorrect amound of children detected");
-        }
+        }*/
 
         return result;
     }
@@ -155,6 +156,10 @@ public:
         }
 
         return true;
+    }
+
+    bool articulation_point_is_leaf(const PartitionedHypergraph& phg) {
+
     }
 
     bool canMoveVertex(

@@ -30,6 +30,7 @@
 #include <atomic>
 #include <type_traits>
 #include <mutex>
+#include <signal.h>
 
 #include <tbb/parallel_invoke.h>
 
@@ -580,7 +581,8 @@ class PartitionedHypergraph {
     ASSERT(p != kInvalidPartition && p < _k);
     ASSERT(_part_ids[u] == kInvalidPartition);
     _part_ids[u] = p;
-    LOG << "Moved hypernode " << u << " into partition " << p;
+    //LOG << "Moved hypernode " << u << " into partition " << p;
+
     this->was_changed_without_connectivity = true;
   }
 
@@ -612,19 +614,23 @@ class PartitionedHypergraph {
     const HypernodeWeight wu = nodeWeight(u);
     const HypernodeWeight to_weight_after = _part_weights[to].add_fetch(wu, std::memory_order_relaxed);
 
+    size_t component_count_before = 0;
+    size_t component_count_after  = 0;
+
     if (do_connectivity && this->was_changed_without_connectivity) {
       this->_cf.reset_connectivity_out(*this);
     }
 
     if (to_weight_after <= max_weight_to && (!do_connectivity || this->_cf.canMoveVertex(DynamicConnectivityStrategy::st, *this, u, to))) {
       if (do_connectivity) {
-        LOG << "Moved node WITH connectivity: " << u << " to partition " << to;
+        //component_count_before = connected_components::total_component_count<PartitionedHypergraph>(*this, NULL);
+        // LOG << "Moved node WITH connectivity: " << u << " to partition " << to;
 
         this->_cf.moveVertex(DynamicConnectivityStrategy::st, *this, u, to);
         this->was_changed_without_connectivity = false;
       }
       else {
-        LOG << "Moved node without connectivity: " << u << " to partition " << to;
+        // LOG << "Moved node without connectivity: " << u << " to partition " << to;
 
         this->was_changed_without_connectivity = true;
       }
@@ -640,6 +646,16 @@ class PartitionedHypergraph {
       for ( const HyperedgeID he : incidentEdges(u) ) {
         updatePinCountOfHyperedge(he, from, to, sync_update, delta_func, notify_func);
       }
+
+      if (do_connectivity) {
+        //size_t component_count_after = connected_components::total_component_count<PartitionedHypergraph>(*this, NULL);
+
+        if (component_count_after > component_count_before) {
+          // LOG << "Component count got worse";
+          while(true);
+        }
+      }
+
       return true;
     } else {
       _part_weights[to].fetch_sub(wu, std::memory_order_relaxed);
@@ -1312,6 +1328,16 @@ class PartitionedHypergraph {
       _con_info.addBlock(e, p);
     }
     return pin_count_after;
+  }
+  
+public:
+
+  bool canMoveVertex(
+    const DynamicConnectivityStrategy& strategy,
+    const HypernodeID& hn, 
+    const PartitionID& to
+  ) const {
+    return _cf.canMoveVertex(strategy, *this, hn, to);
   }
 
 private:

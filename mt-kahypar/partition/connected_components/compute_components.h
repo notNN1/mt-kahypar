@@ -69,5 +69,11 @@ void find_inefficient_super_components(
   vec<vec<ComponentInfo>>& result
 );
 
+template<typename PartitionedHypergraph>
+int total_component_count(
+  const PartitionedHypergraph& phg,
+  const Context& context
+);
+
 }  // namespace connected_components
 }  // namespace mt_kahypar

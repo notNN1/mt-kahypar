@@ -68,13 +68,19 @@ namespace mt_kahypar {
 
         Gain delta_before = _gain.localDelta();
 
-        vec<vec<connected_components::ConnectedComponent>> components1;
-        connected_components::compute_components_per_block(hypergraph, _context, components1);
+        //size_t c1 = connected_components::total_component_count<PartitionedHypergraph>(hypergraph, NULL);
 
         bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta, true);
         ASSERT(!unconstrained || changed_part);
         is_moved = true;
         if (unconstrained || changed_part) {
+
+          //size_t c2 = connected_components::total_component_count<PartitionedHypergraph>(hypergraph, NULL);
+
+          /*if (c2 > c1) {
+            LOG << "Honestly how";
+            while(true);
+          }*/
           // In case the move to block 'to' was successful, we verify that the "real" gain
           // of the move is either equal to our computed gain or if not, still improves
           // the solution quality.
@@ -83,30 +89,9 @@ namespace mt_kahypar {
           if (accept_move) {
 
             if constexpr (!unconstrained) {
-              LOG << "UNCONSTRAINED";
               // in unconstrained case, we don't want to activate neighbors if the move is undone
               // by the rebalancing
-            //  activateNodeAndNeighbors(hypergraph, next_active_nodes, hn, true);
-            }
-
-
-
-            
-            LOG << "Hypergraph instance: " << static_cast<const void*>(&hypergraph);
-            if (false) {
-              // check how the new component gets generated
-              LOG << "From: " << from;
-              LOG << "To:   " << to;
-
-              vec<vec<connected_components::ConnectedComponent>> components2;
-              connected_components::compute_components_per_block(hypergraph, _context, components2);
-
-              LOG << "Size From: " << components1[from].size() << " before, " << components2[from].size() << " after";
-              LOG << "Size To:   " << components1[to].size() << " before, " << components2[to].size() << " after";
-
-              while (true) {
-                
-              }
+              activateNodeAndNeighbors(hypergraph, next_active_nodes, hn, true);
             }
 
 

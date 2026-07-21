@@ -49,3 +49,4 @@ python/tests/*.so
 python/examples/*.so
 compile_commands.json
 .direnv
+out

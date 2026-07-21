@@ -28,6 +28,7 @@
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/randomize.h"
+#include <signal.h>
 
 namespace mt_kahypar {
 
@@ -55,28 +56,40 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
         covered.resize(hg.initialNumNodes());
 
         vec<size_t> subtree_size(hg.initialNumNodes());
+        size_t total_size = 0;
         for (const HypernodeID& hn : hg.nodes()) {
             subtree_size[hn] = hg.nodeWeight(hn);
+            total_size       += hg.nodeWeight(hn);
         }
 
-        size_t target_size = (hg.initialNumNodes() / _context.partition.k);
-        size_t upper_bound = (size_t)((double)target_size * (1.0 + this->_context.partition.epsilon));
-        size_t lower_bound = (size_t)((double)target_size * (1.0 - this->_context.partition.epsilon));
+        size_t target_size = (total_size / _context.partition.k);
 
-        // LOG << "Nodes:       " << hg.initialNumNodes();            
-        // LOG << "target size: " << target_size;
 
         size_t current_size = 0;
         size_t current_k = 0;
         size_t component_remaining_size;
+        size_t real_component_size;
 
 
         for (const connected_components::ConnectedComponent& component : components) {
-            component_remaining_size = component.nodes.size();
+            size_t upper_bound = (size_t)((double)target_size * (1.0 + this->_context.partition.epsilon));
+            size_t lower_bound = (size_t)((double)target_size * (1.0 - this->_context.partition.epsilon)) + 1;
+
+            LOG << "Target size: " << target_size;
+            LOG << "Upper bound: " << upper_bound;
+            LOG << "Lower bound: " << lower_bound;
+
+            real_component_size         = 0;
+            component_remaining_size    = 0;
+            for (const HypernodeID& node : component.nodes) {
+                component_remaining_size    += hg.nodeWeight(node);
+                real_component_size         += hg.nodeWeight(node);
+            }
+
+
             while (component_remaining_size > 0) {
-                // LOG << "Component size: " << component_remaining_size;
+
                 if (current_size > lower_bound && current_size <= upper_bound) {
-                    // LOG << "new k because current size is enough: " << current_size;
                     
                     if (current_k + 1 < _context.partition.k) {
                         current_size = 0;
@@ -94,7 +107,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                         component_remaining_size = 0;
                     }
                 }
-                if (current_size + component.nodes.size() > upper_bound) {
+                if (current_size + real_component_size > upper_bound) {
                     size_t target = upper_bound - current_size;
                     
                     int max = 3;
@@ -116,15 +129,14 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                         count++;
                     }
 
+                    LOG << "Split with absolute size " << absolute_size << " into partition " << current_k;
                     component_remaining_size    -= absolute_size;
                     current_size                += absolute_size;                    
-                    
-                    //LOG << best_node;
 
                     assign_subtree_of_hn(hg, hn_to_children, subtree_size, current_k, covered, best_node);
                 }
                 else {
-                    current_size                += component.nodes.size();
+                    current_size                += real_component_size;
                     component_remaining_size    = 0;
 
                     for (const HypernodeID& hn : component.nodes) {
@@ -134,8 +146,21 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                 }
             }
         }
-        // for each component compact regions
 
+        vec<size_t> part_size;
+        part_size.resize(2);
+        for (const HypernodeID& node : hg.nodes()) {
+            if (hg.partID(node) == 0) {
+                part_size[0] += hg.nodeWeight(node);
+            }
+            else {
+                part_size[1] += hg.nodeWeight(node);
+            }
+        }
+
+        LOG << "Size part 0: " << part_size[0];
+        LOG << "Size part 1: " << part_size[1];
+        
         HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
         double time = std::chrono::duration<double>(end - start).count();
         _ip_data.commit(InitialPartitioningAlgorithm::st, _rng, _tag, time);
@@ -273,6 +298,7 @@ void STInitialPartitioner<TypeTraits>::assign_subtree_of_hn(
             if (child == current_node) {
                 continue;
             }
+
             queue.push(child);
         }
     }

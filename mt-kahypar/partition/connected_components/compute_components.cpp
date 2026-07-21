@@ -270,15 +270,33 @@ void find_inefficient_super_components(
   }
 }
 
+template<typename PartitionedHypergraph>
+int total_component_count(
+  const PartitionedHypergraph& phg,
+  const Context& context
+) {
+  vec<vec<ConnectedComponent>> result;
+  compute_components_per_block<PartitionedHypergraph>(phg, context, result);
+
+  size_t count = 0;
+  for (const vec<ConnectedComponent>& components_per_block : result) {
+    count += components_per_block.size();
+  }
+
+  return count;
+}
+
 namespace {
 #define COMPUTE_COMPONENTS_PER_BLOCK(X) void compute_components_per_block(const X& phg, const Context& context, vec<vec<ConnectedComponent>>& result)
 #define COMPUTE_COMPONENTS(X) void compute_components(const X& phg, const Context& context, vec<ConnectedComponent>& result)
 #define COMPUTE_VC(X) void compute_super_components(const X& phg, const Context& context, const vec<vec<ConnectedComponent>>& components, vec<vec<ComponentInfo>>& result)
+#define COMPUTE_TOTAL(X) int total_component_count(const X& phg, const Context& context)
 }
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_COMPONENTS_PER_BLOCK)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_COMPONENTS)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_VC)
+INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_TOTAL)
 
 }  // namespace connected_components
 }  // namespace mt_kahypar

@@ -1236,6 +1236,15 @@ private:
     }
     return block_of_v;
   }
+public:
+
+  bool canMoveVertex(
+    const DynamicConnectivityStrategy& strategy,
+    const HypernodeID& hn, 
+    const PartitionID& to
+  ) const {
+    
+  }
 
 private:
   HypernodeID _input_num_nodes = 0;
