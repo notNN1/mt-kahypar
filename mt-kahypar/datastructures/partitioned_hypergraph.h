@@ -586,6 +586,7 @@ class PartitionedHypergraph {
   }
 
   void setNodePart(const HypernodeID u, PartitionID p) {
+    setOnlyNodePart(u, p);
     _part_weights[p].fetch_add(nodeWeight(u), std::memory_order_relaxed);
     for (HyperedgeID he : incidentEdges(u)) {
       incrementPinCountOfBlock(he, p);
