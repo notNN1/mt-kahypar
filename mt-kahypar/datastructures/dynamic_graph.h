@@ -246,7 +246,7 @@ class DynamicGraph {
    */
   class PinIterator {
    public:
-    using iterator_category = std::forward_iterator_tag;
+    using iterator_category = std::bidirectional_iterator_tag;
     using value_type = HypernodeID;
     using reference = HypernodeID&;
     using pointer = const HypernodeID*;
@@ -283,6 +283,23 @@ class DynamicGraph {
     PinIterator operator++ (int) {
       PinIterator copy = *this;
       operator++ ();
+      return copy;
+    }
+
+    PinIterator& operator--() {
+      ASSERT(_iteration_count > 0);
+
+      do {
+        --_iteration_count;
+      } while (_iteration_count == 1 &&
+              (_source == _target || _target == kInvalidHypernode));
+
+      return *this;
+    }
+
+    PinIterator operator--(int) {
+      PinIterator copy = *this;
+      operator--();
       return copy;
     }
 

@@ -285,7 +285,7 @@ class StaticGraph {
    */
   class PinIterator {
    public:
-    using iterator_category = std::forward_iterator_tag;
+    using iterator_category = std::bidirectional_iterator_tag;
     using value_type = HypernodeID;
     using reference = HypernodeID&;
     using pointer = const HypernodeID*;
@@ -317,6 +317,20 @@ class StaticGraph {
     PinIterator operator++ (int) {
       PinIterator copy = *this;
       operator++ ();
+      return copy;
+    }
+
+    // ! Prefix decrement. The iterator moves to the previous valid element.
+    PinIterator& operator--() {
+      ASSERT(_iteration_count > 0);
+      --_iteration_count;
+      return *this;
+    }
+
+    // ! Postfix decrement. The iterator moves to the previous valid element.
+    PinIterator operator--(int) {
+      PinIterator copy = *this;
+      operator--();
       return copy;
     }
 

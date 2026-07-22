@@ -22,6 +22,7 @@
  * SOFTWARE.
  ******************************************************************************/
 
+ #pragma once
 
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/parallel/stl/scalable_vector.h"
@@ -90,6 +91,9 @@ private:
         HypernodeID current;
         HypernodeID parent;
 
+        Bitset edge_colored;
+        edge_colored.resize(phg.initialNumEdges());
+
         bool backtracking       = false;
 
         while(queue.size() > 0) {
@@ -105,8 +109,21 @@ private:
                 time++;
 
                 backtracking = true;
+                HypernodeID last_node_in_circle = kInvalidHypernode;
+
+
                 for (const HyperedgeID& he : phg.incidentEdges(current)) {
-                    for (const HypernodeID& incident_hn : phg.pins(he)) {
+
+                    auto it = phg.pins(he).begin();
+                    while(*it != current) {
+                        ++it;
+                    }
+
+                    vec<HypernodeID> nodes;
+                    nodes.push_back(*(--it));
+                    nodes.push_back(*(++it));
+
+                    for (const HypernodeID& incident_hn : nodes) {
                         if (incident_hn == parent || incident_hn == current) {
                             continue;
                         }
@@ -120,10 +137,23 @@ private:
                             children++;
                         }
 
+
                         queue.push_back({incident_hn, current});
                         bt_queue.push_back({incident_hn, current});
+
+                        /*if (last_node_in_circle == kInvalidHypernode) {
+                            queue.push_back({incident_hn, current});
+                            bt_queue.push_back({incident_hn, current});
+                        }
+                        else {
+                            queue.push_back({incident_hn, last_node_in_circle});
+                            bt_queue.push_back({incident_hn, last_node_in_circle});
+                        }*/
+                        
+                        last_node_in_circle = incident_hn;
                         backtracking = false;
                     }
+                    LOG << "HE: " << he;
                 }
             }
             else {

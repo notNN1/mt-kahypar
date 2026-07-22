@@ -66,14 +66,16 @@ public:
         vec<HypernodeID>& hn_to_parent,
         vec<vec<HypernodeID>>& hn_to_children,
         vec<size_t>& subtree_size,
-        vec<size_t>& covered
+        vec<size_t>& covered,
+        vec<HypernodeID>& active_nodes
     ); 
 
     std::pair<HypernodeID, size_t> find_best_node_to_split(
         const ConnectedComponent& component,
         const vec<size_t>& subtree_size,
         vec<size_t>& covered,
-        const size_t& target
+        const size_t& target,
+        const size_t& current_split_number
     );
 
     void assign_subtree_of_hn(

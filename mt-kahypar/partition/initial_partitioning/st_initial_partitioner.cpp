@@ -28,6 +28,7 @@
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/randomize.h"
+#include "mt-kahypar/partition/connected_components/tarjan.h"
 #include <signal.h>
 #include <algorithm>
 
@@ -38,6 +39,20 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
     if ( _ip_data.should_initial_partitioner_run(InitialPartitioningAlgorithm::st) ) {
         HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
         PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
+
+        LOG << "HELLO";
+
+        int count = 0;
+        connected_components::Tarjan<PartitionedHypergraph> tarjan;
+        for (const HypernodeID& node : hg.nodes()) {
+            if (tarjan.is_articulation_point(hg, node)) {
+                count++;
+            }
+        }
+        LOG << "Number of articulation points: " << count;
+        LOG << "Number of nodes:               " << hg.initialNumNodes();
+        while(true);
+        return;
 
         // compute components and calculate st for each component
         vec<connected_components::ConnectedComponent> components;
@@ -72,6 +87,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
         size_t real_component_size;
         size_t current_split_number = 1;
 
+        vec<HypernodeID> active_nodes;
 
         for (connected_components::ConnectedComponent& component : components) {
             current_split_number = 1;
@@ -126,9 +142,9 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                     size_t absolute_size    = 0;
 
                     while ((current_size + absolute_size < lower_bound && count < max) || count == 0) {
-                        calculate_spanning_tree(hg, component, hn_to_parent, hn_to_children, subtree_size, covered);
+                        calculate_spanning_tree(hg, component, hn_to_parent, hn_to_children, subtree_size, covered, active_nodes);
 
-                        best_cut = find_best_node_to_split(component, subtree_size, covered,target);
+                        best_cut = find_best_node_to_split(component, subtree_size, covered, target, current_split_number);
 
                         best_node           = best_cut.first;
                         absolute_size       = best_cut.second;
@@ -180,7 +196,8 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
     vec<HypernodeID>& hn_to_parent,
     vec<vec<HypernodeID>>& hn_to_children,
     vec<size_t>& subtree_size,
-    vec<size_t>& covered
+    vec<size_t>& covered,
+    vec<HypernodeID>& active_nodes
 ) {
     assert(component.nodes.size() > 0);
 
@@ -400,7 +417,8 @@ std::pair<HypernodeID, size_t> STInitialPartitioner<TypeTraits>::find_best_node_
     const ConnectedComponent& component,
     const vec<size_t>& subtree_size,
     vec<size_t>& covered,
-    const size_t& target
+    const size_t& target,
+    const size_t& current_split_number
 ) {
     assert(component.nodes.size() > 0);
 
