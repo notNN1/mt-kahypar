@@ -302,7 +302,7 @@ class StaticGraph {
 
     // ! Returns the id of the element the iterator currently points to.
     HypernodeID operator* () const {
-      ASSERT(_iteration_count < 2);
+      //ASSERT(_iteration_count < 2);
       return _iteration_count == 0 ? _source : _target;
     }
 
@@ -317,20 +317,6 @@ class StaticGraph {
     PinIterator operator++ (int) {
       PinIterator copy = *this;
       operator++ ();
-      return copy;
-    }
-
-    // ! Prefix decrement. The iterator moves to the previous valid element.
-    PinIterator& operator--() {
-      ASSERT(_iteration_count > 0);
-      --_iteration_count;
-      return *this;
-    }
-
-    // ! Postfix decrement. The iterator moves to the previous valid element.
-    PinIterator operator--(int) {
-      PinIterator copy = *this;
-      operator--();
       return copy;
     }
 

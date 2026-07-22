@@ -1323,6 +1323,35 @@ public:
     return _cf.canMoveVertex(strategy, *this, hn, to);
   }
 
+  vec<vec<vec<HypernodeID>>> circular_edge_expansion() const {
+
+    vec<vec<vec<HypernodeID>>> he_hn_to_new_edge(initialNumEdges());
+
+    for (const HyperedgeID& he : edges()) {
+
+        vec<HypernodeID> edge_pins;
+
+        for (const HypernodeID& hn : pins(he)) {
+          edge_pins.push_back(hn);
+        }
+
+        size_t edge_size = edge_pins.size();
+
+        he_hn_to_new_edge[he].resize(initialNumNodes());
+
+        for (size_t i = 0; i < edge_size; ++i) {
+          HypernodeID current = edge_pins[i];
+
+          HypernodeID prev = edge_pins[(i + edge_size - 1) % edge_size];
+          HypernodeID next = edge_pins[(i + 1) % edge_size];
+
+          he_hn_to_new_edge[he][current] = {prev, next};
+        }
+    }
+
+    return he_hn_to_new_edge;
+}
+
 private:
   // ! Dynamic connectivity
   mutable mt_kahypar::connected_components::ConnectivityFacade<PartitionedHypergraph> _cf;
