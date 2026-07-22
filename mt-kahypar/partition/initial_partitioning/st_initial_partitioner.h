@@ -66,13 +66,13 @@ public:
         vec<HypernodeID>& hn_to_parent,
         vec<vec<HypernodeID>>& hn_to_children,
         vec<size_t>& subtree_size,
-        Bitset& covered
+        vec<size_t>& covered
     ); 
 
     std::pair<HypernodeID, size_t> find_best_node_to_split(
         const ConnectedComponent& component,
         const vec<size_t>& subtree_size,
-        const Bitset& covered,
+        vec<size_t>& covered,
         const size_t& target
     );
 
@@ -81,7 +81,8 @@ public:
         vec<vec<HypernodeID>>& hn_to_children,
         vec<size_t>& subtree_size,
         PartitionID partition,
-        Bitset& covered,
+        vec<size_t>& covered,
+        size_t& current_split_number,
         HypernodeID hn
     );
 

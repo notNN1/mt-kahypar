@@ -53,7 +53,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
             hn_to_parent[hn] = hn;
         }
 
-        Bitset covered;
+        vec<size_t> covered;
         covered.resize(hg.initialNumNodes());
 
         vec<size_t> subtree_size(hg.initialNumNodes());
@@ -70,12 +70,16 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
         size_t current_k = 0;
         size_t component_remaining_size;
         size_t real_component_size;
+        size_t current_split_number = 1;
 
 
         for (connected_components::ConnectedComponent& component : components) {
-            size_t upper_bound = (size_t)((double)target_size * (1.0 + this->_context.partition.epsilon));
-            size_t lower_bound = (size_t)((double)target_size * (1.0 - this->_context.partition.epsilon)) + 1;
+            current_split_number = 1;
 
+            size_t upper_bound = (size_t)((double)target_size * (1.0 + 0.03));
+            size_t lower_bound = (size_t)((double)target_size * (1.0 - 0.03));
+
+            LOG << "Epsilon:     " << this->_context.partition.epsilon;
             LOG << "Target size: " << target_size;
             LOG << "Upper bound: " << upper_bound;
             LOG << "Lower bound: " << lower_bound;
@@ -90,7 +94,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
 
             while (component_remaining_size > 0) {
 
-                if (current_size > lower_bound && current_size <= upper_bound) {
+                if (current_size >= lower_bound && current_size <= upper_bound) {
                     
                     if (current_k + 1 < _context.partition.k) {
                         current_size = 0;
@@ -99,7 +103,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                     else {
                         // put remaining nodes into current partition
                         for (const HypernodeID& hn : component.nodes) {
-                            if (covered.isSet((size_t) hn)) {
+                            if (covered[hn] > 0) {
                                 continue;
                             }
                             hg.setNodePart(hn, current_k);
@@ -124,7 +128,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                     while ((current_size + absolute_size < lower_bound && count < max) || count == 0) {
                         calculate_spanning_tree(hg, component, hn_to_parent, hn_to_children, subtree_size, covered);
 
-                        best_cut = find_best_node_to_split(component, subtree_size, covered, target);
+                        best_cut = find_best_node_to_split(component, subtree_size, covered,target);
 
                         best_node           = best_cut.first;
                         absolute_size       = best_cut.second;
@@ -136,14 +140,14 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                     component_remaining_size    -= absolute_size;
                     current_size                += absolute_size;                    
 
-                    assign_subtree_of_hn(hg, hn_to_children, subtree_size, current_k, covered, best_node);
+                    assign_subtree_of_hn(hg, hn_to_children, subtree_size, current_k, covered, current_split_number, best_node);
                 }
                 else {
                     current_size                += real_component_size;
                     component_remaining_size    = 0;
 
                     for (const HypernodeID& hn : component.nodes) {
-                        covered.set((size_t) hn);
+                        covered[hn] = current_split_number;
                         hg.setNodePart(hn, current_k);
                     }
                 }
@@ -151,18 +155,17 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
         }
 
         vec<size_t> part_size;
-        part_size.resize(2);
+        part_size.resize(32);
         for (const HypernodeID& node : hg.nodes()) {
-            if (hg.partID(node) == 0) {
-                part_size[0] += hg.nodeWeight(node);
-            }
-            else {
-                part_size[1] += hg.nodeWeight(node);
-            }
+            part_size[hg.partID(node)] += hg.nodeWeight(node);
         }
 
-        LOG << "Size part 0: " << part_size[0];
-        LOG << "Size part 1: " << part_size[1];
+        int c = 0;
+        for (const size_t& size : part_size) {            
+            LOG << "Size part " << c << ": " << size;            
+            c++;
+        }
+
         
         HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
         double time = std::chrono::duration<double>(end - start).count();
@@ -177,7 +180,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
     vec<HypernodeID>& hn_to_parent,
     vec<vec<HypernodeID>>& hn_to_children,
     vec<size_t>& subtree_size,
-    Bitset& covered
+    vec<size_t>& covered
 ) {
     assert(component.nodes.size() > 0);
 
@@ -202,7 +205,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
     std::shuffle(component.nodes.begin(), component.nodes.end(), _rng);
 
     for (const HypernodeID& node : component.nodes) {
-        if (!covered.isSet((size_t) node)) {
+        if (covered[node] == 0) {
             calculation_queue.push_back(node);
             queue.push_back(node);
             node_colored.set((size_t) node);
@@ -237,7 +240,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 
             size_t available_size = 1;
             for (const HypernodeID& incident_hn : hg.pins(he)) {
-                if (node_colored.isSet((size_t) incident_hn) || covered.isSet((size_t) incident_hn)) {
+                if (node_colored.isSet((size_t) incident_hn) || covered[incident_hn] > 0) {
                     continue;
                 }
 
@@ -267,7 +270,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
                     break;
                 }
 
-                if (node_colored.isSet((size_t) incident_hn) || covered.isSet((size_t) incident_hn)) {
+                if (node_colored.isSet((size_t) incident_hn) || covered[incident_hn] > 0) {
                     continue;
                 }
 
@@ -292,7 +295,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
                     break;
                 }
 
-                if (node_colored.isSet((size_t) incident_hn) || covered.isSet((size_t) incident_hn)) {
+                if (node_colored.isSet((size_t) incident_hn) || covered[incident_hn] > 0) {
                     continue;
                 }
 
@@ -326,7 +329,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 
             // distrbute nodes with multiple edges
             for (const HypernodeID& incident_hn : hg.pins(he)) {
-                if (node_colored.isSet((size_t) incident_hn) || covered.isSet((size_t) incident_hn)) {
+                if (node_colored.isSet((size_t) incident_hn) || covered[incident_hn] > 0) {
                     continue;
                 }
 
@@ -351,7 +354,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 
             // distrbute nodes with multiple edges
             for (const HypernodeID& incident_hn : hg.pins(he)) {
-                if (node_colored.isSet((size_t) incident_hn) || covered.isSet((size_t) incident_hn)) {
+                if (node_colored.isSet((size_t) incident_hn) || covered[incident_hn] > 0) {
                     continue;
                 }
 
@@ -396,7 +399,7 @@ template<typename TypeTraits>
 std::pair<HypernodeID, size_t> STInitialPartitioner<TypeTraits>::find_best_node_to_split(
     const ConnectedComponent& component,
     const vec<size_t>& subtree_size,
-    const Bitset& covered,
+    vec<size_t>& covered,
     const size_t& target
 ) {
     assert(component.nodes.size() > 0);
@@ -405,7 +408,7 @@ std::pair<HypernodeID, size_t> STInitialPartitioner<TypeTraits>::find_best_node_
     HypernodeID best_node   = component.nodes[0];
     
     for (const HypernodeID& node : component.nodes) {
-        if (covered.isSet((size_t) node)) {
+        if (covered[node] > 0) {
             continue;
         }
 
@@ -421,24 +424,25 @@ std::pair<HypernodeID, size_t> STInitialPartitioner<TypeTraits>::find_best_node_
 template<typename TypeTraits>
 void STInitialPartitioner<TypeTraits>::assign_subtree_of_hn(
     PartitionedHypergraph& hg,
-    vec<vec<HypernodeID>>& hn_to_children,
-    vec<size_t>& subtree_size,
-    PartitionID partition,
-    Bitset& covered,
-    HypernodeID hn
+        vec<vec<HypernodeID>>& hn_to_children,
+        vec<size_t>& subtree_size,
+        PartitionID partition,
+        vec<size_t>& covered,
+        size_t& current_split_number,
+        HypernodeID hn
 ) {
     std::queue<HypernodeID> queue;
     queue.push(hn);
     
     int count = 0;
 
+    LOG << "partition: " << partition;
+
     while (queue.size() > 0) {
         HypernodeID current_node = queue.front();
         queue.pop();
 
-        covered.set((size_t) current_node);
-
-        LOG << "partition: " << partition;
+        covered[current_node] = current_split_number;
         hg.setNodePart(current_node, partition);
         for (const HypernodeID& child : hn_to_children[current_node]) {
             if (child == current_node) {
@@ -449,6 +453,8 @@ void STInitialPartitioner<TypeTraits>::assign_subtree_of_hn(
             queue.push(child);
         }
     }
+
+    LOG << "Count: " << count;
 }
 
 INSTANTIATE_CLASS_WITH_TYPE_TRAITS(STInitialPartitioner)
