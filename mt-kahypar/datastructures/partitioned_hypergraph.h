@@ -118,6 +118,7 @@ class PartitionedHypergraph {
         "Refinement", "pin_count_update_ownership", hypergraph.initialNumEdges(), true, false) {
     _part_ids.assign(hypergraph.initialNumNodes(), kInvalidPartition, false);
     _cf.initialize_spanning_tree(*this);
+    _cf.set_graph_was_changed();
   }
 
   explicit PartitionedHypergraph(const PartitionID k,
@@ -144,6 +145,7 @@ class PartitionedHypergraph {
         "Refinement", "pin_count_update_ownership", hypergraph.initialNumEdges(), true);
     });
     _cf.initialize_spanning_tree(*this);
+    _cf.set_graph_was_changed();
   }
 
   // REVIEW NOTE why do we delete copy assignment/construction? wouldn't it be useful to make a copy, e.g. for initial partitioning
