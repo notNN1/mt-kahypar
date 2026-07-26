@@ -47,7 +47,6 @@
 #include "mt-kahypar/utils/timer.h"
 #include "mt-kahypar/utils/exception.h"
 #include "mt-kahypar/partition/connected_components/connectivity_facade.h"
-#include <optional>
 
 namespace mt_kahypar {
 

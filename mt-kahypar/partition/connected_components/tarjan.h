@@ -31,6 +31,9 @@
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/datastructures/bitset.h"
 #include "mt-kahypar/datastructures/dynamic_connectivity_datastructures.h"
+#include "mt-kahypar/datastructures/static_hypergraph.h"
+#include "mt-kahypar/datastructures/static_hypergraph_factory.h"
+
 #include <signal.h>
 
 namespace mt_kahypar {
@@ -38,6 +41,9 @@ namespace connected_components {
 
 using Bitset = mt_kahypar::ds::Bitset;
 using Time   = size_t;
+
+using Hypergraph = ds::StaticHypergraph;
+using Factory = Hypergraph::Factory;
 
 template<typename PartitionedHypergraph>
 struct Tarjan {
@@ -186,6 +192,45 @@ private:
         is_ap.resize(phg.initialNumNodes());
 
         time = 1;
+    }
+
+public: 
+    void test_tarjan() {
+        LOG << "Begin tarjan test";
+        test_tarjan_1();
+        LOG << "End tarjan test";
+    }
+
+    void test_tarjan_1() {
+        auto hg = Factory::construct(
+            5,
+            4,
+            {
+                {0,1},
+                {1,2},
+                {2,3},
+                {3,4}
+            },
+            nullptr,
+            nullptr,
+            true
+        );
+
+
+        PartitionedHypergraph phg(
+            2,     // two partitions
+            hg
+        );
+
+        phg.setNodePart(0, 0);
+        phg.setNodePart(1, 0);
+        phg.setNodePart(2, 0);
+        phg.setNodePart(3, 1);
+        phg.setNodePart(4, 1);
+
+        if (phg.canMoveVertex(DynamicConnectivityStrategy::bfs, 0, 1)) {
+            LOG << "Should not be able to move vertex";
+        }
     }
 };
 

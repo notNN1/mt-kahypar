@@ -43,11 +43,16 @@
 #include "mt-kahypar/utils/randomize.h"
 #include "mt-kahypar/utils/utilities.h"
 #include "mt-kahypar/utils/exception.h"
+#include "mt-kahypar/partition/connected_components/tarjan.h"
+#include "mt-kahypar/datastructures/partitioned_hypergraph.h"
 
 using namespace mt_kahypar;
 using HighResClockTimepoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
 int main(int argc, char* argv[]) {
+
+  connected_components::Tarjan<mt_kahypar::ds::PartitionedHypergraph<mt_kahypar::ds::StaticHypergraph, mt_kahypar::ds::ConnectivityInfo>> tarjan;
+  tarjan.test_tarjan();
 
   Context context(false);
   processCommandLineInput(context, argc, argv);
