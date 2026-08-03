@@ -614,9 +614,6 @@ class PartitionedHypergraph {
     const HypernodeWeight wu = nodeWeight(u);
     const HypernodeWeight to_weight_after = _part_weights[to].add_fetch(wu, std::memory_order_relaxed);
 
-    size_t component_count_before = 0;
-    size_t component_count_after  = 0;
-
     if (do_connectivity && this->was_changed_without_connectivity) {
       this->_cf.reset_connectivity_out(*this);
     }
@@ -1345,8 +1342,14 @@ public:
 
           HypernodeID prev = edge_pins[(i + edge_size - 1) % edge_size];
           HypernodeID next = edge_pins[(i + 1) % edge_size];
+          
+          if (prev != current) {
+            he_hn_to_new_edge[he][current].push_back(prev);
+          }
 
-          he_hn_to_new_edge[he][current] = {prev, next};
+          if (next != current && next != prev) {
+            he_hn_to_new_edge[he][current].push_back(next);
+          }
         }
     }
 

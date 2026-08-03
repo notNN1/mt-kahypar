@@ -34,6 +34,7 @@
 #include "mt-kahypar/datastructures/static_hypergraph.h"
 #include "mt-kahypar/datastructures/static_hypergraph_factory.h"
 
+#include <algorithm>
 #include <signal.h>
 
 namespace mt_kahypar {
@@ -75,7 +76,7 @@ public:
         
         for (const HypernodeID& node : phg.nodes()) {
             if (disc[node] == 0) {
-                if (dfs(phg, node) > 1) {
+                if (dfs_recursive_wrapper(phg, node) > 1) {
                     is_ap.set((size_t) node);
                 }
             }
@@ -83,6 +84,45 @@ public:
 
     }
 private:
+    size_t dfs_recursive_wrapper(
+        const PartitionedHypergraph& phg, 
+        const HypernodeID& node
+    ) {
+        vec<vec<vec<HypernodeID>>> he_hn_to_new_edge = phg.circular_edge_expansion();
+        return dfs_recursive(phg, node, node, he_hn_to_new_edge);
+    }
+
+    size_t dfs_recursive(
+        const PartitionedHypergraph& phg, 
+        const HypernodeID& node, 
+        const HypernodeID& parent,
+        const vec<vec<vec<HypernodeID>>>& he_hn_to_new_edge
+    ) {
+        size_t children = 0;
+        low[node] = disc[node] = time;
+        time++;
+
+        for (const HyperedgeID& he : phg.incidentEdges(node)) {
+            for (const HypernodeID& incident_hn : he_hn_to_new_edge[he][node]) {
+                if (incident_hn == parent) continue; // we don't want to go back through the same path.
+                                // if we go back is because we found another way back
+                if (disc[incident_hn] == 0) { // if V has not been discovered before
+                    children++;
+                    dfs_recursive(phg, incident_hn, node, he_hn_to_new_edge); // recursive DFS call
+
+                    if (node != parent && disc[node] <= low[incident_hn]) // condition #1
+                        is_ap.set((size_t) node);
+
+                    low[node] = std::min(low[node], low[incident_hn]); // low[v] might be an ancestor of u
+                } else // if v was already discovered means that we found an ancestor
+                    low[node] = std::min(low[node], disc[incident_hn]); // finds the ancestor with the least discovery time
+            }
+        }
+
+        return children;
+    }
+
+
     size_t dfs(
         const PartitionedHypergraph& phg, 
         const HypernodeID& node
@@ -105,7 +145,6 @@ private:
 
 
         vec<vec<vec<HypernodeID>>> he_hn_to_new_edge = phg.circular_edge_expansion();
-
 
         while(queue.size() > 0) {
             
@@ -131,10 +170,6 @@ private:
 
                         if (disc[incident_hn] > 0) {
                             low[current] = low[current] < disc[incident_hn] ? low[current] : disc[incident_hn];
-                            continue;
-                        }
-
-                        if (node_colored.isSet((size_t) incident_hn)) {
                             continue;
                         }
 
@@ -197,11 +232,15 @@ private:
 public: 
     void test_tarjan() {
         LOG << "Begin tarjan test";
-        test_tarjan_1();
+        test_tarjan_path_middle();
+        test_tarjan_leaf();
+        test_tarjan_cycle();
+        //test_circular_expansion();
         LOG << "End tarjan test";
     }
 
-    void test_tarjan_1() {
+    void test_circular_expansion() {
+
         auto hg = Factory::construct(
             5,
             4,
@@ -228,8 +267,112 @@ public:
         phg.setNodePart(3, 1);
         phg.setNodePart(4, 1);
 
-        if (phg.canMoveVertex(DynamicConnectivityStrategy::bfs, 0, 1)) {
-            LOG << "Should not be able to move vertex";
+        vec<vec<vec<HypernodeID>>> he_hn_to_new_edge = phg.circular_edge_expansion();
+
+        for (const HyperedgeID& he : phg.edges()) {
+            for (const HypernodeID& hn : phg.pins(he)) {
+                LOG << "HN: " << hn;
+                for (const HypernodeID& incident_hn : he_hn_to_new_edge[he][hn]) {
+                    LOG << "incident_hn: " << incident_hn;
+                }
+            }
+            LOG << "############";
+        }
+    }
+
+    void test_tarjan_path_middle() {
+        auto hg = Factory::construct(
+            5,
+            4,
+            {
+                {0,1},
+                {1,2},
+                {2,3},
+                {3,4}
+            },
+            nullptr,
+            nullptr,
+            true
+        );
+
+        PartitionedHypergraph phg(2, hg);
+
+        phg.setNodePart(0,0);
+        phg.setNodePart(1,0);
+        phg.setNodePart(2,0);
+        phg.setNodePart(3,1);
+        phg.setNodePart(4,1);
+
+        // Removing 2 disconnects {0,1} from {3,4}
+        Tarjan t;
+
+        if (!t.is_articulation_point(phg, 2)) {
+            LOG << "Should be articulaton point!";
+        }
+    }
+
+    void test_tarjan_leaf() {
+        auto hg = Factory::construct(
+            5,
+            4,
+            {
+                {0,1},
+                {1,2},
+                {2,3},
+                {3,4}
+            },
+            nullptr,
+            nullptr,
+            true
+        );
+
+        PartitionedHypergraph phg(2, hg);
+
+        phg.setNodePart(0,0);
+        phg.setNodePart(1,0);
+        phg.setNodePart(2,0);
+        phg.setNodePart(3,0);
+        phg.setNodePart(4,0);
+
+        Tarjan t;
+
+        if (t.is_articulation_point(phg, 0)) {
+            LOG << "A leaf should never be an articulation point";
+        }
+    }
+
+    void test_tarjan_cycle() {
+        auto hg = Factory::construct(
+            4,
+            6,
+            {
+                {0,1},
+                {1,2},
+                {2,0},
+                {0,3},
+                {1,3},
+                {2,3},
+            },
+            nullptr,
+            nullptr,
+            true
+        );
+
+        PartitionedHypergraph phg(2, hg);
+
+        phg.setNodePart(0,0);
+        phg.setNodePart(1,0);
+        phg.setNodePart(2,0);
+        phg.setNodePart(3,1);
+
+        if (!phg.canMoveVertex(DynamicConnectivityStrategy::bfs, 0, 1)) {
+            LOG << "1There should be no articulation points in the cycle";
+        }
+        if (!phg.canMoveVertex(DynamicConnectivityStrategy::bfs, 1, 1)) {
+            LOG << "2There should be no articulation points in the cycle";
+        }
+        if (!phg.canMoveVertex(DynamicConnectivityStrategy::bfs, 2, 1)) {
+            LOG << "3There should be no articulation points in the cycle";
         }
     }
 };

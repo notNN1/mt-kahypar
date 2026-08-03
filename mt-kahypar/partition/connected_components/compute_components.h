@@ -36,8 +36,9 @@ struct ConnectedComponent {
 };
 
 struct ComponentInfo {
-  size_t nodes;
-  PartitionID partition;
+  vec<HypernodeID>  nodes;
+  PartitionID       partition;
+  size_t            parititon_weight;
 };
 
 // ! Computes the connected components of each block and writes them to result
@@ -73,6 +74,23 @@ template<typename PartitionedHypergraph>
 int total_component_count(
   const PartitionedHypergraph& phg,
   const Context& context
+);
+
+template<typename PartitionedHypergraph>
+void restore_connectivity(
+  const PartitionedHypergraph& phg,
+  const vec<vec<ComponentInfo>>& super_components,
+  vec<ComponentInfo>& result,
+  const Context& context,
+  const double total_weight_ratio
+);
+
+template<typename PartitionedHypergraph>
+void find_possible_partitions(
+  const PartitionedHypergraph& phg,
+  const ComponentInfo& component,
+  const Context& context,
+  std::priority_queue<std::pair<size_t, PartitionID>>& result
 );
 
 }  // namespace connected_components

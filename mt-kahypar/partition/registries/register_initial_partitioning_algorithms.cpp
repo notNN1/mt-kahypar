@@ -40,6 +40,7 @@
 #include "mt-kahypar/partition/initial_partitioning/greedy_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/label_propagation_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/st_initial_partitioner.h"
+#include "mt-kahypar/partition/initial_partitioning/tarjan_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/policies/gain_computation_policy.h"
 #include "mt-kahypar/partition/initial_partitioning/policies/pq_selection_policy.h"
 #include "mt-kahypar/partition/thread_safe_policy_registry.h"
@@ -111,7 +112,10 @@ using STDispatcher = kahypar::meta::StaticMultiDispatchFactory<
                                           STInitialPartitioner,
                                           IInitialPartitioner,
                                           kahypar::meta::Typelist<TypeTraitsList>>;
-
+using TarjanDispatcher = kahypar::meta::StaticMultiDispatchFactory<
+                                          TarjanInitialPartitioner,
+                                          IInitialPartitioner,
+                                          kahypar::meta::Typelist<TypeTraitsList>>;
 
 void register_initial_partitioning_algorithms() {
   REGISTER_DISPATCHED_INITIAL_PARTITIONER(InitialPartitioningAlgorithm::random,
@@ -152,6 +156,10 @@ void register_initial_partitioning_algorithms() {
                                           context.partition.partition_type));
   REGISTER_DISPATCHED_INITIAL_PARTITIONER(InitialPartitioningAlgorithm::st,
                                           STDispatcher,
+                                          ThreadSafePolicyRegistry<mt_kahypar_partition_type_t>::getInstance().getPolicy(
+                                          context.partition.partition_type));
+  REGISTER_DISPATCHED_INITIAL_PARTITIONER(InitialPartitioningAlgorithm::tarjan,
+                                          TarjanDispatcher,
                                           ThreadSafePolicyRegistry<mt_kahypar_partition_type_t>::getInstance().getPolicy(
                                           context.partition.partition_type));
 }

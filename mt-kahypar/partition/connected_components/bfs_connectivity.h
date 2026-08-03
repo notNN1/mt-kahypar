@@ -36,7 +36,8 @@
 namespace mt_kahypar {
 namespace connected_components {
 
-
+// This implementation is very wrong, because tarjan does not check for partitions. 
+// Tarjan was implemented with the tarjan initial partitioner in mind
 template<typename PartitionedHypergraph>
 class BFSConnectivity {
 public:

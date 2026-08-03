@@ -158,10 +158,6 @@ public:
         return true;
     }
 
-    bool articulation_point_is_leaf(const PartitionedHypergraph& phg) {
-
-    }
-
     bool canMoveVertex(
         const PartitionedHypergraph& phg,
         const HypernodeID& hn

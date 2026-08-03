@@ -40,20 +40,6 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
         HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
         PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
-        LOG << "HELLO";
-
-        int count = 0;
-        connected_components::Tarjan<PartitionedHypergraph> tarjan;
-        for (const HypernodeID& node : hg.nodes()) {
-            if (tarjan.is_articulation_point(hg, node)) {
-                count++;
-            }
-        }
-        LOG << "Number of articulation points: " << count;
-        LOG << "Number of nodes:               " << hg.initialNumNodes();
-        while(true);
-        return;
-
         // compute components and calculate st for each component
         vec<connected_components::ConnectedComponent> components;
         connected_components::compute_components<typename TypeTraits::PartitionedHypergraph>(hg, _context, components);

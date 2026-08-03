@@ -49,10 +49,12 @@ public:
         const InitialPartitioningAlgorithm,
         ip_data_container_t* ip_data,
         const Context& context,
+        const int seed,
         const int tag
     ) :
     _ip_data(ip::to_reference<TypeTraits>(ip_data)),
     _context(context),
+    _rng(seed),
     _tag(tag) { }
 
  private:
@@ -61,31 +63,28 @@ public:
 
     // for tarjan
     enum NodeType {
-        normal,
-        articulation,
-        interface
+        normal          = 0,
+        articulation    = 1,
+        interface       = 2
     };
 
     vec<NodeType> hn_to_node_type;                  // maps each node to its type
 
     struct PackedComponentInfo {
+        PackedComponentID id;
+        size_t total_weight;
         NodeType type;                              // should only be normal or articulation
         vec<HypernodeID> nodes;                     // contains all nodes in the component -- does not include the articulation point
-        std::set<HypernodeID> connected_to;         // only interface nodes
+        std::set<HypernodeID> connected_to;              // only interface nodes
     };
-
-    // find all node types
-    void run_tarjan(
-        const PartitionedHypergraph& hg,
-        const ConnetedComponent& component
-    );
 
     // Do BFS while not moving over nodes of other types and collect them into a packed component
     // Does not compact interface nodes and instead gives each one a separate PackedComponent
     void compact_regions(
         const PartitionedHypergraph& hypergraph,
         vec<PackedComponentID>& vertex_to_packed_component,
-        vec<PackedComponentInfo>& packed_component_info
+        vec<PackedComponentInfo>& packed_component_info,
+        connected_components::Tarjan<PartitionedHypergraph>& tarjan
     );
 
     // calculates a spanning tree over the packed components
@@ -93,20 +92,27 @@ public:
         const vec<PackedComponentID>& vertex_to_packed_component,
         const vec<PackedComponentInfo>& packed_component_info,
         vec<PackedComponentID>& component_to_parent,
-        vec<PackedComponentID>& leaf_components
+        vec<size_t>& subtree_size
     );
 
-
-    void calculate_spanning_tree(
-        const PartitionedHypergraph& hypergraph,
-        const ConnetedComponent& component,
-        const size_t& target
+    void find_biggest_leaf() {
         
-    )
+    };
+
+    void find_farthest_component_from_component(
+        const vec<PackedComponentInfo>& packed_component_info,
+        const PackedComponentInfo& starter_component,
+        PackedComponentInfo& end_component
+    );
+
+    void build_spanning_tree_from_node_in_direction() {
+
+    };
 
 
     InitialPartitioningDataContainer<TypeTraits>& _ip_data;
     const Context& _context;
+    std::mt19937 _rng;
     const int _tag;
 };
 
