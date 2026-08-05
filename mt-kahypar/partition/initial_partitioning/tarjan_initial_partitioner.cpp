@@ -48,14 +48,18 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
 
     for (const PackedComponentInfo& comp_info : packed_component_info) {
 
+      if (comp_info.nodes.size() <= 2) {
+        continue;
+      }
+
       LOG << "Type:         " << comp_info.type;
-      LOG << "total_weight: " << comp_info.total_weight;
+      //LOG << "total_weight: " << comp_info.total_weight;
       LOG << "Nodes count:  " << comp_info.nodes.size();
-      LOG << "Border nodes: " << comp_info.connected_to.size();
+      //LOG << "Border nodes: " << comp_info.connected_to.size();
 
       LOG << "";
 
-      if (comp_info.type == NodeType::normal) {
+      /*if (comp_info.type == NodeType::normal) {
         for (const HypernodeID& node : comp_info.connected_to) {
           LOG << "Border node: " << node;
         }
@@ -63,27 +67,30 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
         for (const HypernodeID& node : comp_info.nodes) {
           LOG << "Internal node: " << node;
         }
-      }
+      }*/
 
-      LOG << "#################";
+      //LOG << "#################";
     }
+
+    while (true);
+    
 
     vec<PackedComponentID>  component_to_parent;
     vec<size_t>             subtree_size;
 
     calculate_master_spanning_tree(vertex_to_packed_component, packed_component_info, component_to_parent, subtree_size);
-    for (const PackedComponentInfo& comp_info : packed_component_info) {
+    /*for (const PackedComponentInfo& comp_info : packed_component_info) {
       LOG << "Component id: " << comp_info.id;
       LOG << "Own size:     " << comp_info.total_weight;
       LOG << "Subtree size: " << subtree_size[comp_info.id];
       LOG << "Parent:       " << component_to_parent[comp_info.id];
-    }
+    }*/
 
     // for each component compact regions
 
     HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
     double time = std::chrono::duration<double>(end - start).count();
-    _ip_data.commit(InitialPartitioningAlgorithm::random, _rng, _tag, time);
+    _ip_data.commit(InitialPartitioningAlgorithm::tarjan, _rng, _tag, time);
   }
 };
 

@@ -326,6 +326,7 @@ namespace mt_kahypar::io {
       LOG << "inefficient components =" << connectivity.inefficient_components_count;
       LOG << "Imbalance violated     =" << imbalance.violates_balance;
       LOG << "Empty blocks           =" << imbalance.violates_non_empty_blocks;
+
       if (context.partition.verbose_logging) {
         LOG << "Part sizes and weights:";
         io::printPartWeightsAndSizes(hypergraph, context);

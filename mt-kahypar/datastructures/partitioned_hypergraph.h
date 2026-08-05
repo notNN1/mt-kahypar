@@ -179,6 +179,8 @@ class PartitionedHypergraph {
 
   void setHypergraph(Hypergraph& hypergraph) {
     _hg = &hypergraph;
+    this->_cf.reset_connectivity_out(*this);
+    this->_cf.set_graph_was_changed();
   }
 
   // ! Initial number of hypernodes

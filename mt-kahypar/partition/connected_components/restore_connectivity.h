@@ -31,47 +31,18 @@
 namespace mt_kahypar {
 namespace connected_components {
 
-struct ConnectedComponent {
-  vec<HypernodeID> nodes;
-};
-
-struct ComponentInfo {
-  vec<HypernodeID>  nodes;
-  PartitionID       partition;
-  size_t            parititon_weight;
-};
-
-// ! Computes the connected components of each block and writes them to result
 template<typename PartitionedHypergraph>
-void compute_components_per_block(
-  const PartitionedHypergraph& phg,
-  const Context& context,
-  vec<vec<ConnectedComponent>>& result
-);
-
-template<typename PartitionedHypergraph>
-void compute_components(
-  const PartitionedHypergraph& phg,
-  const Context& context,
-  vec<ConnectedComponent>& result
-);
-
-template<typename PartitionedHypergraph>
-void compute_super_components(
-  const PartitionedHypergraph& phg,                                     
-  const Context& context,
-  const vec<vec<ConnectedComponent>>& components,
-  vec<vec<ComponentInfo>>& result
-);
-
-void find_inefficient_super_components(                               
-  const Context& context,
+void restore_connectivity(
+  PartitionedHypergraph& phg,
   const vec<vec<ComponentInfo>>& super_components,
-  vec<vec<ComponentInfo>>& result
+  vec<ComponentInfo>& result,
+  const Context& context,
+  const double total_weight_ratio
 );
 
 template<typename PartitionedHypergraph>
-int total_component_count(
+vec<size_t> find_possible_partitions(
+  const vec<connected_components::ComponentInfo>& super_component,
   const PartitionedHypergraph& phg,
   const Context& context
 );

@@ -76,18 +76,37 @@ int ConnectivityMetrics::numViolations() const {
   return this->extra_components_count > 0 ? 1 : 0 + this->inefficient_components_count > 0 ? 1 : 0;
 }
 
+void logTuple(const std::tuple<bool, bool, size_t, size_t, double, HyperedgeWeight>& data)
+{
+    std::cout
+        << "Tuple values:\n"
+        << "  bool 1: " << std::boolalpha << std::get<0>(data) << "\n"
+        << "  bool 2: " << std::get<1>(data) << "\n"
+        << "  size_t 1: " << std::get<2>(data) << "\n"
+        << "  size_t 2: " << std::get<3>(data) << "\n"
+        << "  double: " << std::get<4>(data) << "\n"
+        << "  HyperedgeWeight: " << std::get<5>(data) << "\n";
+}
+
 bool Metrics::isBetter(const Metrics& other) const {
+  
+
+  if (this->to_tuple() < other.to_tuple() && this->imbalance.imbalance_value > other.imbalance.imbalance_value) {
+    logTuple(this->to_tuple());
+    logTuple(other.to_tuple());
+  }
+
   return this->to_tuple() < other.to_tuple();
 }
 
-std::tuple<size_t, bool, size_t, size_t, HyperedgeWeight, double> Metrics::to_tuple() const {
+std::tuple<bool, bool, size_t, size_t, double, HyperedgeWeight> Metrics::to_tuple() const {
   return std::tuple {
-    this->imbalance.numViolations(),
     this->imbalance.violates_balance,
+    this->imbalance.violates_non_empty_blocks,
     this->connectivity.extra_components_count,
     this->connectivity.inefficient_components_count,
-    this->quality,
-    this->imbalance.imbalance_value
+    this->imbalance.imbalance_value,
+    this->quality
   };
 } 
 

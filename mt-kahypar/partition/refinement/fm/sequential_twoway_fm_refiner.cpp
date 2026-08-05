@@ -90,7 +90,7 @@ bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics& best_metrics, std::m
     _vertex_state[hn] = VertexState::MOVED;
 
     if ( _phg.changeNodePart(hn, from, to,
-          _context.partition.max_part_weights[to], []{}, false, border_vertex_update) ) {
+          _context.partition.max_part_weights[to], []{}, true, border_vertex_update) ) {
 
       // Perform delta gain updates
       updateNeighbors(hn, from, to);

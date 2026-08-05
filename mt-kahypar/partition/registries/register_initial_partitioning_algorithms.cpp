@@ -38,6 +38,7 @@
 #include "mt-kahypar/partition/initial_partitioning/random_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/bfs_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/greedy_initial_partitioner.h"
+#include "mt-kahypar/partition/initial_partitioning/greedy_st_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/label_propagation_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/st_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/tarjan_initial_partitioner.h"
@@ -109,7 +110,7 @@ using GreedySequentialMaxNetDispatcher = kahypar::meta::StaticMultiDispatchFacto
                                           IInitialPartitioner,
                                           kahypar::meta::Typelist<TypeTraitsList>>;
 using STDispatcher = kahypar::meta::StaticMultiDispatchFactory<
-                                          STInitialPartitioner,
+                                          GreedySTInitialPartitioner,
                                           IInitialPartitioner,
                                           kahypar::meta::Typelist<TypeTraitsList>>;
 using TarjanDispatcher = kahypar::meta::StaticMultiDispatchFactory<

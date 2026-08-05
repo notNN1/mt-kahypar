@@ -171,7 +171,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
         
         HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
         double time = std::chrono::duration<double>(end - start).count();
-        _ip_data.commit(InitialPartitioningAlgorithm::st, _rng, _tag, time);
+        _ip_data.commit(InitialPartitioningAlgorithm::random, _rng, _tag, time);
     }
 }
 

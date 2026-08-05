@@ -294,108 +294,17 @@ int total_component_count(
   return count;
 }
 
-template<typename PartitionedHypergraph>
-void restore_connectivity(
-  const PartitionedHypergraph& phg,
-  const vec<vec<ComponentInfo>>& super_components,
-  vec<ComponentInfo>& result,
-  const Context& context,
-  const double total_weight_ratio
-) {
-  // find components
-  vec<vec<ComponentInfo&>> infos;
-  vec<size_t> component_weight;
-  infos.resize(context.partition.k);
-
-  ////// contract small components
-  for (const vec<connected_components::ComponentInfo>& components_parent : super_components) {
-    for (const connected_components::ComponentInfo& component : components_parent) {
-      
-      if (component.parititon_weight < total_weight_ratio*phg.totalWeight()) {
-        
-        std::priority_queue<std::pair<size_t, PartitionID>> partitions;
-        find_possible_partitions(phg, component, context, partitions);
-
-        PartitionID selected_part = partitions.top().second;
-
-        for (const HypernodeID& node : component.nodes) {
-          phg.setNodePart(node, selected_part);
-        }
-      }
-    }
-  }
-
-  ////// fix inefficient components
-  /*for (size_t k = 0; k < context.partition.k; k++) {
-    if (infos[k].size() > 1) {
-
-      for (size_t i = 1; i < infos[k].size(); i++) {
-        Bitset possible_partitions;
-        find_possible_partitions<PartitionedHypergraph>(phg, infos[k][i], context, possible_partitions);
-
-        // find partition with smallest part_weight
-        HypernodeWeight smallest = INT32_MAX;
-        PartitionID smallest_part = kInvalidPartition;
-
-        for (size_t part = 0; part < context.partition.k; part++) {
-          if (possible_partitions.isSet((size_t) part) && phg.partWeight(part) < smallest) {
-            smallest_part   = part;
-            smallest        = phg.partWeight(part);
-          }
-        }
-
-        // assign nodes to that partition
-        assert(smallest_part != kInvalidPartition);
-        for (const HypernodeID& node : infos[k][i].nodes) {
-          phg.setNodePart(node, smallest_part);
-        }
-      }
-    }
-  }*/
-
-}
-
-template<typename PartitionedHypergraph>
-void find_possible_partitions(
-  const PartitionedHypergraph& phg,
-  const ComponentInfo& component,
-  const Context& context,
-  std::priority_queue<std::pair<size_t, PartitionID>>& result
-) {
-
-  for (const HypernodeID& node : component.nodes) {
-
-    PartitionID parent_part_id = phg.partID(node);
-
-    for (const HyperedgeID& he : phg.incidentEdges(node)) {
-      for (const HypernodeID& incident_hn : phg.pins(he)) {
-
-        PartitionID incident_part_id = phg.partID(incident_hn);
-        
-
-        if (parent_part_id != incident_part_id) {
-          result.push({-phg.partWeight(incident_part_id), incident_part_id});
-        }
-      }
-    }
-  }
-}
-
 namespace {
 #define COMPUTE_COMPONENTS_PER_BLOCK(X) void compute_components_per_block(const X& phg, const Context& context, vec<vec<ConnectedComponent>>& result)
 #define COMPUTE_COMPONENTS(X) void compute_components(const X& phg, const Context& context, vec<ConnectedComponent>& result)
 #define COMPUTE_VC(X) void compute_super_components(const X& phg, const Context& context, const vec<vec<ConnectedComponent>>& components, vec<vec<ComponentInfo>>& result)
 #define COMPUTE_TOTAL(X) int total_component_count(const X& phg, const Context& context)
-#define FIND_PARTITIONS(X) int find_possible_partitions(const X& phg, const connected_components::ComponentInfo& component, const Context& context, std::priority_queue<std::pair<size_t, PartitionID>>& result)
-#define RESTORE_CONNECTIVITY(X) void restore_connectivity(const X& phg, const vec<vec<ComponentInfo>>& super_components, vec<ComponentInfo>& result, const Context& context, const double total_weight_ratio)
 }
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_COMPONENTS_PER_BLOCK)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_COMPONENTS)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_VC)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(COMPUTE_TOTAL)
-INSTANTIATE_FUNC_WITH_PARTITIONED_HG(FIND_PARTITIONS)
-INSTANTIATE_FUNC_WITH_PARTITIONED_HG(RESTORE_CONNECTIVITY)
 
 }  // namespace connected_components
 }  // namespace mt_kahypar
