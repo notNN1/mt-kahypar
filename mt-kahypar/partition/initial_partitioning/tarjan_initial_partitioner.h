@@ -91,7 +91,7 @@ public:
     void calculate_master_spanning_tree(
         const vec<PackedComponentID>& vertex_to_packed_component,
         const vec<PackedComponentInfo>& packed_component_info,
-        vec<PackedComponentID>& component_to_parent,
+        vec<std::set<PackedComponentID>>& component_to_nb,
         vec<size_t>& subtree_size
     );
 

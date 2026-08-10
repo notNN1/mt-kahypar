@@ -1060,8 +1060,10 @@ namespace mt_kahypar {
       "- greedy_round_robin_max_net\n"
       "- greedy_global_max_net\n"
       "- greedy_sequential_max_net\n"
+      "- st"
+      "- tarjan"
       "For example, 'i-enabled-ip-algos=random bfs' enables the random and bfs algorithms."
-    )->expected(1, 9)->capture_default_str();
+    )->expected(1, 11)->capture_default_str();
     app.add_option(
       "--i-runs",
       context.initial_partitioning.runs,

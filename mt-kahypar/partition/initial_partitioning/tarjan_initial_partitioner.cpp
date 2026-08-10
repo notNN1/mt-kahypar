@@ -25,6 +25,7 @@
  ******************************************************************************/
 
 #include "mt-kahypar/partition/initial_partitioning/tarjan_initial_partitioner.h"
+#include "mt-kahypar/partition/initial_partitioning/initial_partitioning_data_container.h"
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/randomize.h"
@@ -34,6 +35,7 @@ namespace mt_kahypar {
 template<typename TypeTraits>
 void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
   if ( _ip_data.should_initial_partitioner_run(InitialPartitioningAlgorithm::tarjan) ) {
+
     HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
     std::uniform_int_distribution<PartitionID> select_random_block(0, _context.partition.k - 1);
@@ -46,18 +48,31 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
     vec<PackedComponentInfo> packed_component_info;
     compact_regions(hg, vertex_to_packed_component, packed_component_info, tarjan);
 
+    std::shuffle(packed_component_info.begin(), packed_component_info.end(), _rng);
+
+    // recalculate id
+    for (size_t i = 0; i < packed_component_info.size(); i++) {
+      packed_component_info[i].id = i;
+
+      for (const HypernodeID& node : packed_component_info[i].nodes) {
+        vertex_to_packed_component[node] = i;
+      }
+    }
+
+    
+
     for (const PackedComponentInfo& comp_info : packed_component_info) {
 
       if (comp_info.nodes.size() <= 2) {
         continue;
       }
 
-      LOG << "Type:         " << comp_info.type;
+      //LOG << "Type:         " << comp_info.type;
       //LOG << "total_weight: " << comp_info.total_weight;
-      LOG << "Nodes count:  " << comp_info.nodes.size();
+      //LOG << "Nodes count:  " << comp_info.nodes.size();
       //LOG << "Border nodes: " << comp_info.connected_to.size();
 
-      LOG << "";
+      //LOG << "";
 
       /*if (comp_info.type == NodeType::normal) {
         for (const HypernodeID& node : comp_info.connected_to) {
@@ -71,14 +86,12 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
 
       //LOG << "#################";
     }
-
-    while (true);
     
 
-    vec<PackedComponentID>  component_to_parent;
-    vec<size_t>             subtree_size;
+    vec<std::set<PackedComponentID>>   component_to_nb;
+    vec<size_t>                   subtree_size;
 
-    calculate_master_spanning_tree(vertex_to_packed_component, packed_component_info, component_to_parent, subtree_size);
+    calculate_master_spanning_tree(vertex_to_packed_component, packed_component_info, component_to_nb, subtree_size);
     /*for (const PackedComponentInfo& comp_info : packed_component_info) {
       LOG << "Component id: " << comp_info.id;
       LOG << "Own size:     " << comp_info.total_weight;
@@ -86,7 +99,140 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
       LOG << "Parent:       " << component_to_parent[comp_info.id];
     }*/
 
-    // for each component compact regions
+    // find correct compacted component, to find the split in
+    size_t target = hg.totalWeight() / 2;
+
+    PackedComponentInfo best_comp = packed_component_info[0];
+    size_t best_size = hg.totalWeight();
+
+    for (const PackedComponentInfo& comp_info : packed_component_info) {
+      if (subtree_size[comp_info.id] > target) {
+        best_comp = comp_info;
+        best_size = subtree_size[comp_info.id];
+
+        break;
+      }
+    }
+
+    for (const PackedComponentInfo& comp_info : packed_component_info) {
+      if (subtree_size[comp_info.id] > target && subtree_size[comp_info.id] < best_size) {
+        best_comp = comp_info;
+        best_size = subtree_size[comp_info.id];
+      }
+    }
+
+    Bitset node_colored;
+    node_colored.resize(hg.initialNumNodes());
+
+    Bitset component_colored;
+    component_colored.resize(packed_component_info.size());
+    component_colored.set((size_t) best_comp.id);
+
+    parallel::scalable_vector<HypernodeID> communities(hg.initialNumNodes());
+
+    size_t community_number = 0;
+    vec<HypernodeID> component_to_community;
+    component_to_community.resize(packed_component_info.size());
+
+    for (const PackedComponentID& incident_component : component_to_nb[best_comp.id]) {
+      
+      std::deque<PackedComponentID> queue;
+      queue.push_back(incident_component);
+
+      component_colored.set((size_t) incident_component);
+      component_to_community[incident_component] = community_number;
+
+      while(queue.size() > 0) {
+        PackedComponentID current_component = queue.front();
+        queue.pop_front();
+
+        for (const PackedComponentID& nb_component : component_to_nb[current_component]) {
+          if (component_colored.isSet((size_t) nb_component)) {
+            continue;
+          }
+
+          component_colored.set((size_t) nb_component);
+
+          component_to_community[nb_component] = community_number;
+          queue.push_back(nb_component);
+        }
+      }
+
+      for (const HypernodeID& incident_node : packed_component_info[incident_component].connected_to) {
+        if (vertex_to_packed_component[incident_node] == best_comp.id) {
+          communities[incident_node] = community_number;
+          node_colored.set((size_t) incident_node);
+        } 
+      }
+
+      community_number++;
+    }
+
+    for (const PackedComponentInfo& pci : packed_component_info) {
+      if (pci.id == best_comp.id) {
+        continue;
+      }
+
+      for (const HypernodeID& node : pci.nodes) {
+        communities[node] = component_to_community[pci.id];
+      }
+    }
+
+    for (const HypernodeID& node : best_comp.nodes) {
+      if (node_colored.isSet((size_t) node)) {
+        continue;
+      }
+
+      communities[node] = community_number;
+      community_number++;
+    }
+
+    auto& old_hg    = hg.hypergraph();
+    auto new_hg     = old_hg.contract(communities, true);
+
+    PartitionedHypergraph new_phg(hg.k(), new_hg);
+
+    ///////
+
+    // Create the data container used by the initial partitioner.
+    InitialPartitioningDataContainer<TypeTraits> ip_data(new_phg, _context);
+
+    auto* ip_data_ptr = ip::to_pointer(ip_data);
+
+    for ( uint8_t i = 0; i < static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED); ++i ) {
+      if ( static_cast<InitialPartitioningAlgorithm>(i) != InitialPartitioningAlgorithm::tarjan ) {
+        auto algorithm = static_cast<InitialPartitioningAlgorithm>(i);
+
+        // Create one initial partitioner.
+        std::unique_ptr<IInitialPartitioner> initial_partitioner =
+            InitialPartitionerFactory::getInstance().createObject(
+                algorithm,
+                algorithm,
+                ip_data_ptr,
+                _context,
+                _context.partition.seed + i,
+                10000);
+
+        // Run it.
+        initial_partitioner->partition();
+      }
+    }
+
+    
+    ///////
+
+    // Convert the opaque pointer back to the actual container type.
+    auto& ip_data_ref = *reinterpret_cast<InitialPartitioningDataContainer<TypeTraits>*>(ip_data_ptr);
+    ip_data_ref.apply();
+    auto& local_phg = ip_data_ref.local_partitioned_hypergraph();
+
+    /*for (const HypernodeID& node : local_phg.nodes()) {
+      LOG << "Node " << node << " with weight: " << local_phg.nodeWeight(node);
+    }*/
+
+    for (const HypernodeID& node : hg.nodes()) {
+      hg.setNodePart(node, local_phg.partID(communities[node]));
+    }
 
     HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
     double time = std::chrono::duration<double>(end - start).count();
@@ -151,10 +297,6 @@ void TarjanInitialPartitioner<TypeTraits>::compact_regions(
         edge_colored.set((size_t) he);
 
         for (const HypernodeID& incident_hn : hypergraph.pins(he)) {
-          if (node_colored.isSet((size_t) incident_hn)) {
-            continue;
-          }
-
           if (current_node_type == NodeType::normal && tarjan.is_articulation_point(hypergraph, incident_hn)) {
             border_nodes.insert(incident_hn);
             continue;
@@ -162,6 +304,10 @@ void TarjanInitialPartitioner<TypeTraits>::compact_regions(
 
           if (current_node_type == NodeType::articulation && !tarjan.is_articulation_point(hypergraph, incident_hn)) {
             border_nodes.insert(incident_hn);
+            continue;
+          }
+
+          if (node_colored.isSet((size_t) incident_hn)) {
             continue;
           }
 
@@ -175,13 +321,20 @@ void TarjanInitialPartitioner<TypeTraits>::compact_regions(
     current_component++;
   }
 
+  for (const HypernodeID& node : hypergraph.nodes()) {
+    if (!node_colored.isSet((size_t) node)) {
+      LOG << "node not colored";
+      while(true);
+    }
+  }
+
 };
 
 template<typename TypeTraits>
 void TarjanInitialPartitioner<TypeTraits>::calculate_master_spanning_tree(
   const vec<PackedComponentID>& vertex_to_packed_component,
   const vec<PackedComponentInfo>& packed_component_info,
-  vec<PackedComponentID>& component_to_parent,
+  vec<std::set<PackedComponentID>>& component_to_nb,
   vec<size_t>& subtree_size
 ) {
 
@@ -196,13 +349,20 @@ void TarjanInitialPartitioner<TypeTraits>::calculate_master_spanning_tree(
   }
 
   // make biggest component root of the spanning tree
+  vec<PackedComponentID> component_to_parent;
   component_to_parent.resize(packed_component_info.size());
+
+  for (const PackedComponentInfo& comp_info : packed_component_info) {
+    component_to_parent[comp_info.id] = comp_info.id;
+  }
+
+  component_to_nb.resize(packed_component_info.size());
 
   Bitset component_colored;
   component_colored.resize(packed_component_info.size());
 
   vec<PackedComponentID> component_queue;
-  vec<PackedComponentID> calculation_queue;
+  std::deque<PackedComponentID> calculation_queue;
 
   component_queue.push_back(biggest_comp_id);
   component_colored.set((size_t) biggest_comp_id);
@@ -231,10 +391,13 @@ void TarjanInitialPartitioner<TypeTraits>::calculate_master_spanning_tree(
         }
 
         component_queue.push_back(component_id);
-        calculation_queue.push_back(component_id);
+        calculation_queue.push_front(component_id);
 
         component_colored.set((size_t) component_id);
         component_to_parent[component_id] = current_id; 
+
+        component_to_nb[component_id].insert(current_id);
+        component_to_nb[current_id].insert(component_id);
       } 
     }
   }
@@ -248,6 +411,27 @@ void TarjanInitialPartitioner<TypeTraits>::calculate_master_spanning_tree(
 
   for (const PackedComponentID& component_id : calculation_queue) {
     subtree_size[component_to_parent[component_id]] += subtree_size[component_id];
+  }
+
+  PackedComponentID m_parent = packed_component_info[0].id;
+  while(component_to_parent[m_parent] != m_parent) {
+    m_parent = component_to_parent[m_parent];
+  }
+
+  for (const PackedComponentInfo& comp : packed_component_info) {
+
+    PackedComponentID parent = comp.id;
+    while(component_to_parent[parent] != parent) {
+      parent = component_to_parent[parent];
+    }
+
+    if (parent != m_parent) {
+      LOG << "Why not connected";
+      //while (true);
+      
+    }
+
+
   }
 };
 

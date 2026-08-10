@@ -34,7 +34,7 @@ template<typename PartitionedHypergraph>
 void BFSSpanningTreeConnectivity<PartitionedHypergraph>::reset(
     const PartitionedHypergraph& phg
 ) {
-    LOG << "Initialized spanning tree on hypergraph instance: " << static_cast<const void*>(&phg) << " with " << phg.initialNumNodes() << " nodes";
+    //LOG << "Initialized spanning tree on hypergraph instance: " << static_cast<const void*>(&phg) << " with " << phg.initialNumNodes() << " nodes";
 
     this->hn_to_num_children.clear();
     this->hn_to_num_children.resize(phg.initialNumNodes(), 0);

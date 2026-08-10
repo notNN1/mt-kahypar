@@ -236,6 +236,7 @@ public:
         test_tarjan_leaf();
         test_tarjan_cycle();
         //test_circular_expansion();
+        //test_contraction();
         LOG << "End tarjan test";
     }
 
@@ -278,6 +279,39 @@ public:
             }
             LOG << "############";
         }
+    }
+
+    void test_contraction() {
+        auto hg = Factory::construct(
+            5,
+            4,
+            {
+                {0,1},
+                {1,2},
+                {2,3},
+                {3,4}
+            },
+            nullptr,
+            nullptr,
+            true
+        );
+
+        PartitionedHypergraph phg(2, hg);
+
+        mt_kahypar::ds::StaticHypergraph& hg_p = phg.hypergraph();
+
+        parallel::scalable_vector<HypernodeID> communities(5);
+        communities[0] = 0;
+        communities[1] = 0;
+        communities[2] = 0;
+        communities[3] = 1;
+        communities[4] = 1;
+
+        mt_kahypar::ds::StaticHypergraph new_hg = hg_p.contract(communities, true);
+        PartitionedHypergraph phg_n(2, new_hg);
+
+        LOG << "phg incident net: " << new_hg.incidentEdges(0).size();
+        LOG << "initial num nodes: " << new_hg.initialNumNodes();
     }
 
     void test_tarjan_path_middle() {

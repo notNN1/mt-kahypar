@@ -88,7 +88,7 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
         connected_components::ConnectedComponent component  = component_and_size.second;
 
 
-        if (size_a >= target * 0.90) {
+        if (size_a >= target) {
             for (const HypernodeID& node : component.nodes) {
                 hg.setNodePart(node, 1);
                 size_b += hg.nodeWeight(node);
@@ -97,7 +97,7 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
         }
 
 
-        if (size_a + size > target * 1.1) { // split component
+        if (size_a + size > target) { // split component
 
             size_t target_for_split = size - (target - size_a);
 
@@ -107,12 +107,15 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
             }
 
             //// calculate split 
-            size_t max_splits = 100;
+            size_t max_splits = 3;
             size_t cur_splits = 0;
 
             size_t split_size;
             vec<HypernodeID> nodes_to_swap;
             size_t diff = 0;
+
+            double best_split_diff = 1.0;
+            vec<HypernodeID> best_split;
 
             do {
                 nodes_to_swap.clear();
@@ -123,11 +126,16 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
                 diff = target_for_split >= split_size ? target_for_split - split_size : split_size - target_for_split;
                 cur_splits++;
 
-            } while(static_cast<double>(diff) / target_for_split > 0.7 && cur_splits <= max_splits);
+                if (static_cast<double>(diff) / target_for_split < best_split_diff) {
+                    best_split = nodes_to_swap;
+                    best_split_diff = static_cast<double>(diff) / target_for_split;
+                }
+
+            } while(static_cast<double>(diff) / target_for_split > 0.2 && cur_splits <= max_splits);
 
             ////
 
-            for (const HypernodeID& node : nodes_to_swap) {
+            for (const HypernodeID& node : best_split) {
                 hg.changeNodePart(node, 0, 1, false);
                 size_a -= hg.nodeWeight(node);
                 size_b += hg.nodeWeight(node);
@@ -241,7 +249,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
     HypernodeID starter_node    = kInvalidHypernode;
 
-    size_t max_iterations       = 12;
+    size_t max_iterations       = 10;
     size_t current_iteration    = 0;
 
     Bitset node_colored;
@@ -319,7 +327,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
         for (const HypernodeID& node : result) {
             node_queue.push_back(node);
         }
-        
+
         current_iteration++;
     }
 
