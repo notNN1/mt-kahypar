@@ -59,6 +59,10 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
       }
     }
 
+    for (PackedComponentInfo& pci : packed_component_info) {
+      std::shuffle(pci.nodes.begin(), pci.nodes.end(), _rng);
+    }
+
     
 
     for (const PackedComponentInfo& comp_info : packed_component_info) {
@@ -200,7 +204,8 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
     auto* ip_data_ptr = ip::to_pointer(ip_data);
 
     for ( uint8_t i = 0; i < static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED); ++i ) {
-      if ( static_cast<InitialPartitioningAlgorithm>(i) != InitialPartitioningAlgorithm::tarjan ) {
+      if ( static_cast<InitialPartitioningAlgorithm>(i) != InitialPartitioningAlgorithm::tarjan 
+      && _context.initial_partitioning.enabled_ip_algos[i]) {
         auto algorithm = static_cast<InitialPartitioningAlgorithm>(i);
 
         // Create one initial partitioner.
