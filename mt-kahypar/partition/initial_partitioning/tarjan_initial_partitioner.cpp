@@ -396,7 +396,7 @@ void TarjanInitialPartitioner<TypeTraits>::calculate_master_spanning_tree(
         }
 
         component_queue.push_back(component_id);
-        calculation_queue.push_front(component_id);
+        calculation_queue.push_back(component_id);
 
         component_colored.set((size_t) component_id);
         component_to_parent[component_id] = current_id; 

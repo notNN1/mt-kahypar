@@ -64,6 +64,8 @@ public:
         const PartitionedHypergraph& phg,
         ConnectedComponent& component,
         vec<HypernodeID>& hn_to_parent,
+        vec<vec<HypernodeID>>& hn_to_children,
+        vec<size_t>& subtree_size,
         vec<size_t>& hn_to_num_children,
         const HypernodeID& starter_node,
         HypernodeID& farthest_leaf_node,

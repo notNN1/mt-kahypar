@@ -172,12 +172,18 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning_tree(
     const PartitionedHypergraph& phg,
     ConnectedComponent& component,
     vec<HypernodeID>& hn_to_parent,
+    vec<vec<HypernodeID>>& hn_to_children,
+    vec<size_t>& subtree_size,
     vec<size_t>& hn_to_num_children,
     const HypernodeID& starter_node,
     HypernodeID& farthest_leaf_node,
     const Bitset& covered
 ) {
     farthest_leaf_node = kInvalidHypernode;
+
+    for (const HypernodeID& node : phg.nodes()) {
+        hn_to_children[node].clear();
+    }
 
     Bitset node_colored;
     node_colored.resize(phg.initialNumNodes());
@@ -216,6 +222,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning_tree(
     }
 
     edge_colored.reset();
+    std::deque<HypernodeID> calculation_queue;
 
 
     while (node_queue.size() > 0 || lp_node_queue.size() > 0) {
@@ -223,12 +230,12 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning_tree(
         HypernodeID current_node;
 
         if (node_queue.size() > 0) {
-            current_node = node_queue.front();
-            node_queue.pop_front();
+            current_node = node_queue.back();
+            node_queue.pop_back();
         }
         else {
-            current_node = lp_node_queue.front();
-            lp_node_queue.pop_front();
+            current_node = lp_node_queue.back();
+            lp_node_queue.pop_back();
         }
 
         for (const HyperedgeID& he : phg.incidentEdges(current_node)) {
@@ -257,6 +264,9 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning_tree(
                 hn_to_parent[incident_hn] = current_node;
                 hn_to_num_children[current_node]++;
 
+                hn_to_children[current_node].push_back(incident_hn);
+                calculation_queue.push_back(incident_hn);
+
                 if (covered_nb.isSet((size_t) incident_hn)) {
                     lp_node_queue.push_back(incident_hn);
                 }
@@ -269,6 +279,14 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning_tree(
         if (node_queue.size() == 0) {
             farthest_leaf_node = current_node;
         }
+    }
+
+    for (const HypernodeID& node : phg.nodes()) {
+        subtree_size[node] = phg.nodeWeight(node);
+    }
+
+    for (const HypernodeID& node : calculation_queue) {
+        subtree_size[hn_to_parent[node]] += subtree_size[node];
     }
 }
 
@@ -287,6 +305,12 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
     vec<size_t> hn_to_num_children;
     hn_to_num_children.resize(phg.initialNumNodes());
+
+    vec<vec<HypernodeID>> hn_to_children;
+    hn_to_children.resize(phg.initialNumNodes());
+
+    vec<size_t> subtree_size;
+    subtree_size.resize(phg.initialNumNodes());
 
     Bitset covered;
     covered.resize(phg.initialNumNodes());
@@ -315,8 +339,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
             }
         }
 
-        calculate_component_spanning_tree(phg, component, hn_to_parent, hn_to_num_children, starter_node_st, farthest_leaf_node, covered);
-
+        calculate_component_spanning_tree(phg, component, hn_to_parent, hn_to_children, subtree_size, hn_to_num_children, starter_node_st, farthest_leaf_node, covered);
 
         if (current_split == 0) {
 
@@ -331,6 +354,8 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
             node_queue.push_back(starter_node);
             current_split += phg.nodeWeight(starter_node);
         }
+
+        LOG << "Do we get here?";
 
         while (node_queue.size() > 0) {
 
@@ -348,24 +373,56 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                         continue;
                     }
 
-                    if (hn_to_num_children[incident_hn] > 0) {
+                    if (hn_to_num_children[incident_hn] > 0 && subtree_size[incident_hn] + current_split > target) {
                         continue;
                     }
 
                     if (current_split + phg.nodeWeight(incident_hn) > target) {
                         continue;
                     }
-                    
-                    HypernodeID parent_of_incident_hn = hn_to_parent[incident_hn];
-                    hn_to_num_children[parent_of_incident_hn]--;
-                    
-                    node_colored.set((size_t) incident_hn);
-                    node_queue.push_back(incident_hn);
 
-                    current_split += phg.nodeWeight(incident_hn);
+                    if (subtree_size[incident_hn] + current_split <= target) {
 
-                    result.push_back(incident_hn);
-                    covered.set((size_t) incident_hn);
+                        std::deque<HypernodeID> asignment_queue;
+                        asignment_queue.push_back(incident_hn);
+                        
+                        while (asignment_queue.size() > 0) {
+                            HypernodeID current_assignment_node = asignment_queue.back();
+                            asignment_queue.pop_back();
+
+                            HypernodeID parent_of_incident_hn = hn_to_parent[current_assignment_node];
+                            hn_to_num_children[current_assignment_node]--;
+                            
+                            node_colored.set((size_t) current_assignment_node);
+                            node_queue.push_back(current_assignment_node);
+
+                            current_split += phg.nodeWeight(current_assignment_node);
+
+                            result.push_back(current_assignment_node);
+                            covered.set((size_t) current_assignment_node);
+
+
+                            for (const HypernodeID& ch_hn : hn_to_children[current_assignment_node]) {
+                                if (covered.isSet((size_t) ch_hn)) {
+                                    continue;
+                                }
+
+                                asignment_queue.push_back(ch_hn);
+                            }
+                        }
+                    }
+                    else {
+                        HypernodeID parent_of_incident_hn = hn_to_parent[incident_hn];
+                        hn_to_num_children[parent_of_incident_hn]--;
+                        
+                        node_colored.set((size_t) incident_hn);
+                        node_queue.push_back(incident_hn);
+
+                        current_split += phg.nodeWeight(incident_hn);
+
+                        result.push_back(incident_hn);
+                        covered.set((size_t) incident_hn);
+                    }
                 }
             }   
         }
