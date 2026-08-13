@@ -80,6 +80,18 @@ public:
         size_t& current_split
     );
 
+    void add_node_to_split(
+        const HypernodeID& hn,
+        const vec<HypernodeID>& hn_to_parent,
+        vec<size_t>& hn_to_num_children,
+        Bitset& node_colored,
+        Bitset& node_covered,
+        size_t& current_split,
+        const size_t& node_weight,
+        std::deque<HypernodeID>& node_queue,
+        vec<HypernodeID>& result
+    );
+
     InitialPartitioningDataContainer<TypeTraits>& _ip_data;
     const Context& _context;
     std::mt19937 _rng;

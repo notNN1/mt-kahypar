@@ -137,6 +137,17 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
 
             LOG << "Best Split diff: " << best_split_diff;
 
+            Bitset seen_nodes;
+            seen_nodes.resize(hg.initialNumNodes());
+
+            for (const HypernodeID& node : best_split) {
+                if (seen_nodes.isSet((size_t) node)) {
+                    LOG << "Node seen twice";
+                }
+
+                seen_nodes.set((size_t) node);
+            }
+
             for (const HypernodeID& node : best_split) {
                 hg.changeNodePart(node, 0, 1, false);
                 size_a -= hg.nodeWeight(node);
@@ -326,7 +337,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
     std::deque<HyperedgeID> node_queue;
 
-    while (current_split < target * (1.0 - _context.partition.epsilon) && current_iteration < max_iterations) {
+    while (current_split < target && current_iteration < max_iterations) {
         HypernodeID starter_node_st     = kInvalidHypernode;
         HypernodeID farthest_leaf_node  = kInvalidHypernode;
 
@@ -341,7 +352,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
         calculate_component_spanning_tree(phg, component, hn_to_parent, hn_to_children, subtree_size, hn_to_num_children, starter_node_st, farthest_leaf_node, covered);
 
-        if (current_split == 0) {
+        if (result.size() == 0) {
 
             for (const HypernodeID& node : component.nodes) {
                 if (hn_to_num_children[node] == 0 && phg.nodeWeight(node) < target) {
@@ -381,6 +392,18 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
                     if (subtree_size[incident_hn] + current_split <= target) {
 
+                        add_node_to_split(
+                            incident_hn,
+                            hn_to_parent,
+                            hn_to_num_children,
+                            node_colored,
+                            covered,
+                            current_split,
+                            phg.nodeWeight(incident_hn),
+                            node_queue,
+                            result
+                        );
+
                         std::deque<HypernodeID> asignment_queue;
                         asignment_queue.push_back(incident_hn);
                         
@@ -388,38 +411,39 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                             HypernodeID current_assignment_node = asignment_queue.back();
                             asignment_queue.pop_back();
 
-                            HypernodeID parent_of_incident_hn = hn_to_parent[current_assignment_node];
-                            hn_to_num_children[current_assignment_node]--;
-                            
-                            node_colored.set((size_t) current_assignment_node);
-                            node_queue.push_back(current_assignment_node);
-
-                            current_split += phg.nodeWeight(current_assignment_node);
-
-                            result.push_back(current_assignment_node);
-                            covered.set((size_t) current_assignment_node);
-
-
                             for (const HypernodeID& ch_hn : hn_to_children[current_assignment_node]) {
-                                if (covered.isSet((size_t) ch_hn)) {
+                                if (covered.isSet((size_t) ch_hn) || node_colored.isSet((size_t) ch_hn)) {
                                     continue;
                                 }
+
+                                add_node_to_split(
+                                    ch_hn,
+                                    hn_to_parent,
+                                    hn_to_num_children,
+                                    node_colored,
+                                    covered,
+                                    current_split,
+                                    phg.nodeWeight(ch_hn),
+                                    node_queue,
+                                    result
+                                );
 
                                 asignment_queue.push_back(ch_hn);
                             }
                         }
                     }
                     else {
-                        HypernodeID parent_of_incident_hn = hn_to_parent[incident_hn];
-                        hn_to_num_children[parent_of_incident_hn]--;
-                        
-                        node_colored.set((size_t) incident_hn);
-                        node_queue.push_back(incident_hn);
-
-                        current_split += phg.nodeWeight(incident_hn);
-
-                        result.push_back(incident_hn);
-                        covered.set((size_t) incident_hn);
+                        add_node_to_split(
+                            incident_hn,
+                            hn_to_parent,
+                            hn_to_num_children,
+                            node_colored,
+                            covered,
+                            current_split,
+                            phg.nodeWeight(incident_hn),
+                            node_queue,
+                            result
+                        );
                     }
                 }
             }   
@@ -432,6 +456,30 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
         current_iteration++;
     }
 
+}
+
+template<typename TypeTraits>
+void GreedySTInitialPartitioner<TypeTraits>::add_node_to_split(
+    const HypernodeID& hn,
+    const vec<HypernodeID>& hn_to_parent,
+    vec<size_t>& hn_to_num_children,
+    Bitset& node_colored,
+    Bitset& node_covered,
+    size_t& current_split,
+    const size_t& node_weight,
+    std::deque<HypernodeID>& node_queue,
+    vec<HypernodeID>& result
+) {
+    HypernodeID parent_of_hn = hn_to_parent[hn];
+    hn_to_num_children[parent_of_hn]--;
+    
+    node_colored.set((size_t) hn);
+    node_queue.push_back(hn);
+
+    current_split += node_weight;
+
+    result.push_back(hn);
+    node_covered.set((size_t) hn);
 }
 
 INSTANTIATE_CLASS_WITH_TYPE_TRAITS(GreedySTInitialPartitioner)
