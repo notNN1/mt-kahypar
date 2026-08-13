@@ -337,7 +337,9 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
     std::deque<HyperedgeID> node_queue;
 
-    while (current_split < target && current_iteration < max_iterations) {
+    while (current_split < target && current_iteration <= max_iterations) {
+        current_iteration++;
+
         HypernodeID starter_node_st     = kInvalidHypernode;
         HypernodeID farthest_leaf_node  = kInvalidHypernode;
 
@@ -358,6 +360,10 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                 if (hn_to_num_children[node] == 0 && phg.nodeWeight(node) < target) {
                     starter_node = node;
                 }
+            }
+
+            if (starter_node == kInvalidHypernode) {
+                continue;
             }
 
             node_colored.set((size_t) starter_node);
@@ -452,8 +458,6 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
         for (const HypernodeID& node : result) {
             node_queue.push_back(node);
         }
-
-        current_iteration++;
     }
 
 }
