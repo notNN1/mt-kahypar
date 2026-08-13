@@ -585,6 +585,7 @@ class PartitionedHypergraph {
     ASSERT(_part_ids[u] == kInvalidPartition);
     _part_ids[u] = p;
 
+    _cf.set_graph_was_changed();
     this->was_changed_without_connectivity = true;
   }
 
@@ -638,6 +639,8 @@ class PartitionedHypergraph {
       for ( const HyperedgeID he : incidentEdges(u) ) {
         updatePinCountOfHyperedge(he, from, to, sync_update, delta_func, notify_func);
       }
+
+      _cf.set_graph_was_changed();
 
       return true;
     } else {

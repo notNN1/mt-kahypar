@@ -318,7 +318,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
     HypernodeID starter_node    = kInvalidHypernode;
 
-    size_t max_iterations       = 10;
+    size_t max_iterations       = 20;
     size_t current_iteration    = 0;
 
     Bitset node_colored;
@@ -354,8 +354,6 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
             node_queue.push_back(starter_node);
             current_split += phg.nodeWeight(starter_node);
         }
-
-        LOG << "Do we get here?";
 
         while (node_queue.size() > 0) {
 
