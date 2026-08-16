@@ -68,7 +68,7 @@ struct PartitioningParameters {
   bool show_memory_consumption = false;
   bool show_advanced_cut_analysis = false;
   bool enable_progress_bar = false;
-  bool sp_process_output = false;
+  bool sp_process_output = true;
   bool csv_output = false;
   bool write_partition_file = false;
   bool deterministic = false;
@@ -205,6 +205,7 @@ struct FlowParameters {
 struct DynamicConnectivityParameters {
   DynamicConnectivityStrategy label_propagation_dynamic_connectivity_strategy;
   DynamicConnectivityStrategy advanced_rebalancer_dynamic_connectivity_strategy;
+  DynamicConnectivityStrategy kway_fm;
 };
 
 struct DeterministicRefinementParameters {
@@ -273,6 +274,10 @@ struct SharedMemoryParameters {
   size_t shuffle_block_size = 2;
   double degree_of_parallelism = 1.0;
 };
+
+struct ConnectivityParameters {
+
+}
 
 class Context {
  public:
