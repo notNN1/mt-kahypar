@@ -70,7 +70,7 @@ namespace mt_kahypar {
 
         //size_t c1 = connected_components::total_component_count<PartitionedHypergraph>(hypergraph, NULL);
 
-        bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta, _context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy);
+        bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta, DynamicConnectivityStrategy::st);
         ASSERT(!unconstrained || changed_part);
         is_moved = true;
         if (unconstrained || changed_part) {

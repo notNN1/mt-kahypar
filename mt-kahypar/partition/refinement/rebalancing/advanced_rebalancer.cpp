@@ -370,7 +370,7 @@ namespace impl {
         bool moved = phg.changeNodePart(
                       _gain_cache, m.node, m.from, m.to,
                       _context.partition.max_part_weights[m.to],
-                      _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy,
+                      DynamicConnectivityStrategy::st,
                       [&] { move_id = __atomic_fetch_add(&global_move_id, 1, __ATOMIC_RELAXED); },
                       [&](const SynchronizedEdgeUpdate& sync_update) {
                         local_attributed_gain += AttributedGains::gain(sync_update);
@@ -468,7 +468,7 @@ namespace impl {
       bool success = phg.changeNodePart(
         _gain_cache, m.node, m.from, m.to,
         _context.partition.max_part_weights[m.to],
-        _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy,
+        DynamicConnectivityStrategy::st,
         [&] { _moves[global_move_id++] = m; },
         [&](const SynchronizedEdgeUpdate& sync_update) {
           attributed_gain += AttributedGains::gain(sync_update);
