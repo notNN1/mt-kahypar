@@ -90,7 +90,7 @@ bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics& best_metrics, std::m
     _vertex_state[hn] = VertexState::MOVED;
 
     if ( _phg.changeNodePart(hn, from, to,
-          _context.partition.max_part_weights[to], []{}, true, border_vertex_update) ) {
+          _context.partition.max_part_weights[to], []{}, DynamicConnectivityStrategy::st, border_vertex_update) ) {
 
       // Perform delta gain updates
       updateNeighbors(hn, from, to);
@@ -293,7 +293,7 @@ void SequentialTwoWayFmRefiner<TypeTraits>::rollback(const parallel::scalable_ve
     const HypernodeID hn = performed_moves[i];
     const PartitionID from = _phg.partID(hn);
     const PartitionID to = 1 - from;
-    _phg.changeNodePartNoSync(hn, from, to, false);
+    _phg.changeNodePartNoSync(hn, from, to, DynamicConnectivityStrategy::do_nothing);
   }
   _phg.resetEdgeSynchronization();
 }

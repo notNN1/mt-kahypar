@@ -277,7 +277,7 @@ struct SharedMemoryParameters {
 
 struct ConnectivityParameters {
 
-}
+};
 
 class Context {
  public:

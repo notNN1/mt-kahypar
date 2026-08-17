@@ -430,7 +430,7 @@ namespace mt_kahypar {
       const bool from_overloaded = phg.partWeight(m.from) > maxPartWeights[m.from];
       const bool to_overloaded = phg.partWeight(m.to) > maxPartWeights[m.to];
       phg.changeNodePart(gain_cache, m.node, m.from, m.to,
-        std::numeric_limits<HypernodeWeight>::max(), false, []{ }, attributed_gains);
+        std::numeric_limits<HypernodeWeight>::max(), DynamicConnectivityStrategy::do_nothing, []{ }, attributed_gains);
       if (from_overloaded && phg.partWeight(m.from) <= maxPartWeights[m.from]) {
         overloaded--;
       }
@@ -506,7 +506,7 @@ namespace mt_kahypar {
       // const HyperedgeWeight objective_before_move =
       //   metrics::quality(phg, context, false);
       phg.changeNodePart(gain_cache, m.node, m.from, m.to,
-        std::numeric_limits<HypernodeWeight>::max(), false, []{ }, attributed_gains);
+        std::numeric_limits<HypernodeWeight>::max(), DynamicConnectivityStrategy::do_nothing, []{ }, attributed_gains);
       // const HyperedgeWeight objective_after_move =
       //   metrics::quality(phg, context, false);
 

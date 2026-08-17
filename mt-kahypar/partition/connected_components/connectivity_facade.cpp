@@ -53,19 +53,17 @@ bool ConnectivityFacade<PartitionedHypergraph>::can_move_into_partition(
     const HypernodeID& hn,
     const PartitionID& to
 ) {
-    if (
-        strategy == DynamicConnectivityStrategy::bfs
-        || strategy == DynamicConnectivityStrategy::h_vertex_degree
-        || strategy == DynamicConnectivityStrategy::st
-    ) {
-        if (hn != this->last_viewed_node || this->graph_was_changed) {
-            this->reset_connectivity_in(hypergraph, hn);
-            this->graph_was_changed = false;
-        }
-
-        return this->can_move_current_node_to_partition.isSet((size_t) to);
+    if (strategy == DynamicConnectivityStrategy::do_nothing) {
+        return true;
     }
-    return true; // default
+
+   
+    if (hn != this->last_viewed_node || this->graph_was_changed) {
+        this->reset_connectivity_in(hypergraph, hn);
+        this->graph_was_changed = false;
+    }
+
+    return this->can_move_current_node_to_partition.isSet((size_t) to);
 }
 
 template<typename PartitionedHypergraph>
@@ -85,10 +83,6 @@ bool ConnectivityFacade<PartitionedHypergraph>::can_move_out_of_partition(
     }
     else if (strategy == DynamicConnectivityStrategy::st) {
         can_move_node = this->stc.canMoveVertex(hypergraph, hn);
-
-        /*if (can_move_node && !this-bfs.moveVertex(hypergraph, hn)) {
-            LOG << "Help";
-        }*/
     }
 
     return can_move_node;

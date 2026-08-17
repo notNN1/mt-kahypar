@@ -117,7 +117,7 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl() {
               converged = false;
 
               #ifndef KAHYPAR_ENABLE_HEAVY_INITIAL_PARTITIONING_ASSERTIONS
-              hg.changeNodePartNoSync(hn, from, to, false);
+              hg.changeNodePartNoSync(hn, from, to, DynamicConnectivityStrategy::do_nothing);
               #else
               Gain expected_gain = 0;
               auto cut_delta = [&](const HyperedgeID he,
@@ -135,7 +135,7 @@ void LabelPropagationInitialPartitioner<TypeTraits>::partitionImpl() {
                   he, edge_weight, adjusted_edge_size,
                   pin_count_in_from_part_after, pin_count_in_to_part_after);
               };
-              hg.changeNodePart(hn, from, to, cut_delta, false);
+              hg.changeNodePart(hn, from, to, cut_delta, DynamicConnectivityStrategy::do_nothing);
               ASSERT(expected_gain == max_gain_move.gain, "Gain calculation failed"
                 << V(expected_gain) << V(max_gain_move.gain));
               #endif

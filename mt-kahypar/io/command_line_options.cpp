@@ -842,6 +842,23 @@ namespace mt_kahypar {
       "If the FM refiner exceeds 2 * time_limit, than the current multitry FM run is aborted and the algorithm proceeds to "
       "the next finer level."
     )->capture_default_str();
+    app.add_option_function<std::string>(
+      (initial_partitioning ? "--i-r-fm-dynamic-connectivity" : "--r-fm-dynamic-connectivity"), [&, initial_partitioning](const std::string& s) {
+        if (initial_partitioning) {
+          context.initial_partitioning.dynamic_connectivity.kway_fm =
+                  dynamicConnectivityStrategyFromString(s);
+        } else {
+          context.refinement.dynamic_connectivity.kway_fm =
+                  dynamicConnectivityStrategyFromString(s);
+        }
+      },
+      "Dynamic connectivity strategy:\n"
+      "- bfs\n"
+      "- hdlt\n"
+      "- h_vertex_degree\n"
+      "- st\n"
+      "- do_nothing"
+    )->capture_default_str();
 
     // global refinement for n-level partitioning
     app.add_option(

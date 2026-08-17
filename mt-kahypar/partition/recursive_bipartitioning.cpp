@@ -361,7 +361,7 @@ void rb::recursively_bipartition_block(typename TypeTraits::PartitionedHypergrap
         PartitionID to = block + rb_phg.partID(mapping[hn]);
         ASSERT(to != kInvalidPartition && to < phg.k());
         if ( block != to ) {
-          phg.changeNodePartNoSync(hn, block, to, false);
+          phg.changeNodePartNoSync(hn, block, to, DynamicConnectivityStrategy::do_nothing);
         }
       }
     });

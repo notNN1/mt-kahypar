@@ -70,7 +70,7 @@ namespace mt_kahypar {
 
         //size_t c1 = connected_components::total_component_count<PartitionedHypergraph>(hypergraph, NULL);
 
-        bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta, true);
+        bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta, _context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy);
         ASSERT(!unconstrained || changed_part);
         is_moved = true;
         if (unconstrained || changed_part) {
@@ -99,7 +99,7 @@ namespace mt_kahypar {
             // If the real gain is not equal with the computed gain and
             // worsens the solution quality we revert the move.
             ASSERT(hypergraph.partID(hn) == to);
-            changeNodePart<unconstrained>(hypergraph, hn, to, from, objective_delta, false);
+            changeNodePart<unconstrained>(hypergraph, hn, to, from, objective_delta, DynamicConnectivityStrategy::do_nothing);
           }
         }
       }
@@ -309,7 +309,7 @@ namespace mt_kahypar {
         const HypernodeID hn = _active_nodes[j];
         ASSERT(!_might_be_uninitialized || _old_part_is_initialized[hn]);
         if (hypergraph.partID(hn) != _old_part[hn]) {
-          changeNodePart<true>(hypergraph, hn, hypergraph.partID(hn), _old_part[hn], noop_obj_fn, false);
+          changeNodePart<true>(hypergraph, hn, hypergraph.partID(hn), _old_part[hn], noop_obj_fn, DynamicConnectivityStrategy::do_nothing);
         }
       });
       return true;
