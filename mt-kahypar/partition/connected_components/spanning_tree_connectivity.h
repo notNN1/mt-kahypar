@@ -45,122 +45,27 @@ private:
 
     Bitset has_connection_to_other_partition;
     Bitset hn_is_locked;
+
+    vec<vec<HypernodeID>> node_to_connected_node_in_partition;
+
+    void initialize_connectivity_out(
+        const PartitionedHypergraph& phg
+    );
+
+    void initialize_connectivity_in(
+        const PartitionedHypergraph& phg
+    );
+
 public:
     
     int size() const {
         return hn_to_num_children.size();
     } 
 
-    vec<std::string> is_tree_valid(const PartitionedHypergraph& phg) {
-        vec<std::string> result;
-        /*if (wrong_size_of_arrays(phg)) {
-            result.push_back("Wrong size of arrays");
-        } 
-        if (!all_nodes_go_to_one_of_the_heads(phg)) {
-            result.push_back("At least one node doesn't reach the head");
-        } 
-        if (!connections_exist(phg)) {
-            result.push_back("At least one connection does not exist");
-        } 
-        if (!nodes_in_correct_partition(phg)) {
-            result.push_back("At least one node is not in the correct partition");
-        }
-        if (!nodes_have_correct_amount_of_children(phg)) {
-            result.push_back("Incorrect amound of children detected");
-        }*/
-
-        return result;
-    }
-
-    bool nodes_have_correct_amount_of_children(const PartitionedHypergraph& phg) {
-        vec<size_t> children_alternative_count;
-        children_alternative_count.resize(phg.initialNumNodes());
-
-        
-        for (const HypernodeID& node : phg.nodes()) {
-            if (this->hn_to_parent[node] != node) {
-                children_alternative_count[this->hn_to_parent[node]]++;
-            }
-        }
-
-        for (const HypernodeID& node : phg.nodes()) {
-            if (children_alternative_count[node] != this->hn_to_num_children[node]) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    bool nodes_in_correct_partition(const PartitionedHypergraph& phg) {
-        for (const HypernodeID& node : phg.nodes()) {
-            if (phg.partID(node) != phg.partID(this->hn_to_parent[node])) {
-                LOG << "Node not in correct parititon";
-                LOG << "Node:   " << node << " in partition " << phg.partID(node);
-                LOG << "Parent: " << this->hn_to_parent[node] << " in partition " << phg.partID(this->hn_to_parent[node]);
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    bool connections_exist(const PartitionedHypergraph& phg) {
-        bool found = false;
-        for (const HypernodeID& node : phg.nodes()) {
-            for (const HyperedgeID& edge : phg.incidentEdges(node)) {
-                for (const HypernodeID& incident_hn : phg.pins(edge)) {
-                    if (incident_hn == this->hn_to_parent[incident_hn]) {
-                        found = true;
-                    }
-                }
-            }
-        }
-
-        return found;
-    }
-
-    bool wrong_size_of_arrays(const PartitionedHypergraph& phg) {
-        return this->hn_to_parent.size() != phg.initialNumNodes() || this->hn_to_num_children.size() != phg.initialNumNodes();
-    }
-
-    bool all_nodes_go_to_one_of_the_heads(const PartitionedHypergraph& phg) {
-        vec<HypernodeID> heads;
-
-        for (const HypernodeID& node : phg.nodes()) {
-            if (this->hn_to_parent[node] == node) {
-                heads.push_back(node);
-            }
-        }
-
-        for (const HypernodeID& node : phg.nodes()) {
-
-            HypernodeID parent = node;
-
-            while (this->hn_to_parent[parent] != parent) {
-                parent = this->hn_to_parent[parent];
-            }
-
-            bool found = false;
-            
-            for (const HypernodeID& head : heads) {
-                if (head == parent) {
-                    found = true;
-                }
-            }
-
-            if (!found) {
-                return false;
-            }
-
-        }
-
-        return true;
-    }
-
     bool canMoveVertex(
         const PartitionedHypergraph& phg,
-        const HypernodeID& hn
+        const HypernodeID& hn,
+        const PartitionID& to
     );
 
     void moveVertex(
@@ -171,7 +76,10 @@ public:
 
     void reset(
         const PartitionedHypergraph& phg
-    );
+    ) {
+        initialize_connectivity_in(phg);
+        initialize_connectivity_out(phg);
+    }
 };
 
 }  // namespace connected_components

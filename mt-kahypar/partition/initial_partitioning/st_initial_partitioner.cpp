@@ -158,6 +158,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
 
         vec<size_t> part_size;
         part_size.resize(32);
+        
         for (const HypernodeID& node : hg.nodes()) {
             part_size[hg.partID(node)] += hg.nodeWeight(node);
         }
