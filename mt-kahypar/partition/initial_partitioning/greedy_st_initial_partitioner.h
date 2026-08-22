@@ -60,7 +60,7 @@ public:
  private:
     void partitionImpl() final;
 
-    void calculate_component_spanning_tree(
+    inline void calculate_component_spanning_tree(
         const PartitionedHypergraph& phg,
         ConnectedComponent& component,
         vec<HypernodeID>& hn_to_parent,
@@ -88,7 +88,7 @@ public:
         Bitset& node_covered,
         size_t& current_split,
         const size_t& node_weight,
-        std::deque<HypernodeID>& node_queue,
+        vec<HypernodeID>& node_queue,
         vec<HypernodeID>& result
     );
 

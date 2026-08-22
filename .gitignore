@@ -24,6 +24,7 @@ relwithdebinfo/*
 release127/*
 release128/*
 release/*
+release_wo/*
 release152/*
 debug/*
 debug_numa/*

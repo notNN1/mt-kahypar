@@ -175,7 +175,7 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
 }
 
 template<typename TypeTraits>
-void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning_tree(
+inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning_tree(
     const PartitionedHypergraph& phg,
     ConnectedComponent& component,
     vec<HypernodeID>& hn_to_parent,
@@ -199,10 +199,12 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning_tree(
     Bitset edge_colored;
     edge_colored.resize(phg.initialNumEdges());
 
-    std::deque<HyperedgeID> node_queue;
+    vec<HyperedgeID> node_queue;
+    node_queue.reserve(phg.initialNumNodes());
     node_queue.push_back(starter_node);
 
-    std::deque<HyperedgeID> lp_node_queue;
+    vec<HyperedgeID> lp_node_queue;
+    lp_node_queue.reserve(phg.initialNumNodes());
     
     Bitset covered_nb;
     covered_nb.resize(phg.initialNumNodes());
@@ -229,7 +231,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning_tree(
     }
 
     edge_colored.reset();
-    std::deque<HypernodeID> calculation_queue;
+    vec<HypernodeID> calculation_queue;
 
 
     while (node_queue.size() > 0 || lp_node_queue.size() > 0) {
@@ -330,7 +332,14 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
     Bitset node_colored;
     node_colored.resize(phg.initialNumNodes());
 
-    std::deque<HyperedgeID> node_queue;
+    Bitset edge_colored;
+    edge_colored.resize(phg.initialNumEdges());
+
+    vec<HyperedgeID> node_queue;
+    node_queue.reserve(phg.initialNumNodes());
+
+    vec<HypernodeID> asignment_queue;
+    asignment_queue.reserve(phg.initialNumNodes());
 
     while (current_split < target && current_iteration <= MAX_SPLITS) {
         current_iteration++;
@@ -338,13 +347,21 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
         HypernodeID starter_node_st     = kInvalidHypernode;
         HypernodeID farthest_leaf_node  = kInvalidHypernode;
 
-        std::shuffle(component.nodes.begin(), component.nodes.end(), _rng);
+        if (!component.nodes.empty()) {
+          const size_t start = std::uniform_int_distribution<size_t>(
+              0, component.nodes.size() - 1
+          )(_rng);
 
-        for (const HypernodeID& node : component.nodes) {
-            if (!covered.isSet((size_t) node)) {
-                starter_node_st = node;
-                hn_to_num_children[node] = 0;
-            }
+          for (size_t i = 0; i < component.nodes.size(); ++i) {
+              const HypernodeID node =
+                  component.nodes[(start + i) % component.nodes.size()];
+
+              if (!covered.isSet(static_cast<size_t>(node))) {
+                  starter_node_st = node;
+                  hn_to_num_children[node] = 0;
+                  break;
+              }
+          }
         }
 
         calculate_component_spanning_tree(phg, component, hn_to_parent, hn_to_children, subtree_size, hn_to_num_children, starter_node_st, farthest_leaf_node, covered);
@@ -369,10 +386,16 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
         while (node_queue.size() > 0) {
 
-            HypernodeID current_node = node_queue.front();
-            node_queue.pop_front();
+            HypernodeID current_node = node_queue.back();
+            node_queue.pop_back();
 
             for (const HyperedgeID& he : phg.incidentEdges(current_node)) {
+
+              if (edge_colored.isSet((size_t) he)) {
+                continue;
+              }
+
+              edge_colored.set((size_t) he);
 
                 for (const HypernodeID& incident_hn : phg.pins(he)) {
                     if (incident_hn == current_node) {
@@ -405,7 +428,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                             result
                         );
 
-                        std::deque<HypernodeID> asignment_queue;
+                        asignment_queue.clear();
                         asignment_queue.push_back(incident_hn);
                         
                         while (asignment_queue.size() > 0) {
@@ -466,7 +489,7 @@ void GreedySTInitialPartitioner<TypeTraits>::add_node_to_split(
     Bitset& node_covered,
     size_t& current_split,
     const size_t& node_weight,
-    std::deque<HypernodeID>& node_queue,
+    vec<HypernodeID>& node_queue,
     vec<HypernodeID>& result
 ) {
     HypernodeID parent_of_hn = hn_to_parent[hn];
