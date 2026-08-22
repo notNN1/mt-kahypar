@@ -181,6 +181,11 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::initialize_connectivity
         // fill up with default connections
         for (const HyperedgeID& he : phg.incidentEdges(node)) {
             for (const HypernodeID& incident_hn : phg.pins(he)) {
+                if (phg.partID(incident_hn) == kInvalidPartition) {
+                    continue;
+                }
+
+
                 node_to_connected_node_in_partition[node][phg.partID(incident_hn)] = incident_hn;
             }
         }
@@ -193,6 +198,10 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::initialize_connectivity
         for (const HyperedgeID& he : phg.incidentEdges(node)) {
             for (const HypernodeID& incident_hn : phg.pins(he)) {
                 if (node_valid.isSet((size_t) incident_hn)) {
+                    continue;
+                }
+
+                if (phg.partID(incident_hn) == kInvalidPartition) {
                     continue;
                 }
 
@@ -210,7 +219,12 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::initialize_connectivity
         // try using nodes with many connections as layer above, as they are less likely to be moved
         for (const HyperedgeID& he : phg.incidentEdges(node)) {
             for (const HypernodeID& incident_hn : phg.pins(he)) {
+
                 if (node_valid.isSet((size_t) incident_hn) || phg.incidentEdges(incident_hn).size() <= 2) {
+                    continue;
+                }
+
+                if (phg.partID(incident_hn) == kInvalidPartition) {
                     continue;
                 }
 
