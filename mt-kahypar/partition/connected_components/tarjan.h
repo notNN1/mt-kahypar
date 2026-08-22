@@ -73,10 +73,12 @@ public:
 
     void initialize(const PartitionedHypergraph& phg) {
         reset_fields(phg);
+
+        vec<vec<vec<HypernodeID>>> he_hn_to_new_edge = phg.circular_edge_expansion();
         
         for (const HypernodeID& node : phg.nodes()) {
             if (disc[node] == 0) {
-                if (dfs_recursive_wrapper(phg, node) > 1) {
+                if (dfs_recursive_wrapper(phg, node, he_hn_to_new_edge) > 1) {
                     is_ap.set((size_t) node);
                 }
             }
@@ -86,9 +88,9 @@ public:
 private:
     size_t dfs_recursive_wrapper(
         const PartitionedHypergraph& phg, 
-        const HypernodeID& node
+        const HypernodeID& node,
+        const vec<vec<vec<HypernodeID>>>& he_hn_to_new_edge
     ) {
-        vec<vec<vec<HypernodeID>>> he_hn_to_new_edge = phg.circular_edge_expansion();
         return dfs_recursive(phg, node, node, he_hn_to_new_edge);
     }
 
