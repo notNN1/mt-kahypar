@@ -37,7 +37,7 @@
 
 namespace mt_kahypar {
 
-const size_t MAX_ORIGINS  = 1;
+const size_t MAX_ORIGINS  = 10;
 const size_t MAX_SPLITS   = 1;
 
 template<typename TypeTraits>
@@ -335,8 +335,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
     Bitset edge_colored;
     edge_colored.resize(phg.initialNumEdges());
 
-    vec<HyperedgeID> node_queue;
-    node_queue.reserve(phg.initialNumNodes());
+    std::deque<HyperedgeID> node_queue;
 
     vec<HypernodeID> asignment_queue;
     asignment_queue.reserve(phg.initialNumNodes());
@@ -386,8 +385,8 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
         while (node_queue.size() > 0) {
 
-            HypernodeID current_node = node_queue.back();
-            node_queue.pop_back();
+            HypernodeID current_node = node_queue.front();
+            node_queue.pop_front();
 
             for (const HyperedgeID& he : phg.incidentEdges(current_node)) {
 
@@ -489,7 +488,7 @@ void GreedySTInitialPartitioner<TypeTraits>::add_node_to_split(
     Bitset& node_covered,
     size_t& current_split,
     const size_t& node_weight,
-    vec<HypernodeID>& node_queue,
+    std::deque<HypernodeID>& node_queue,
     vec<HypernodeID>& result
 ) {
     HypernodeID parent_of_hn = hn_to_parent[hn];

@@ -88,7 +88,7 @@ public:
         Bitset& node_covered,
         size_t& current_split,
         const size_t& node_weight,
-        vec<HypernodeID>& node_queue,
+        std::deque<HypernodeID>& node_queue,
         vec<HypernodeID>& result
     );
 
