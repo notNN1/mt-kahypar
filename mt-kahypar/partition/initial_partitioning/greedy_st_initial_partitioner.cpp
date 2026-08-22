@@ -37,6 +37,9 @@
 
 namespace mt_kahypar {
 
+const size_t MAX_ORIGINS  = 1;
+const size_t MAX_SPLITS   = 1;
+
 template<typename TypeTraits>
 void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
   if ( _ip_data.should_initial_partitioner_run(InitialPartitioningAlgorithm::st) ) {
@@ -81,8 +84,20 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
 
     size_t target = hg.totalWeight() / 2;
 
+    vec<HypernodeID> nodes_to_swap;
+    nodes_to_swap.reserve(hg.initialNumNodes());
+
+    vec<HypernodeID> best_split;
+    best_split.reserve(hg.initialNumNodes());
+
+    size_t current_origins = 0;
+
     ////// Split the components, only if there is not enough size
     for (const std::pair<size_t, connected_components::ConnectedComponent>& component_and_size : components_and_size) {
+
+        best_split.clear();
+        nodes_to_swap.clear();
+        current_origins = 0;
 
         size_t size                                         = component_and_size.first;
         connected_components::ConnectedComponent component  = component_and_size.second;
@@ -99,67 +114,48 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
 
         if (size_a + size > target) { // split component
 
-            size_t target_for_split = size - (target - size_a);
+          size_t target_for_split = size - (target - size_a);
 
-            for (const HypernodeID& node : component.nodes) {
-                hg.setNodePart(node, 0);
-                size_a += hg.nodeWeight(node);
-            }
+          for (const HypernodeID& node : component.nodes) {
+              hg.setNodePart(node, 0);
+              size_a += hg.nodeWeight(node);
+          }
 
-            //// calculate split 
-            size_t max_splits = 3;
-            size_t cur_splits = 0;
+          //// calculate split 
+          size_t split_size;
+          size_t diff = 0;
 
-            size_t split_size;
-            vec<HypernodeID> nodes_to_swap;
-            size_t diff = 0;
+          double best_split_diff = 1.0;
 
-            double best_split_diff = 1.0;
-            vec<HypernodeID> best_split;
+          do {
+              nodes_to_swap.clear();
+              split_size = 0;
 
-            do {
-                nodes_to_swap.clear();
-                split_size = 0;
+              calculate_split(hg, component, target_for_split, nodes_to_swap, split_size);
 
-                calculate_split(hg, component, target_for_split, nodes_to_swap, split_size);
+              diff = target_for_split >= split_size ? target_for_split - split_size : split_size - target_for_split;
+              current_origins++;
 
-                diff = target_for_split >= split_size ? target_for_split - split_size : split_size - target_for_split;
-                cur_splits++;
+              if (static_cast<double>(diff) / target_for_split < best_split_diff) {
+                best_split = nodes_to_swap;
+                best_split_diff = static_cast<double>(diff) / target_for_split;
+              }
 
-                if (static_cast<double>(diff) / target_for_split < best_split_diff) {
-                    best_split = nodes_to_swap;
-                    best_split_diff = static_cast<double>(diff) / target_for_split;
-                }
+          } while(current_origins <= MAX_ORIGINS);
 
-            } while(cur_splits <= max_splits);
-
-            ////
-
-            LOG << "Best Split diff: " << best_split_diff;
-
-            Bitset seen_nodes;
-            seen_nodes.resize(hg.initialNumNodes());
-
-            for (const HypernodeID& node : best_split) {
-                if (seen_nodes.isSet((size_t) node)) {
-                    LOG << "Node seen twice";
-                }
-
-                seen_nodes.set((size_t) node);
-            }
-
-            for (const HypernodeID& node : best_split) {
-                hg.changeNodePart(node, 0, 1, DynamicConnectivityStrategy::do_nothing);
-                size_a -= hg.nodeWeight(node);
-                size_b += hg.nodeWeight(node);
-            }
+          //// assign nodes from best split            
+          for (const HypernodeID& node : best_split) {
+            hg.changeNodePart(node, 0, 1, DynamicConnectivityStrategy::do_nothing);
+            size_a -= hg.nodeWeight(node);
+            size_b += hg.nodeWeight(node);
+          }
             
         }
         else {
-            for (const HypernodeID& node : component.nodes) {
-                hg.setNodePart(node, 0);
-                size_a += hg.nodeWeight(node);
-            }
+          for (const HypernodeID& node : component.nodes) {
+            hg.setNodePart(node, 0);
+            size_a += hg.nodeWeight(node);
+          }
         }
         
     }
@@ -329,7 +325,6 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
     HypernodeID starter_node    = kInvalidHypernode;
 
-    size_t max_iterations       = 20;
     size_t current_iteration    = 0;
 
     Bitset node_colored;
@@ -337,7 +332,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
     std::deque<HyperedgeID> node_queue;
 
-    while (current_split < target && current_iteration <= max_iterations) {
+    while (current_split < target && current_iteration <= MAX_SPLITS) {
         current_iteration++;
 
         HypernodeID starter_node_st     = kInvalidHypernode;
