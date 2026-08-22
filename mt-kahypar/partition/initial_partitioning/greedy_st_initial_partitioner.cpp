@@ -149,7 +149,7 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
             }
 
             for (const HypernodeID& node : best_split) {
-                hg.changeNodePart(node, 0, 1, false);
+                hg.changeNodePart(node, 0, 1, DynamicConnectivityStrategy::do_nothing);
                 size_a -= hg.nodeWeight(node);
                 size_b += hg.nodeWeight(node);
             }

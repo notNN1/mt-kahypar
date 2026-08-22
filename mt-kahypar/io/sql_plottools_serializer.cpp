@@ -208,6 +208,10 @@ std::string serialize(const PartitionedHypergraph& hypergraph,
       BalanceMetrics imbalance = metrics::imbalance(hypergraph, context);
       oss << " imbalance=" << imbalance.imbalance_value;
       oss << " violates_non_empty_blocks=" << imbalance.violates_non_empty_blocks;
+
+      ConnectivityMetrics connectivity = metrics::connectivity(hypergraph, context);
+      oss << " extra_components=" << connectivity.extra_components_count;
+      oss << " inefficient_components=" << connectivity.inefficient_components_count;
     }
     oss << " totalPartitionTime=" << elapsed_seconds.count();
 

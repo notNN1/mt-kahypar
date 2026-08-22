@@ -462,11 +462,11 @@ void DeterministicJetRefiner<GraphAndGainTypes>::changeNodePart(PartitionedHyper
     constexpr HypernodeWeight inf_weight = std::numeric_limits<HypernodeWeight>::max();
     bool success;
     if (_gain_cache.isInitialized()) {
-        success = phg.changeNodePart(_gain_cache, hn, from, to, inf_weight, false, [] {}, objective_delta);
+        success = phg.changeNodePart(_gain_cache, hn, from, to, inf_weight, DynamicConnectivityStrategy::do_nothing, [] {}, objective_delta);
     } else if constexpr (PartitionedHypergraph::is_graph) {
-        success = phg.changeNodePartNoSync(hn, from, to, false);
+        success = phg.changeNodePartNoSync(hn, from, to, DynamicConnectivityStrategy::do_nothing);
     } else {
-        success = phg.changeNodePart(hn, from, to, inf_weight, [] {}, false, objective_delta);
+        success = phg.changeNodePart(hn, from, to, inf_weight, [] {}, DynamicConnectivityStrategy::do_nothing, objective_delta);
     }
     ASSERT(success);
     unused(success);

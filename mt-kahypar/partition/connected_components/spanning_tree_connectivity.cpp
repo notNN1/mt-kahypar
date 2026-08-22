@@ -31,7 +31,7 @@ namespace connected_components {
 using Bitset = mt_kahypar::ds::Bitset;
 
 template<typename PartitionedHypergraph>
-void BFSSpanningTreeConnectivity<PartitionedHypergraph>::reset(
+void BFSSpanningTreeConnectivity<PartitionedHypergraph>::initialize_connectivity_out(
     const PartitionedHypergraph& phg
 ) {
     //LOG << "Initialized spanning tree on hypergraph instance: " << static_cast<const void*>(&phg) << " with " << phg.initialNumNodes() << " nodes";
@@ -164,13 +164,73 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::reset(
 }
 
 template<typename PartitionedHypergraph>
+void BFSSpanningTreeConnectivity<PartitionedHypergraph>::initialize_connectivity_in(
+    const PartitionedHypergraph& phg   
+) {
+    vec<vec<HypernodeID>> node_to_connected_node_in_partition(phg.initialNumNodes(), vec<HypernodeID>(phg.k(), kInvalidHypernode));
+
+
+    Bitset node_valid; 
+    node_valid.resize(phg.initialNumNodes());
+
+    PartitionID current_partition = kInvalidPartition;
+
+    for (const HypernodeID& node : phg.nodes()) {
+        current_partition = phg.partID(node);
+
+        // fill up with default connections
+        for (const HyperedgeID& he : phg.incidentEdges(node)) {
+            for (const HypernodeID& incident_hn : phg.pins(he)) {
+                node_to_connected_node_in_partition[node][phg.partID(incident_hn)] = incident_hn;
+            }
+        }
+    }
+
+    for (const HypernodeID& node : phg.nodes()) {
+        current_partition = phg.partID(node);
+
+        // try to use as many different nodes as possible
+        for (const HyperedgeID& he : phg.incidentEdges(node)) {
+            for (const HypernodeID& incident_hn : phg.pins(he)) {
+                if (node_valid.isSet((size_t) incident_hn)) {
+                    continue;
+                }
+
+                node_to_connected_node_in_partition[node][phg.partID(incident_hn)] = incident_hn;
+                node_valid.set((size_t) incident_hn);
+            }
+        }
+    }
+
+    node_valid.reset();
+
+    for (const HypernodeID& node : phg.nodes()) {
+        current_partition = phg.partID(node);
+
+        // try using nodes with many connections as layer above, as they are less likely to be moved
+        for (const HyperedgeID& he : phg.incidentEdges(node)) {
+            for (const HypernodeID& incident_hn : phg.pins(he)) {
+                if (node_valid.isSet((size_t) incident_hn) || phg.incidentEdges(incident_hn).size() <= 2) {
+                    continue;
+                }
+
+                node_to_connected_node_in_partition[node][phg.partID(incident_hn)] = incident_hn;
+                node_valid.set((size_t) incident_hn);
+            }
+        }
+    }
+
+    this->node_to_connected_node_in_partition = node_to_connected_node_in_partition;
+}
+
+
+template<typename PartitionedHypergraph>
 bool BFSSpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(
     const PartitionedHypergraph& phg, 
-    const HypernodeID& hn
+    const HypernodeID& hn,
+    const PartitionID& to
 ) {
-    //LOG << "The size is wron: " << this->hn_to_num_children.size();
-    //LOG << "HN: " << hn;
-    if(hn >= this->hn_to_num_children.size()) {
+    if (hn >= this->hn_to_num_children.size()) {
         LOG << "hn nonexistant in array";
         raise(SIGSEGV);
     }
@@ -179,7 +239,38 @@ bool BFSSpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(
         return false;
     }
 
-    return this->hn_to_num_children[hn] == 0;
+    if (this->hn_to_num_children[hn] != 0) {
+        return false;
+    }
+
+    HypernodeID anker_node = this->node_to_connected_node_in_partition[hn][to];
+        
+    // recalculate for that node
+    if (anker_node == kInvalidHypernode || phg.partID(anker_node) != to) {
+
+        this->node_to_connected_node_in_partition[hn][to] = kInvalidHypernode;
+        // fill up with default connections
+        for (const HyperedgeID& he : phg.incidentEdges(hn)) {
+            for (const HypernodeID& incident_hn : phg.pins(he)) {
+                if (phg.partID(incident_hn) != to) {
+                    continue;
+                }
+
+                this->node_to_connected_node_in_partition[hn][to] = incident_hn;
+                break;
+            }
+
+            if (this->node_to_connected_node_in_partition[hn][to] != kInvalidHypernode) {
+                break;
+            }
+        }
+
+        if (this->node_to_connected_node_in_partition[hn][to] == kInvalidHypernode) {
+            return false;
+        }
+    }
+
+    return true;    
 }
 
 
@@ -189,68 +280,19 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
     const HypernodeID& hn,
     const PartitionID& to
 ) {
-    vec<std::string> res = is_tree_valid(phg);
-    if (res.size() != 0) {
-
-        LOG << "Beginning of moveVertex";
-        for (const std::string& err : res) {
-            LOG << err;
-        }
-
-        raise(SIGTRAP); 
-    }
-    
-    if (!canMoveVertex(phg, hn)) {
-        LOG << "Move node without canMoveVertex being true";
-        raise(SIGTRAP); 
-    }
-
-    if (phg.partID(hn) == to) {
-
-        LOG << "Node is already in the selected partition";
-
-        raise(SIGTRAP); 
-    }
-
     this->hn_is_locked.set((size_t) hn);
 
-    // find candidate to attach to
-    for (const HyperedgeID& he : phg.incidentEdges(hn)) {
-        for (const HypernodeID& incident_hn : phg.pins(he)) {
-            if (phg.partID(incident_hn) != to) {
-                continue;
-            }
+    HypernodeID incident_hn = this->node_to_connected_node_in_partition[hn][to];
+    HypernodeID parent      = this->hn_to_parent[hn];
 
-            bool can_move_to_colored_node = this->has_connection_to_other_partition.isSet((size_t) incident_hn) && this->hn_to_num_children[incident_hn] > 0;
-            bool can_move_to_regular_node = !this->has_connection_to_other_partition.isSet((size_t) incident_hn);
-            
-            if (can_move_to_colored_node || can_move_to_regular_node) {
-                HypernodeID parent = this->hn_to_parent[hn];
-                this->hn_to_num_children[parent]--;
+    if (incident_hn != kInvalidHypernode) {
+        
+        this->hn_to_num_children[parent]--;
 
-                this->hn_to_parent[hn] = incident_hn;
-                this->hn_to_num_children[incident_hn]++;
+        this->hn_to_parent[hn] = incident_hn;
+        this->hn_to_num_children[incident_hn]++;
 
-                return;
-            }
-        }
-    }
-
-    // attach to the next best node
-    for (const HyperedgeID& he : phg.incidentEdges(hn)) {
-        for (const HypernodeID& incident_hn : phg.pins(he)) {
-            if (phg.partID(incident_hn) != to) {
-                continue;
-            }
-
-            HypernodeID parent = this->hn_to_parent[hn];
-            this->hn_to_num_children[parent]--;
-
-            this->hn_to_parent[hn] = incident_hn;
-            this->hn_to_num_children[incident_hn]++;
-
-            return;
-        }
+        return;
     }
 
     LOG << "There has not been found a node to attach to for node " << hn;

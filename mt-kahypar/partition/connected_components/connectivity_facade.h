@@ -56,7 +56,8 @@ private:
     bool can_move_out_of_partition(
         const DynamicConnectivityStrategy& strategy,
         const PartitionedHypergraph& hypergraph,
-        const HypernodeID& hn
+        const HypernodeID& hn,
+        const PartitionID& to
     );
 
     bool can_move_into_partition(

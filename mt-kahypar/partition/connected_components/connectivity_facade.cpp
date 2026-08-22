@@ -53,26 +53,25 @@ bool ConnectivityFacade<PartitionedHypergraph>::can_move_into_partition(
     const HypernodeID& hn,
     const PartitionID& to
 ) {
-    if (
-        strategy == DynamicConnectivityStrategy::bfs
-        || strategy == DynamicConnectivityStrategy::h_vertex_degree
-        || strategy == DynamicConnectivityStrategy::st
-    ) {
-        if (hn != this->last_viewed_node || this->graph_was_changed) {
-            this->reset_connectivity_in(hypergraph, hn);
-            this->graph_was_changed = false;
-        }
-
-        return this->can_move_current_node_to_partition.isSet((size_t) to);
+    if (strategy == DynamicConnectivityStrategy::do_nothing || strategy == DynamicConnectivityStrategy::st) {
+        return true;
     }
-    return true; // default
+
+   
+    if (hn != this->last_viewed_node || this->graph_was_changed) {
+        this->reset_connectivity_in(hypergraph, hn);
+        this->graph_was_changed = false;
+    }
+
+    return this->can_move_current_node_to_partition.isSet((size_t) to);
 }
 
 template<typename PartitionedHypergraph>
 bool ConnectivityFacade<PartitionedHypergraph>::can_move_out_of_partition(
     const DynamicConnectivityStrategy& strategy,
     const PartitionedHypergraph& hypergraph,
-    const HypernodeID& hn
+    const HypernodeID& hn,
+    const PartitionID& to
 ) {
     bool can_move_node = true;
 
@@ -84,11 +83,7 @@ bool ConnectivityFacade<PartitionedHypergraph>::can_move_out_of_partition(
         can_move_node = std::distance(range.begin(), range.end()) > 4;
     }
     else if (strategy == DynamicConnectivityStrategy::st) {
-        can_move_node = this->stc.canMoveVertex(hypergraph, hn);
-
-        /*if (can_move_node && !this-bfs.moveVertex(hypergraph, hn)) {
-            LOG << "Help";
-        }*/
+        can_move_node = this->stc.canMoveVertex(hypergraph, hn, to);
     }
 
     return can_move_node;
@@ -115,7 +110,7 @@ bool ConnectivityFacade<PartitionedHypergraph>::canMoveVertex(
     const HypernodeID& hn,
     const PartitionID& to
 ) {
-    return can_move_out_of_partition(strategy, hypergraph, hn) && can_move_into_partition(strategy, hypergraph, hn, to);
+    return can_move_out_of_partition(strategy, hypergraph, hn, to) && can_move_into_partition(strategy, hypergraph, hn, to);
 }
 
 INSTANTIATE_CLASS_WITH_PARTITIONED_HG(ConnectivityFacade)

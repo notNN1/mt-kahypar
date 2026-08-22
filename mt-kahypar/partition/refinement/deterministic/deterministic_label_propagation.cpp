@@ -136,7 +136,7 @@ namespace mt_kahypar {
     auto objective_delta = [&](const SynchronizedEdgeUpdate& sync_update) {
       attributed_gain -= AttributedGains::gain(sync_update);
     };
-    const bool was_moved = phg.changeNodePart(m.node, m.from, m.to, objective_delta, false);
+    const bool was_moved = phg.changeNodePart(m.node, m.from, m.to, objective_delta, DynamicConnectivityStrategy::do_nothing);
     if (context.refinement.deterministic_refinement.use_active_node_set && activate_neighbors && was_moved) {
       // activate neighbors for next round
       const HypernodeID n = phg.initialNumNodes();

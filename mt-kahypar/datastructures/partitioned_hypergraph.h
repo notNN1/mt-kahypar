@@ -606,7 +606,7 @@ class PartitionedHypergraph {
                       PartitionID to,
                       HypernodeWeight max_weight_to,
                       SuccessFunc&& report_success,
-                      bool do_connectivity,
+                      const DynamicConnectivityStrategy& connectivity_strategy,
                       const DeltaFunction& delta_func,
                       const NotificationFunc& notify_func = NOOP_NOTIFY_FUNC,
                       const bool force_moving_fixed_vertices = false) {
@@ -617,16 +617,16 @@ class PartitionedHypergraph {
     const HypernodeWeight wu = nodeWeight(u);
     const HypernodeWeight to_weight_after = _part_weights[to].add_fetch(wu, std::memory_order_relaxed);
 
-    if (do_connectivity && this->was_changed_without_connectivity) {
+    if (connectivity_strategy != DynamicConnectivityStrategy::do_nothing && this->was_changed_without_connectivity) {
       this->_cf.reset_connectivity_out(*this);
     }
 
-    if (to_weight_after <= max_weight_to && (!do_connectivity || this->_cf.canMoveVertex(DynamicConnectivityStrategy::st, *this, u, to))) {
-      if (do_connectivity) {
-        this->_cf.moveVertex(DynamicConnectivityStrategy::st, *this, u, to);
+    if (to_weight_after <= max_weight_to && (connectivity_strategy == DynamicConnectivityStrategy::do_nothing || this->_cf.canMoveVertex(connectivity_strategy, *this, u, to))) {
+      if (connectivity_strategy != DynamicConnectivityStrategy::do_nothing) {
+        this->_cf.moveVertex(connectivity_strategy, *this, u, to);
       }
 
-      this->was_changed_without_connectivity = !do_connectivity;
+      this->was_changed_without_connectivity = connectivity_strategy == DynamicConnectivityStrategy::do_nothing;
 
       _part_ids[u] = to;
       _part_weights[from].fetch_sub(wu, std::memory_order_relaxed);
@@ -654,10 +654,10 @@ class PartitionedHypergraph {
   bool changeNodePartNoSync(const HypernodeID u,
                             PartitionID from,
                             PartitionID to,
-                            bool do_connectivity,
+                            const DynamicConnectivityStrategy& connectivity_strategy,
                             const bool force_moving_fixed_vertex = false) {
     return changeNodePart(u, from, to,
-      std::numeric_limits<HypernodeWeight>::max(), []{}, do_connectivity,
+      std::numeric_limits<HypernodeWeight>::max(), []{}, connectivity_strategy,
         NOOP_FUNC, NOOP_NOTIFY_FUNC, force_moving_fixed_vertex);
   }
 
@@ -668,10 +668,10 @@ class PartitionedHypergraph {
                             PartitionID to,
                             HypernodeWeight max_weight_to,
                             SuccessFunc&& report_success,
-                            bool do_connectivity
+                            const DynamicConnectivityStrategy& connectivity_strategy
                           ) {
     return changeNodePart(u, from, to,
-      max_weight_to, report_success, do_connectivity, NOOP_FUNC, NOOP_NOTIFY_FUNC);
+      max_weight_to, report_success, connectivity_strategy, NOOP_FUNC, NOOP_NOTIFY_FUNC);
   }
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
@@ -679,10 +679,10 @@ class PartitionedHypergraph {
                       PartitionID from,
                       PartitionID to,
                       const DeltaFunction& delta_func,
-                      bool do_connectivity
+                      const DynamicConnectivityStrategy& connectivity_strategy
                     ) {
     return changeNodePart(u, from, to,
-      std::numeric_limits<HypernodeWeight>::max(), []{}, do_connectivity, delta_func, NOOP_NOTIFY_FUNC);
+      std::numeric_limits<HypernodeWeight>::max(), []{}, connectivity_strategy, delta_func, NOOP_NOTIFY_FUNC);
   }
 
   template<typename GainCache, typename SuccessFunc>
@@ -692,7 +692,7 @@ class PartitionedHypergraph {
                       PartitionID from,
                       PartitionID to,
                       HypernodeWeight max_weight_to,
-                      bool do_connectivity,
+                      const DynamicConnectivityStrategy& connectivity_strategy,
                       SuccessFunc&& report_success,
                       const DeltaFunction& delta_func
                     ) {
@@ -701,9 +701,9 @@ class PartitionedHypergraph {
       gain_cache.deltaGainUpdate(*this, sync_update);
     };
     if constexpr ( !GainCache::requires_notification_before_update ) {
-      return changeNodePart(u, from, to, max_weight_to, report_success, do_connectivity, my_delta_func);
+      return changeNodePart(u, from, to, max_weight_to, report_success, connectivity_strategy, my_delta_func);
     } else {
-      return changeNodePart(u, from, to, max_weight_to, report_success, do_connectivity, my_delta_func,
+      return changeNodePart(u, from, to, max_weight_to, report_success, connectivity_strategy, my_delta_func,
         [&](SynchronizedEdgeUpdate& sync_update) {
           sync_update.pin_count_in_from_part_after = pinCountInPart(sync_update.he, from) - 1;
           sync_update.pin_count_in_to_part_after = pinCountInPart(sync_update.he, to) + 1;
@@ -716,10 +716,10 @@ class PartitionedHypergraph {
   bool changeNodePart(const HypernodeID u,
                             PartitionID from,
                             PartitionID to,
-                            bool do_connectivity
+                            const DynamicConnectivityStrategy& connectivity_strategy
                           ) {
     return changeNodePart(u, from, to,
-      std::numeric_limits<HypernodeWeight>::max(), []{}, do_connectivity, 
+      std::numeric_limits<HypernodeWeight>::max(), []{}, connectivity_strategy, 
         NOOP_FUNC, NOOP_NOTIFY_FUNC, false);
   }
 
@@ -729,10 +729,10 @@ class PartitionedHypergraph {
                       const HypernodeID u,
                       PartitionID from,
                       PartitionID to,
-                      bool do_connectivity
+                      const DynamicConnectivityStrategy& connectivity_strategy
                     ) {
     return changeNodePart(gain_cache, u, from, to,
-      std::numeric_limits<HypernodeWeight>::max(), do_connectivity, []{}, NoOpDeltaFunc());
+      std::numeric_limits<HypernodeWeight>::max(), connectivity_strategy, []{}, NoOpDeltaFunc());
   }
 
   // ! Weight of a block

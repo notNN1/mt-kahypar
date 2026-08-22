@@ -505,9 +505,9 @@ void apply_bipartitions_to_hypergraph(typename TypeTraits::PartitionedHypergraph
     ASSERT(to > kInvalidPartition && to < block_ranges.back());
     if ( from != to ) {
       if ( gain_cache.isInitialized() ) {
-        partitioned_hg.changeNodePart(gain_cache, hn, from, to, false);
+        partitioned_hg.changeNodePart(gain_cache, hn, from, to, DynamicConnectivityStrategy::do_nothing);
       } else {
-        partitioned_hg.changeNodePartNoSync(hn, from, to, false);
+        partitioned_hg.changeNodePartNoSync(hn, from, to, DynamicConnectivityStrategy::do_nothing);
       }
     }
   });

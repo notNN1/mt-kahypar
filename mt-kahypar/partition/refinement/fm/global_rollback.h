@@ -92,7 +92,7 @@ public:
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   void moveVertex(PartitionedHypergraph& phg, HypernodeID u, PartitionID from, PartitionID to) {
-    phg.changeNodePart(gain_cache, u, from, to, false);
+    phg.changeNodePart(gain_cache, u, from, to, DynamicConnectivityStrategy::do_nothing);
   }
 
   void changeNumberOfBlocks(const PartitionID new_k) {

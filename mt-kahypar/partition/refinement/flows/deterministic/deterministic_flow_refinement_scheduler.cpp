@@ -222,10 +222,10 @@ bool changeNodePart(PartitionedHypergraph& phg,
   bool success = false;
   if (gain_cache_update && gain_cache.isInitialized()) {
     success = phg.changeNodePart(gain_cache, hn, from, to,
-      std::numeric_limits<HypernodeWeight>::max(), false, [] {}, objective_delta);
+      std::numeric_limits<HypernodeWeight>::max(), DynamicConnectivityStrategy::do_nothing, [] {}, objective_delta);
   } else {
     success = phg.changeNodePart(hn, from, to,
-      std::numeric_limits<HypernodeWeight>::max(), [] {}, false, objective_delta);
+      std::numeric_limits<HypernodeWeight>::max(), [] {}, DynamicConnectivityStrategy::do_nothing, objective_delta);
   }
   ASSERT(success);
   return success;
