@@ -618,10 +618,8 @@ class PartitionedHypergraph {
     }
 
     if (to_weight_after <= max_weight_to && (connectivity_strategy == DynamicConnectivityStrategy::do_nothing || this->_cf.canMoveVertex(connectivity_strategy, *this, u, to))) {
-      if (connectivity_strategy != DynamicConnectivityStrategy::do_nothing) {
-        this->_cf.moveVertex(connectivity_strategy, *this, u, to);
-      }
-
+      
+      this->_cf.moveVertex(connectivity_strategy, *this, u, to);
       this->was_changed_without_connectivity = connectivity_strategy == DynamicConnectivityStrategy::do_nothing;
 
       _part_ids[u] = to;

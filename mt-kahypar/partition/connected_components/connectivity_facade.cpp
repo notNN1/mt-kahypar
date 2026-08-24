@@ -72,6 +72,15 @@ void ConnectivityFacade<PartitionedHypergraph>::moveVertex(
     const PartitionID& to
 ) {
 
+    if (strategy == DynamicConnectivityStrategy::do_nothing) {
+        this->last_strategy_used = DynamicConnectivityStrategy::do_nothing;
+        return;
+    }
+
+    if (strategy != last_strategy_used) {
+        this->reset_connectivity(hypergraph, strategy);
+    }
+
     HypernodeID node_to = this->anker.find_node_in_partition(hypergraph, hn, to);
 
     if (strategy == DynamicConnectivityStrategy::st) {
@@ -95,6 +104,26 @@ bool ConnectivityFacade<PartitionedHypergraph>::canMoveVertex(
     this->last_strategy_used = strategy;
 
     return can_move_out_of_partition(strategy, hypergraph, hn, to) && can_move_into_partition(strategy, hypergraph, hn, to);
+}
+
+
+template<typename PartitionedHypergraph>
+void ConnectivityFacade<PartitionedHypergraph>::reset_connectivity(
+    const PartitionedHypergraph& hypergraph,
+    const DynamicConnectivityStrategy& strategy
+) {
+
+    vec<uint32_t> node_priority(hypergraph.initialNumNodes(), 1);
+    this->stc.reset(hypergraph);
+
+    for (const HypernodeID& node : hypergraph.nodes()) {
+        if (this->stc.canMoveVertex(hypergraph, node)) {
+            node_priority[node] = 0;
+        }
+    }
+
+    this->anker.initialize(hypergraph, node_priority);
+
 }
 
 INSTANTIATE_CLASS_WITH_PARTITIONED_HG(ConnectivityFacade)

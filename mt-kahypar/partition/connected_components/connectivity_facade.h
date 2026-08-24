@@ -88,24 +88,7 @@ public:
     void reset_connectivity(
         const PartitionedHypergraph& hypergraph,
         const DynamicConnectivityStrategy& strategy
-    ) {
-
-        vec<uint32_t> node_priority(hypergraph.initialNumNodes(), 1);
-
-        if (strategy == DynamicConnectivityStrategy::st) {
-            this->stc.reset(hypergraph);
-
-            for (const HypernodeID& node : hypergraph.nodes()) {
-                if (this->stc.canMoveVertex(hypergraph, node)) {
-                    node_priority[node] = 0;
-                }
-            }
-        }
-
-        if (strategy != DynamicConnectivityStrategy::do_nothing) {
-            this->anker.initialize(hypergraph, node_priority);
-        }
-    }
+    );
 
 };
 
