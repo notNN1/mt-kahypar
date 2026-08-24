@@ -34,7 +34,7 @@ bool ConnectivityFacade<PartitionedHypergraph>::can_move_into_partition(
     const HypernodeID& hn,
     const PartitionID& to
 ) {
-    if (strategy == DynamicConnectivityStrategy::do_nothing || strategy == DynamicConnectivityStrategy::st) {
+    if (strategy == DynamicConnectivityStrategy::do_nothing) {
         return true;
     }
 
