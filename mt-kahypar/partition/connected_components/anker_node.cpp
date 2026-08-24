@@ -87,7 +87,8 @@ HypernodeID AnkerNodes<PartitionedHypergraph>::find_node_in_partition(
     const PartitionID& partition
 ) {
     HypernodeID anker_node = this->node_to_partition[hn][partition];
-    if (partition == phg.partID(anker_node)) {
+
+    if (anker_node != kInvalidHypernode && partition == phg.partID(anker_node)) {
         return anker_node;
     }
 
