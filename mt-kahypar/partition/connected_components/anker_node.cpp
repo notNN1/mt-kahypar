@@ -96,9 +96,11 @@ HypernodeID AnkerNodes<PartitionedHypergraph>::find_node_in_partition(
             }
         }
     }
+
+    return kInvalidHypernode;
 }
 
-INSTANTIATE_CLASS_WITH_PARTITIONED_HG(ConnectivityFacade)
+INSTANTIATE_CLASS_WITH_PARTITIONED_HG(AnkerNodes)
 
 }  // namespace connected_components
 }  // namespace mt_kahypar
