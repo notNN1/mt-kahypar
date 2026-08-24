@@ -27,12 +27,12 @@
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/parallel/stl/scalable_vector.h"
 #include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/datastructures/bitset.h"
 #include "mt-kahypar/partition/connected_components/compute_components.h"
 #include "mt-kahypar/partition/connected_components/connectivity_facade.h"
 #include "mt-kahypar/partition/connected_components/spanning_tree_connectivity.h"
 #include "mt-kahypar/partition/connected_components/bfs_connectivity.h"
+#include "mt-kahypar/partition/connected_components/anker_node.h"
 
 
 
@@ -48,10 +48,9 @@ private:
     BFSSpanningTreeConnectivity<PartitionedHypergraph>  stc;                            // reset when: moved without connectivity, uncoarsening 
     BFSConnectivity<PartitionedHypergraph>              bfs;
 
-    Bitset          can_move_current_node_to_partition;         // reset when: moveVertex || last_viewed_node != current_node  
-    HypernodeID     last_viewed_node;                           //
-    bool            graph_was_changed;                          
-
+    AnkerNodes<PartitionedHypergraph>                   anker;
+    
+    DynamicConnectivityStrategy                         last_strategy_used;
 
     bool can_move_out_of_partition(
         const DynamicConnectivityStrategy& strategy,
@@ -68,7 +67,7 @@ private:
     );
 
 public:
-    void initialize_spanning_tree(const PartitionedHypergraph& hypergraph) {
+    void initialize(const PartitionedHypergraph& hypergraph) {
         this->stc.reset(hypergraph);
     }
 
@@ -86,20 +85,26 @@ public:
         const PartitionID& to
     );
 
-    void reset_connectivity_out(
-        const PartitionedHypergraph& hypergraph
-    ) {
-        this->stc.reset(hypergraph);
-    }
-
-    void reset_connectivity_in(
+    void reset_connectivity(
         const PartitionedHypergraph& hypergraph,
-        const HypernodeID& hn
-    );
+        const DynamicConnectivityStrategy& strategy
+    ) {
 
-    void set_graph_was_changed() {
-        this->graph_was_changed = true;
+        vec<uint32_t> node_priority(hypergraph.initialNumNodes(), 1);
+
+        if (strategy == DynamicConnectivityStrategy::st) {
+            this->stc.reset(hypergraph);
+
+            for (const HypernodeID& node : hypergraph.nodes()) {
+                if (this->stc.canMoveVertex(hypergraph, node)) {
+                    node_priority[node] = 0;
+                }
+            }
+        }
+
+        this->anker.initialize(hypergraph, node_priority);
     }
+
 };
 
 }  // namespace connected_components

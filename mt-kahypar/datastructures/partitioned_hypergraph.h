@@ -117,8 +117,8 @@ class PartitionedHypergraph {
     _pin_count_update_ownership(
         "Refinement", "pin_count_update_ownership", hypergraph.initialNumEdges(), true, false) {
     _part_ids.assign(hypergraph.initialNumNodes(), kInvalidPartition, false);
-    _cf.initialize_spanning_tree(*this);
-    _cf.set_graph_was_changed();
+    _cf.initialize(*this);
+
   }
 
   explicit PartitionedHypergraph(const PartitionID k,
@@ -144,8 +144,7 @@ class PartitionedHypergraph {
       _pin_count_update_ownership.resize(
         "Refinement", "pin_count_update_ownership", hypergraph.initialNumEdges(), true);
     });
-    _cf.initialize_spanning_tree(*this);
-    _cf.set_graph_was_changed();
+    _cf.initialize(*this);
   }
 
   // REVIEW NOTE why do we delete copy assignment/construction? wouldn't it be useful to make a copy, e.g. for initial partitioning
@@ -179,8 +178,7 @@ class PartitionedHypergraph {
 
   void setHypergraph(Hypergraph& hypergraph) {
     _hg = &hypergraph;
-    this->_cf.reset_connectivity_out(*this);
-    this->_cf.set_graph_was_changed();
+    this->_cf.reset_connectivity(*this, DynamicConnectivityStrategy::do_nothing);
   }
 
   // ! Initial number of hypernodes
@@ -422,8 +420,7 @@ class PartitionedHypergraph {
   template<typename GainCache>
   void uncontract(const Batch& batch, GainCache& gain_cache) {
     // reset connectivity
-    this->_cf.reset_connectivity_out(*this);
-    this->_cf.set_graph_was_changed();
+    this->_cf.reset_connectivity(*this, DynamicConnectivityStrategy::do_nothing);
     // Set block ids of contraction partners
     tbb::parallel_for(UL(0), batch.size(), [&](const size_t i) {
       const Memento& memento = batch[i];
@@ -585,7 +582,6 @@ class PartitionedHypergraph {
     ASSERT(_part_ids[u] == kInvalidPartition);
     _part_ids[u] = p;
 
-    _cf.set_graph_was_changed();
     this->was_changed_without_connectivity = true;
   }
 
@@ -618,7 +614,7 @@ class PartitionedHypergraph {
     const HypernodeWeight to_weight_after = _part_weights[to].add_fetch(wu, std::memory_order_relaxed);
 
     if (connectivity_strategy != DynamicConnectivityStrategy::do_nothing && this->was_changed_without_connectivity) {
-      this->_cf.reset_connectivity_out(*this);
+      this->_cf.reset_connectivity(*this, connectivity_strategy);
     }
 
     if (to_weight_after <= max_weight_to && (connectivity_strategy == DynamicConnectivityStrategy::do_nothing || this->_cf.canMoveVertex(connectivity_strategy, *this, u, to))) {
@@ -639,8 +635,6 @@ class PartitionedHypergraph {
       for ( const HyperedgeID he : incidentEdges(u) ) {
         updatePinCountOfHyperedge(he, from, to, sync_update, delta_func, notify_func);
       }
-
-      _cf.set_graph_was_changed();
 
       return true;
     } else {

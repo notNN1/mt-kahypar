@@ -25,55 +25,31 @@
 #pragma once
 
 #include "mt-kahypar/datastructures/hypergraph_common.h"
-#include "mt-kahypar/parallel/stl/scalable_vector.h"
-#include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/partition/connected_components/compute_components.h"
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/datastructures/bitset.h"
-#include "mt-kahypar/datastructures/dynamic_connectivity_datastructures.h"
 
 namespace mt_kahypar {
 namespace connected_components {
 
 using Bitset = mt_kahypar::ds::Bitset;
-    
+
 template<typename PartitionedHypergraph>
-class BFSSpanningTreeConnectivity {
+class AnkerNodes {
 private:
-    vec<HypernodeID> hn_to_parent;
-    vec<size_t> hn_to_num_children;
-
-    Bitset has_connection_to_other_partition;
-    Bitset hn_is_locked;
-
-    void initialize_connectivity_out(
-        const PartitionedHypergraph& phg
-    );
-
-    void initialize_connectivity_in(
-        const PartitionedHypergraph& phg
-    );
+    vec<vec<HypernodeID>> node_to_partition;
 
 public:
     
-    void reset(
-        const PartitionedHypergraph& phg
-    );
-
-    int size() const {
-        return hn_to_num_children.size();
-    } 
-
-    bool canMoveVertex(
+    void initialize(
         const PartitionedHypergraph& phg,
-        const HypernodeID& hn
+        const vec<uint32_t>& node_priority
     );
 
-    void moveVertex(
+    // returns kInvalidHypernode if nothing is found
+    HypernodeID find_node_in_partition(
         const PartitionedHypergraph& phg,
         const HypernodeID& hn,
-        const PartitionID& to,
-        const HypernodeID& node_to
+        const PartitionID& partition
     );
 };
 
