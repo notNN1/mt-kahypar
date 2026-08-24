@@ -46,6 +46,10 @@ void AnkerNodes<PartitionedHypergraph>::initialize(
         for (const HypernodeID& incident_hn : phg.pins(he)) {
             PartitionID part = phg.partID(incident_hn);
 
+            if (part == kInvalidPartition) {
+                continue;
+            }
+
             if (nodes_for_partition[part] != kInvalidHypernode && node_priority[nodes_for_partition[part]] >= node_priority[incident_hn]) {
                 continue;
             }
