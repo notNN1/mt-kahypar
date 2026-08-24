@@ -46,14 +46,6 @@ private:
     Bitset has_connection_to_other_partition;
     Bitset hn_is_locked;
 
-    void initialize_connectivity_out(
-        const PartitionedHypergraph& phg
-    );
-
-    void initialize_connectivity_in(
-        const PartitionedHypergraph& phg
-    );
-
 public:
     
     void reset(

@@ -102,7 +102,9 @@ public:
             }
         }
 
-        this->anker.initialize(hypergraph, node_priority);
+        if (strategy != DynamicConnectivityStrategy::do_nothing) {
+            this->anker.initialize(hypergraph, node_priority);
+        }
     }
 
 };

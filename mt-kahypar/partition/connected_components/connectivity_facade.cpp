@@ -92,6 +92,8 @@ bool ConnectivityFacade<PartitionedHypergraph>::canMoveVertex(
         this->reset_connectivity(hypergraph, strategy);
     }
 
+    this->last_strategy_used = strategy;
+
     return can_move_out_of_partition(strategy, hypergraph, hn, to) && can_move_into_partition(strategy, hypergraph, hn, to);
 }
 
