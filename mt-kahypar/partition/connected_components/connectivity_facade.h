@@ -90,6 +90,10 @@ public:
         const DynamicConnectivityStrategy& strategy
     );
 
+    void reset_connectivity(
+        const PartitionedHypergraph& hypergraph
+    );
+
 };
 
 }  // namespace connected_components

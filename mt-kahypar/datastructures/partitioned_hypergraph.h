@@ -178,7 +178,7 @@ class PartitionedHypergraph {
 
   void setHypergraph(Hypergraph& hypergraph) {
     _hg = &hypergraph;
-    this->_cf.reset_connectivity(*this, DynamicConnectivityStrategy::do_nothing);
+    this->_cf.reset_connectivity(*this);
   }
 
   // ! Initial number of hypernodes
@@ -420,7 +420,7 @@ class PartitionedHypergraph {
   template<typename GainCache>
   void uncontract(const Batch& batch, GainCache& gain_cache) {
     // reset connectivity
-    this->_cf.reset_connectivity(*this, DynamicConnectivityStrategy::do_nothing);
+    this->_cf.reset_connectivity(*this);
     // Set block ids of contraction partners
     tbb::parallel_for(UL(0), batch.size(), [&](const size_t i) {
       const Memento& memento = batch[i];
@@ -582,7 +582,7 @@ class PartitionedHypergraph {
     ASSERT(_part_ids[u] == kInvalidPartition);
     _part_ids[u] = p;
 
-    this->was_changed_without_connectivity = true;
+    this->_cf.moveVertex(DynamicConnectivityStrategy::do_nothing, *this, u, p);
   }
 
   void setNodePart(const HypernodeID u, PartitionID p) {
@@ -613,14 +613,9 @@ class PartitionedHypergraph {
     const HypernodeWeight wu = nodeWeight(u);
     const HypernodeWeight to_weight_after = _part_weights[to].add_fetch(wu, std::memory_order_relaxed);
 
-    if (connectivity_strategy != DynamicConnectivityStrategy::do_nothing && this->was_changed_without_connectivity) {
-      this->_cf.reset_connectivity(*this, connectivity_strategy);
-    }
-
-    if (to_weight_after <= max_weight_to && (connectivity_strategy == DynamicConnectivityStrategy::do_nothing || this->_cf.canMoveVertex(connectivity_strategy, *this, u, to))) {
+    if (to_weight_after <= max_weight_to && this->_cf.canMoveVertex(connectivity_strategy, *this, u, to)) {
       
       this->_cf.moveVertex(connectivity_strategy, *this, u, to);
-      this->was_changed_without_connectivity = connectivity_strategy == DynamicConnectivityStrategy::do_nothing;
 
       _part_ids[u] = to;
       _part_weights[from].fetch_sub(wu, std::memory_order_relaxed);
@@ -1356,8 +1351,6 @@ public:
 private:
   // ! Dynamic connectivity
   mutable mt_kahypar::connected_components::ConnectivityFacade<PartitionedHypergraph> _cf;
-
-  mutable bool was_changed_without_connectivity = false;
 //
   // ! Number of nodes of the top level hypergraph
   HypernodeID _input_num_nodes = 0;
