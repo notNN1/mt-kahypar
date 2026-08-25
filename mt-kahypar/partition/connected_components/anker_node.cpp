@@ -33,7 +33,7 @@ void AnkerNodes<PartitionedHypergraph>::initialize(
     const PartitionedHypergraph& phg,
     const vec<uint32_t>& node_priority
 ) {
-    LOG << "Init anker nodes";
+    //LOG << "Init anker nodes";
     vec<vec<HypernodeID>> node_to_partition(phg.initialNumNodes(), vec<HypernodeID>(phg.k(), kInvalidHypernode));
 
     vec<HypernodeID> nodes_for_partition(phg.k(), kInvalidHypernode);

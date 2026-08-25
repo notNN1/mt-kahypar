@@ -657,11 +657,9 @@ namespace mt_kahypar {
     app.add_option_function<std::string>(
       (initial_partitioning ? "--i-r-lp-dynamic-connectivity" : "--r-lp-dynamic-connectivity"), [&, initial_partitioning](const std::string& s) {
         if (initial_partitioning) {
-          context.initial_partitioning.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy =
-                  dynamicConnectivityStrategyFromString(s);
+          context.initial_partitioning.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy = dynamicConnectivityStrategyFromString(s);
         } else {
-          context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy =
-                  dynamicConnectivityStrategyFromString(s);
+          context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy = dynamicConnectivityStrategyFromString(s);
         }
       },
       "Dynamic connectivity strategy:\n"

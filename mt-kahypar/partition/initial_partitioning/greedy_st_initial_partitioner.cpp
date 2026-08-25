@@ -37,8 +37,8 @@
 
 namespace mt_kahypar {
 
-const size_t MAX_ORIGINS  = 10;
-const size_t MAX_SPLITS   = 1;
+const size_t MAX_ORIGINS  = 1;
+const size_t MAX_SPLITS   = 3;
 
 template<typename TypeTraits>
 void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
@@ -131,7 +131,7 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
               nodes_to_swap.clear();
               split_size = 0;
 
-              calculate_split(hg, component, target_for_split, nodes_to_swap, split_size);
+              calculate_split(hg, component, target_for_split * (1.0 + _context.partition.epsilon), nodes_to_swap, split_size);
 
               diff = target_for_split >= split_size ? target_for_split - split_size : split_size - target_for_split;
               current_origins++;
@@ -159,13 +159,13 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
         }
         
     }
-    
 
-    if (connected_components::total_component_count(hg, _context) != 2) {
-        LOG << "WHTTFFTT: " << connected_components::total_component_count(hg, _context);
-        LOG << "size_a: " << size_a;
-        LOG << "size_b: " << size_b;
-        LOG << "Component: " << components[0].nodes.size();
+    vec<vec<connected_components::ConnectedComponent>> extra_components;
+    connected_components::compute_components_per_block(hg, _context, extra_components);
+    for (const vec<connected_components::ConnectedComponent>& components_per_partition : extra_components) {
+        if (components_per_partition.size() != 1) {
+            LOG << "components in partititon=" << components_per_partition.size();
+        } 
     }
 
     HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
@@ -190,6 +190,8 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
 
     for (const HypernodeID& node : phg.nodes()) {
         hn_to_children[node].clear();
+        hn_to_parent[node] = node;
+        hn_to_num_children[node] = 0;
     }
 
     Bitset node_colored;
@@ -231,7 +233,7 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
     }
 
     edge_colored.reset();
-    vec<HypernodeID> calculation_queue;
+    std::deque<HypernodeID> calculation_queue;
 
 
     while (node_queue.size() > 0 || lp_node_queue.size() > 0) {
@@ -274,7 +276,7 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
                 hn_to_num_children[current_node]++;
 
                 hn_to_children[current_node].push_back(incident_hn);
-                calculation_queue.push_back(incident_hn);
+                calculation_queue.push_front(incident_hn);
 
                 if (covered_nb.isSet((size_t) incident_hn)) {
                     lp_node_queue.push_back(incident_hn);
@@ -335,6 +337,9 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
     Bitset edge_colored;
     edge_colored.resize(phg.initialNumEdges());
 
+    Bitset already_started_from;
+    already_started_from.resize(phg.initialNumNodes());
+
     std::deque<HyperedgeID> node_queue;
 
     vec<HypernodeID> asignment_queue;
@@ -352,16 +357,26 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
           )(_rng);
 
           for (size_t i = 0; i < component.nodes.size(); ++i) {
-              const HypernodeID node =
-                  component.nodes[(start + i) % component.nodes.size()];
+              const HypernodeID node = component.nodes[(start + i) % component.nodes.size()];
 
               if (!covered.isSet(static_cast<size_t>(node))) {
-                  starter_node_st = node;
-                  hn_to_num_children[node] = 0;
-                  break;
+
+                if (starter_node_st == kInvalidHypernode) {
+                    starter_node_st = node;
+                }
+                else if (already_started_from.isSet((size_t) starter_node_st) && !already_started_from.isSet((size_t) node)) {
+                    starter_node_st = node;
+                }
+
+                hn_to_num_children[node] = 0;
+                break;
               }
           }
         }
+
+        already_started_from.set((size_t) starter_node_st);
+
+        //LOG << "starter_node_st: " << starter_node_st;
 
         calculate_component_spanning_tree(phg, component, hn_to_parent, hn_to_children, subtree_size, hn_to_num_children, starter_node_st, farthest_leaf_node, covered);
 
@@ -405,13 +420,11 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                         continue;
                     }
 
-                    if (hn_to_num_children[incident_hn] > 0 && subtree_size[incident_hn] + current_split > target) {
-                        continue;
-                    }
-
                     if (current_split + phg.nodeWeight(incident_hn) > target) {
                         continue;
                     }
+
+                    uint32_t true_size = phg.nodeWeight(incident_hn);
 
                     if (subtree_size[incident_hn] + current_split <= target) {
 
@@ -439,6 +452,8 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                                     continue;
                                 }
 
+                                true_size += phg.nodeWeight(ch_hn);
+
                                 add_node_to_split(
                                     ch_hn,
                                     hn_to_parent,
@@ -454,8 +469,13 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                                 asignment_queue.push_back(ch_hn);
                             }
                         }
+
+                        if (true_size > subtree_size[incident_hn]) {
+                            //LOG << "true size: " << true_size << " subtree_size: " << subtree_size[incident_hn];
+                        }
+                        
                     }
-                    else {
+                    else if (hn_to_num_children[incident_hn] == 0) {
                         add_node_to_split(
                             incident_hn,
                             hn_to_parent,
@@ -467,14 +487,29 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                             node_queue,
                             result
                         );
+                    } else {
+                        continue;
                     }
+
+                    HypernodeID parent = hn_to_parent[incident_hn];
+                    while (parent != hn_to_parent[parent]) {
+                        subtree_size[parent] -= true_size;
+                        parent = hn_to_parent[parent];
+                    }
+
+                    subtree_size[parent] -= true_size;
+
                 }
             }   
         }
 
+        //LOG << "Iteration: " << current_iteration << " and gain: " << current_split << " with target: " << target;
+
         for (const HypernodeID& node : result) {
             node_queue.push_back(node);
         }
+
+        edge_colored.reset();
     }
 
 }
