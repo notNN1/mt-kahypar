@@ -275,6 +275,7 @@ namespace mt_kahypar {
         case DynamicConnectivityStrategy::h_vertex_degree:    return os << "h_vertex_degree";
         case DynamicConnectivityStrategy::st:                 return os << "st";
         case DynamicConnectivityStrategy::do_nothing:         return os << "do_nothing";
+        case DynamicConnectivityStrategy::in_only:            return os << "in_only";
           // omit default case to trigger compiler warning for missing cases
       }
       return os << static_cast<uint8_t>(type);
@@ -535,6 +536,9 @@ namespace mt_kahypar {
     }
     else if (type == "do_nothing") {
       return DynamicConnectivityStrategy::do_nothing;
+    }
+    else if (type == "in_only") {
+      return DynamicConnectivityStrategy::in_only;
     }
 
     throw InvalidParameterException("Illegal option: " + type);

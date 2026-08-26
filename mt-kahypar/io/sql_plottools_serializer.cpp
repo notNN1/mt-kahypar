@@ -174,7 +174,7 @@ std::string serialize(const PartitionedHypergraph& hypergraph,
         << " use_localized_random_shuffle=" << std::boolalpha << context.shared_memory.use_localized_random_shuffle
         << " shuffle_block_size=" << context.shared_memory.shuffle_block_size
         << " static_balancing_work_packages=" << context.shared_memory.static_balancing_work_packages;
-
+    oss << " connected_blocks=" << context.partition.connected_blocks;
     if ( context.partition.objective == Objective::steiner_tree ) {
       oss << " target_graph_file=" << context.mapping.target_graph_file.substr(
             context.mapping.target_graph_file.find_last_of('/') + 1)

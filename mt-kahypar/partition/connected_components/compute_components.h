@@ -38,7 +38,7 @@ struct ConnectedComponent {
 struct ComponentInfo {
   vec<HypernodeID>  nodes;
   PartitionID       partition;
-  size_t            parititon_weight;
+  size_t            weight;
 };
 
 // ! Computes the connected components of each block and writes them to result

@@ -365,12 +365,14 @@ namespace impl {
           continue;
         }
 
+        DynamicConnectivityStrategy connectivity_strat = _context.partition.connected_blocks && _context.type == ContextType::initial_partitioning ? DynamicConnectivityStrategy::st : _context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy;
+
         edges_with_gain_changes.clear();
         size_t move_id = 0;
         bool moved = phg.changeNodePart(
                       _gain_cache, m.node, m.from, m.to,
                       _context.partition.max_part_weights[m.to],
-                      DynamicConnectivityStrategy::st,
+                      connectivity_strat,
                       [&] { move_id = __atomic_fetch_add(&global_move_id, 1, __ATOMIC_RELAXED); },
                       [&](const SynchronizedEdgeUpdate& sync_update) {
                         local_attributed_gain += AttributedGains::gain(sync_update);

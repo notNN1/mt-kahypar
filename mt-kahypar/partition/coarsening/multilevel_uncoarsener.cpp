@@ -34,7 +34,7 @@
 #include "mt-kahypar/utils/stats.h"
 #include "mt-kahypar/utils/cast.h"
 #include "mt-kahypar/partition/connected_components/compute_components.h"
-
+#include "mt-kahypar/partition/connected_components/restore_connectivity.h"
 
 
 namespace mt_kahypar {
@@ -89,6 +89,14 @@ namespace mt_kahypar {
 
     if ( _context.partition.connected_blocks && _context.type == ContextType::main ) {
       logConnectivityInformation(partitioned_hg, _context, _current_level);
+
+      vec<vec<connected_components::ConnectedComponent>> components_per_block;
+      connected_components::compute_components_per_block(partitioned_hg, _context, components_per_block);
+
+      vec<vec<connected_components::ComponentInfo>> super_components;
+      connected_components::compute_super_components(partitioned_hg, _context, components_per_block, super_components);
+
+      restore_connectivity(partitioned_hg, _context, super_components);
     }
     
     if ( _current_level == _num_levels ) {

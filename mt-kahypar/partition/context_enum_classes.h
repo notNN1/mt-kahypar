@@ -183,7 +183,8 @@ enum class DynamicConnectivityStrategy : uint8_t {
   st,
   bfs,
   hdlt,
-  h_vertex_degree
+  h_vertex_degree,
+  in_only,
 };
 
 std::ostream & operator<< (std::ostream& os, const FileFormat& type);

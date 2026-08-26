@@ -34,17 +34,8 @@ namespace connected_components {
 template<typename PartitionedHypergraph>
 void restore_connectivity(
   PartitionedHypergraph& phg,
-  const vec<vec<ComponentInfo>>& super_components,
-  vec<ComponentInfo>& result,
   const Context& context,
-  const double total_weight_ratio
-);
-
-template<typename PartitionedHypergraph>
-vec<size_t> find_possible_partitions(
-  const vec<connected_components::ComponentInfo>& super_component,
-  const PartitionedHypergraph& phg,
-  const Context& context
+  vec<vec<ComponentInfo>>& super_components
 );
 
 }  // namespace connected_components

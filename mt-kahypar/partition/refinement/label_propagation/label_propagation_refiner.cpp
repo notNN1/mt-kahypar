@@ -68,19 +68,13 @@ namespace mt_kahypar {
 
         Gain delta_before = _gain.localDelta();
 
-        //size_t c1 = connected_components::total_component_count<PartitionedHypergraph>(hypergraph, NULL);
+        DynamicConnectivityStrategy connectivity_strat = _context.partition.connected_blocks && _context.type == ContextType::initial_partitioning ? DynamicConnectivityStrategy::st : _context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy;  
 
-        bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta, DynamicConnectivityStrategy::st);
+        bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta, connectivity_strat);
         ASSERT(!unconstrained || changed_part);
         is_moved = true;
         if (unconstrained || changed_part) {
 
-          //size_t c2 = connected_components::total_component_count<PartitionedHypergraph>(hypergraph, NULL);
-
-          /*if (c2 > c1) {
-            LOG << "Honestly how";
-            while(true);
-          }*/
           // In case the move to block 'to' was successful, we verify that the "real" gain
           // of the move is either equal to our computed gain or if not, still improves
           // the solution quality.

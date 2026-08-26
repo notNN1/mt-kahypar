@@ -594,6 +594,7 @@ namespace mt_kahypar {
       "- h_vertex_degree\n"
       "- st\n"
       "- do_nothing"
+      "- in_only\n"
     )->capture_default_str();
 
     // Label Propagation
@@ -668,6 +669,7 @@ namespace mt_kahypar {
       "- h_vertex_degree\n"
       "- st\n"
       "- do_nothing"
+      "- in_only\n"
     )->capture_default_str();
 
     // Jet
@@ -855,7 +857,8 @@ namespace mt_kahypar {
       "- hdlt\n"
       "- h_vertex_degree\n"
       "- st\n"
-      "- do_nothing"
+      "- do_nothing\n"
+      "- in_only\n"
     )->capture_default_str();
 
     // global refinement for n-level partitioning

@@ -36,10 +36,8 @@ using Bitset = mt_kahypar::ds::Bitset;
 template<typename PartitionedHypergraph>
 void restore_connectivity(
   PartitionedHypergraph& phg,
-  const vec<vec<ComponentInfo>>& super_components,
-  vec<ComponentInfo>& result,
   const Context& context,
-  const double total_weight_ratio
+  vec<vec<ComponentInfo>>& super_components
 ) {
   // find components
   vec<vec<ComponentInfo>> infos;
@@ -47,48 +45,47 @@ void restore_connectivity(
   infos.resize(context.partition.k);
 
   ////// just throw components over
-  for (const vec<connected_components::ComponentInfo>& super_component : super_components) {
+  for (vec<connected_components::ComponentInfo>& super_component : super_components) {
 
-    vec<size_t> components_per_partition = find_possible_partitions(super_component, phg, context);
+    std::sort(super_component.begin(), super_component.end(),
+        [](const connected_components::ComponentInfo& a, const connected_components::ComponentInfo& b) {
+            return a.weight < b.weight;
+        }
+    );
 
     for (const connected_components::ComponentInfo& component : super_component) {
+      // find partition to move component to
+
+      PartitionID move_to = kInvalidPartition;
+      for (const HypernodeID& node : component.nodes) {
+        for (const HyperedgeID& edge : phg.incidentEdges(node)) {
+          for (const HypernodeID& incident_hn : phg.pins(edge)) {
+            if (phg.partID(incident_hn) != component.partition) {
+              move_to = phg.partID(incident_hn);
+            }
+          }
+        }
+      }
       
-      
+      if (move_to == kInvalidPartition) {
+        continue;
+      }
+
+      if (phg.partWeight(move_to) + component.weight < (phg.totalWeight() / phg.k()) * (1.0 + 3 * context.partition.epsilon)) {
+        LOG << "hapened";
+        for (const HypernodeID& node : component.nodes) {
+          phg.changeNodePart(node, component.partition, move_to, DynamicConnectivityStrategy::do_nothing);
+        }
+      }
     }
   }
 }
-
-/*if (component.parititon_weight < total_weight_ratio * phg.totalWeight()) {
-    for (const HypernodeID& node : component.nodes) {
-        phg.setNodePart(node, selected_part);
-    }
-}*/
-
-template<typename PartitionedHypergraph>
-vec<size_t> find_possible_partitions(
-  const vec<connected_components::ComponentInfo>& super_component,
-  const PartitionedHypergraph& phg,
-  const Context& context
-) {
-
-  vec<size_t> components_per_partition;
-  components_per_partition.resize(phg.k());
-
-  for (const connected_components::ComponentInfo& component : super_component) {
-    components_per_partition[component.partition]++;
-  }
-
-  return components_per_partition;
-}
-
 
 
 namespace {
-#define FIND_PARTITIONS(X) vec<size_t> find_possible_partitions(const vec<ComponentInfo>& super_component, const X& phg, const Context& context)
-#define RESTORE_CONNECTIVITY(X) void restore_connectivity(X& phg, const vec<vec<ComponentInfo>>& super_components, vec<ComponentInfo>& result, const Context& context, const double total_weight_ratio)
+#define RESTORE_CONNECTIVITY(X) void restore_connectivity(X& phg, const Context& context, vec<vec<ComponentInfo>>& super_components)
 }
 
-INSTANTIATE_FUNC_WITH_PARTITIONED_HG(FIND_PARTITIONS)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(RESTORE_CONNECTIVITY)
 
 }  // namespace connected_components
