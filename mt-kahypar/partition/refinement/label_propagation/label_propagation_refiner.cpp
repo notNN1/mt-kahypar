@@ -68,9 +68,7 @@ namespace mt_kahypar {
 
         Gain delta_before = _gain.localDelta();
 
-        DynamicConnectivityStrategy connectivity_strat = _context.partition.connected_blocks && _context.type == ContextType::initial_partitioning ? DynamicConnectivityStrategy::st : _context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy;  
-
-        bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta, connectivity_strat);
+        bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta, DynamicConnectivityStrategy::st);
         ASSERT(!unconstrained || changed_part);
         is_moved = true;
         if (unconstrained || changed_part) {

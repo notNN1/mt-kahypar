@@ -89,10 +89,8 @@ bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics& best_metrics, std::m
     PartitionID from = _phg.partID(hn);
     _vertex_state[hn] = VertexState::MOVED;
 
-    DynamicConnectivityStrategy connectivity_strat = _context.partition.connected_blocks && _context.type == ContextType::initial_partitioning ? DynamicConnectivityStrategy::st : _context.refinement.dynamic_connectivity.kway_fm;
-
     if ( _phg.changeNodePart(hn, from, to,
-          _context.partition.max_part_weights[to], []{}, connectivity_strat, border_vertex_update) ) {
+          _context.partition.max_part_weights[to], []{}, DynamicConnectivityStrategy::st, border_vertex_update) ) {
 
       // Perform delta gain updates
       updateNeighbors(hn, from, to);

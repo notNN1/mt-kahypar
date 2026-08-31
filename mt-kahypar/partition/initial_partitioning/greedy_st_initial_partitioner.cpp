@@ -141,7 +141,7 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
                 best_split_diff = static_cast<double>(diff) / target_for_split;
               }
 
-          } while(current_origins <= MAX_ORIGINS);
+          } while(current_origins < MAX_ORIGINS);
 
           //// assign nodes from best split            
           for (const HypernodeID& node : best_split) {
@@ -292,6 +292,27 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
         }
     }
 
+    HypernodeID one_parent = kInvalidHypernode;
+    for (const HypernodeID& node : phg.nodes()) {
+        if (covered.isSet((size_t) node)) {
+            continue;
+        }
+
+        HypernodeID parent = hn_to_parent[node];
+
+        while(hn_to_parent[parent] != parent) {
+            parent = hn_to_parent[parent];
+        }
+
+        if (one_parent == kInvalidHypernode) {
+            one_parent = parent;
+        }
+        else if (one_parent != parent) {
+            LOG << "There are at least 2 parents";
+            //while(true);
+        }
+    }
+
     for (const HypernodeID& node : phg.nodes()) {
         subtree_size[node] = phg.nodeWeight(node);
     }
@@ -310,7 +331,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
     vec<HypernodeID>& result,
     size_t& current_split
 ) {
-    ////
+    //// spanning tree parameters
     vec<HypernodeID> hn_to_parent;
     hn_to_parent.resize(phg.initialNumNodes());
 
@@ -345,7 +366,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
     vec<HypernodeID> asignment_queue;
     asignment_queue.reserve(phg.initialNumNodes());
 
-    while (current_split < target && current_iteration <= MAX_SPLITS) {
+    while (current_split < target && current_iteration < MAX_SPLITS) {
         current_iteration++;
 
         HypernodeID starter_node_st     = kInvalidHypernode;
@@ -359,7 +380,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
           for (size_t i = 0; i < component.nodes.size(); ++i) {
               const HypernodeID node = component.nodes[(start + i) % component.nodes.size()];
 
-              if (!covered.isSet(static_cast<size_t>(node))) {
+              if (!covered.isSet((size_t) node)) {
 
                 if (starter_node_st == kInvalidHypernode) {
                     starter_node_st = node;
@@ -367,14 +388,17 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                 else if (already_started_from.isSet((size_t) starter_node_st) && !already_started_from.isSet((size_t) node)) {
                     starter_node_st = node;
                 }
-
-                hn_to_num_children[node] = 0;
                 break;
               }
           }
         }
 
         already_started_from.set((size_t) starter_node_st);
+
+        if (starter_node_st == kInvalidHypernode) {
+            LOG << "That should not happen";
+            while(true);
+        }
 
         //LOG << "starter_node_st: " << starter_node_st;
 
@@ -393,6 +417,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
             }
 
             node_colored.set((size_t) starter_node);
+            covered.set((size_t) starter_node);
             result.push_back(starter_node);
             node_queue.push_back(starter_node);
             current_split += phg.nodeWeight(starter_node);
@@ -416,7 +441,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                         continue;
                     }
 
-                    if (node_colored.isSet((size_t) incident_hn)) {
+                    if (node_colored.isSet((size_t) incident_hn) || covered.isSet((size_t) incident_hn)) {
                         continue;
                     }
 
@@ -471,7 +496,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                         }
 
                         if (true_size > subtree_size[incident_hn]) {
-                            //LOG << "true size: " << true_size << " subtree_size: " << subtree_size[incident_hn];
+                            LOG << "true size: " << true_size << " subtree_size: " << subtree_size[incident_hn];
                         }
                         
                     }
@@ -503,7 +528,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
             }   
         }
 
-        //LOG << "Iteration: " << current_iteration << " and gain: " << current_split << " with target: " << target;
+        LOG << "Iteration: " << current_iteration << " and gain: " << current_split << " with target: " << target;
 
         for (const HypernodeID& node : result) {
             node_queue.push_back(node);
