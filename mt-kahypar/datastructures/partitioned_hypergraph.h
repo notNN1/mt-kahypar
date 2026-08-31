@@ -1315,7 +1315,7 @@ public:
 
   vec<vec<HypernodeID>> circular_edge_expansion() const {
 
-    vec<vec<HypernodeID>> hn_to_new_incident_nodes(initialNumEdges());
+    vec<vec<HypernodeID>> hn_to_new_incident_nodes(initialNumNodes());
 
     for (const HyperedgeID& he : edges()) {
 
