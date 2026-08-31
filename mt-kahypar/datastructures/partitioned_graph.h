@@ -1252,7 +1252,7 @@ public:
     
   }
 
-  vec<vec<vec<HypernodeID>>> circular_edge_expansion() const { }
+  vec<vec<HypernodeID>> circular_edge_expansion() const { }
 
 private:
   HypernodeID _input_num_nodes = 0;

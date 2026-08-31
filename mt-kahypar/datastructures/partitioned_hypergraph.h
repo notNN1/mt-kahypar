@@ -1313,9 +1313,9 @@ public:
     return _cf.canMoveVertex(strategy, *this, hn, to);
   }
 
-  vec<vec<vec<HypernodeID>>> circular_edge_expansion() const {
+  vec<vec<HypernodeID>> circular_edge_expansion() const {
 
-    vec<vec<vec<HypernodeID>>> he_hn_to_new_edge(initialNumEdges());
+    vec<vec<HypernodeID>> hn_to_new_incident_nodes(initialNumEdges());
 
     for (const HyperedgeID& he : edges()) {
 
@@ -1327,8 +1327,6 @@ public:
 
         size_t edge_size = edge_pins.size();
 
-        he_hn_to_new_edge[he].resize(initialNumNodes());
-
         for (size_t i = 0; i < edge_size; ++i) {
           HypernodeID current = edge_pins[i];
 
@@ -1336,16 +1334,16 @@ public:
           HypernodeID next = edge_pins[(i + 1) % edge_size];
           
           if (prev != current) {
-            he_hn_to_new_edge[he][current].push_back(prev);
+            hn_to_new_incident_nodes[current].push_back(prev);
           }
 
           if (next != current && next != prev) {
-            he_hn_to_new_edge[he][current].push_back(next);
+            hn_to_new_incident_nodes[current].push_back(next);
           }
         }
     }
 
-    return he_hn_to_new_edge;
+    return hn_to_new_incident_nodes;
 }
 
 private:

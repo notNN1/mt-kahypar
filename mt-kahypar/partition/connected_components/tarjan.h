@@ -74,11 +74,11 @@ public:
     void initialize(const PartitionedHypergraph& phg) {
         reset_fields(phg);
 
-        vec<vec<vec<HypernodeID>>> he_hn_to_new_edge = phg.circular_edge_expansion();
+        vec<vec<HypernodeID>> hn_to_new_incident_nodes = phg.circular_edge_expansion();
         
         for (const HypernodeID& node : phg.nodes()) {
             if (disc[node] == 0) {
-                if (dfs_recursive_wrapper(phg, node, he_hn_to_new_edge) > 1) {
+                if (dfs_recursive_wrapper(phg, node, hn_to_new_incident_nodes) > 1) {
                     is_ap.set((size_t) node);
                 }
             }
@@ -89,38 +89,36 @@ private:
     size_t dfs_recursive_wrapper(
         const PartitionedHypergraph& phg, 
         const HypernodeID& node,
-        const vec<vec<vec<HypernodeID>>>& he_hn_to_new_edge
+        const vec<vec<HypernodeID>>& hn_to_new_incident_nodes
     ) {
-        return dfs_recursive(phg, node, node, he_hn_to_new_edge);
+        return dfs_recursive(phg, node, node, hn_to_new_incident_nodes);
     }
 
     size_t dfs_recursive(
         const PartitionedHypergraph& phg, 
         const HypernodeID& node, 
         const HypernodeID& parent,
-        const vec<vec<vec<HypernodeID>>>& he_hn_to_new_edge
+        const vec<vec<HypernodeID>>& hn_to_new_incident_nodes
     ) {
         size_t children = 0;
         low[node] = disc[node] = time;
         time++;
 
-        for (const HyperedgeID& he : phg.incidentEdges(node)) {
-            for (const HypernodeID& incident_hn : he_hn_to_new_edge[he][node]) {
-                if (incident_hn == parent) continue; // we don't want to go back through the same path.
-                                // if we go back is because we found another way back
-                if (disc[incident_hn] == 0) { // if V has not been discovered before
-                    children++;
-                    dfs_recursive(phg, incident_hn, node, he_hn_to_new_edge); // recursive DFS call
+        for (const HypernodeID& incident_hn : hn_to_new_incident_nodes[node]) {
+            if (incident_hn == parent) continue; // we don't want to go back through the same path.
+                            // if we go back is because we found another way back
+            if (disc[incident_hn] == 0) { // if V has not been discovered before
+                children++;
+                dfs_recursive(phg, incident_hn, node, hn_to_new_incident_nodes); // recursive DFS call
 
-                    if (node != parent && disc[node] <= low[incident_hn]) // condition #1
-                        is_ap.set((size_t) node);
+                if (node != parent && disc[node] <= low[incident_hn]) // condition #1
+                    is_ap.set((size_t) node);
 
-                    low[node] = std::min(low[node], low[incident_hn]); // low[v] might be an ancestor of u
-                } else // if v was already discovered means that we found an ancestor
-                    low[node] = std::min(low[node], disc[incident_hn]); // finds the ancestor with the least discovery time
-            }
+                low[node] = std::min(low[node], low[incident_hn]); // low[v] might be an ancestor of u
+            } else // if v was already discovered means that we found an ancestor
+                low[node] = std::min(low[node], disc[incident_hn]); // finds the ancestor with the least discovery time
         }
-
+        
         return children;
     }
 
