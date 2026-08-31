@@ -581,7 +581,7 @@ namespace mt_kahypar {
     app.add_option_function<std::string>(
       (initial_partitioning ? "--i-r-rebalancer-dynamic-connectivity" : "--r-rebalancer-dynamic-connectivity"), [&, initial_partitioning](const std::string& s) {
         if (initial_partitioning) {
-          context.initial_partitioning.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy =
+          context.initial_partitioning.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy =
                   dynamicConnectivityStrategyFromString(s);
         } else {
           context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy =
@@ -658,7 +658,7 @@ namespace mt_kahypar {
     app.add_option_function<std::string>(
       (initial_partitioning ? "--i-r-lp-dynamic-connectivity" : "--r-lp-dynamic-connectivity"), [&, initial_partitioning](const std::string& s) {
         if (initial_partitioning) {
-          context.initial_partitioning.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy = dynamicConnectivityStrategyFromString(s);
+          context.initial_partitioning.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy = dynamicConnectivityStrategyFromString(s);
         } else {
           context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy = dynamicConnectivityStrategyFromString(s);
         }
@@ -845,7 +845,7 @@ namespace mt_kahypar {
     app.add_option_function<std::string>(
       (initial_partitioning ? "--i-r-fm-dynamic-connectivity" : "--r-fm-dynamic-connectivity"), [&, initial_partitioning](const std::string& s) {
         if (initial_partitioning) {
-          context.initial_partitioning.dynamic_connectivity.kway_fm =
+          context.initial_partitioning.refinement.dynamic_connectivity.kway_fm =
                   dynamicConnectivityStrategyFromString(s);
         } else {
           context.refinement.dynamic_connectivity.kway_fm =
