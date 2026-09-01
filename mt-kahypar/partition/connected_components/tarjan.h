@@ -74,7 +74,7 @@ public:
     void initialize(const PartitionedHypergraph& phg) {
         reset_fields(phg);
 
-        vec<vec<HypernodeID>> hn_to_new_incident_nodes = phg.circular_edge_expansion();
+        vec<vec<HypernodeID>> hn_to_new_incident_nodes = phg.get_circular_edge_expansion();
         
         for (const HypernodeID& node : phg.nodes()) {
             if (disc[node] == 0) {

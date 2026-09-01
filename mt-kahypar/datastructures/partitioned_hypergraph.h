@@ -1302,6 +1302,7 @@ class PartitionedHypergraph {
     }
     return pin_count_after;
   }
+
   
 public:
 
@@ -1313,7 +1314,11 @@ public:
     return _cf.canMoveVertex(strategy, *this, hn, to);
   }
 
-  vec<vec<HypernodeID>> circular_edge_expansion() const {
+  vec<vec<HypernodeID>> get_circular_edge_expansion() const {
+    return this->_cf.circular_edge_expansion;
+  }
+    
+  vec<vec<HypernodeID>> build_circular_edge_expansion() const {
 
     vec<vec<HypernodeID>> hn_to_new_incident_nodes(initialNumNodes());
 
@@ -1344,7 +1349,11 @@ public:
     }
 
     return hn_to_new_incident_nodes;
-}
+  }
+
+  vec<HypernodeID> getBalancerUpdates() const {
+    return _cf.balancerUpdateNodes;
+  }
 
 private:
   // ! Dynamic connectivity

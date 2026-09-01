@@ -69,6 +69,7 @@ private:
 public:
     void initialize(const PartitionedHypergraph& hypergraph) {
         this->stc.reset(hypergraph);
+        this->circular_edge_expansion = hypergraph.build_circular_edge_expansion();
     }
 
     bool canMoveVertex(
@@ -94,6 +95,9 @@ public:
         const PartitionedHypergraph& hypergraph
     );
 
+    vec<vec<HypernodeID>> circular_edge_expansion;
+
+    vec<HypernodeID> balancerUpdateNodes;
 };
 
 }  // namespace connected_components

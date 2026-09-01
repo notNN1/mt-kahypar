@@ -72,6 +72,8 @@ void ConnectivityFacade<PartitionedHypergraph>::moveVertex(
     const PartitionID& to
 ) {
 
+    this->balancerUpdateNodes.clear();
+
     if (strategy == DynamicConnectivityStrategy::do_nothing) {
         this->last_strategy_used = DynamicConnectivityStrategy::do_nothing;
         return;
@@ -84,7 +86,10 @@ void ConnectivityFacade<PartitionedHypergraph>::moveVertex(
     HypernodeID node_to = this->anker.find_node_in_partition(hypergraph, hn, to);
 
     if (strategy == DynamicConnectivityStrategy::st) {
-        this->stc.moveVertex(hypergraph, hn, to, node_to);
+        HypernodeID node_to_update = this->stc.moveVertex(hypergraph, hn, to, node_to);
+        if (node_to_update != kInvalidHypernode) {
+            this->balancerUpdateNodes.push_back(node_to_update);
+        }
     }
 
     this->last_strategy_used = strategy;
@@ -137,6 +142,7 @@ template<typename PartitionedHypergraph>
 void ConnectivityFacade<PartitionedHypergraph>::reset_connectivity(
     const PartitionedHypergraph& hypergraph
 ) {
+    this->circular_edge_expansion = hypergraph.build_circular_edge_expansion();
     reset_connectivity(hypergraph, this->last_strategy_used);
 }
 

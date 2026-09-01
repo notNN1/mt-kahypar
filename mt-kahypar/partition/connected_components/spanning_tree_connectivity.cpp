@@ -173,7 +173,7 @@ bool BFSSpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(
         raise(SIGSEGV);
     }
 
-    if (this->hn_to_parent[hn] == hn || this->hn_is_locked.isSet((size_t) hn)) {
+    if (this->hn_to_parent[hn] == hn ) { //|| this->hn_is_locked.isSet((size_t) hn)) {
         return false;
     }
 
@@ -186,7 +186,7 @@ bool BFSSpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(
 
 
 template<typename PartitionedHypergraph>
-void BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
+HypernodeID BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
     const PartitionedHypergraph& phg,
     const HypernodeID& hn,
     const PartitionID& to,
@@ -203,7 +203,11 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
         this->hn_to_parent[hn] = node_to;
         this->hn_to_num_children[node_to]++;
 
-        return;
+        if (this->hn_to_num_children[parent] == 0) {
+            return parent;
+        }
+
+        return kInvalidHypernode;
     }
 
     LOG << "There has not been found a node to attach to for node " << hn;

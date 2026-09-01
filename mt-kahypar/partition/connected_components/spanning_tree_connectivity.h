@@ -61,7 +61,7 @@ public:
         const HypernodeID& hn
     );
 
-    void moveVertex(
+    HypernodeID moveVertex(
         const PartitionedHypergraph& phg,
         const HypernodeID& hn,
         const PartitionID& to,

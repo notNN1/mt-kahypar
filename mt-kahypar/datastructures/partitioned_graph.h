@@ -1252,7 +1252,11 @@ public:
     
   }
 
-  vec<vec<HypernodeID>> circular_edge_expansion() const { }
+  vec<vec<HypernodeID>> get_circular_edge_expansion() const {  }
+
+  vec<vec<HypernodeID>> build_circular_edge_expansion() const {  }
+
+  vec<HypernodeID> getBalancerUpdates() const {  }
 
 private:
   HypernodeID _input_num_nodes = 0;
