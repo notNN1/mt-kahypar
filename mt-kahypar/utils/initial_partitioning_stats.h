@@ -40,6 +40,7 @@ struct InitialPartitionerSummary {
   explicit InitialPartitionerSummary(const InitialPartitioningAlgorithm algo) :
     algorithm(algo),
     total_sum_quality(0),
+    total_sum_imbalance(0),
     total_time(0.0),
     total_best(0),
     total_calls(0),
@@ -53,6 +54,7 @@ struct InitialPartitionerSummary {
   void add(const InitialPartitionerSummary& summary) {
     ASSERT(algorithm == summary.algorithm);
     total_sum_quality += summary.total_sum_quality;
+    total_sum_imbalance += summary.total_sum_imbalance;
     total_time += summary.total_time;
     total_calls += summary.total_calls;
     total_extra_components += summary.total_extra_components;
@@ -70,6 +72,10 @@ struct InitialPartitionerSummary {
 
   double average_quality() const {
     return static_cast<double>(total_sum_quality) / std::max(total_calls, UL(1));
+  }
+
+  double average_imbalance() const {
+    return static_cast<double>(total_sum_imbalance) / std::max(total_calls, UL(1));
   }
 
   double average_components() const {
@@ -90,6 +96,7 @@ struct InitialPartitionerSummary {
 
   InitialPartitioningAlgorithm algorithm;
   double total_sum_quality;
+  double total_sum_imbalance;
   double total_time;
   size_t total_best;
   size_t total_calls;
@@ -165,22 +172,24 @@ class InitialPartitioningStats {
         << average_number_of_threads_per_ip_call() << "\n";
     std::cout << "\033[1m"
               << std::left << std::setw(30) << "Algorithm"
-              << std::left << std::setw(15) << " Avg. Quality"
+              << std::left << std::setw(15) << "  Avg. Quality"
+              << std::left << std::setw(20) << "  Avg. Imbalance"
               << std::left << std::setw(20) << "  Avg. Components"
-              << std::left << std::setw(20) << "  Least Components"
+              //<< std::left << std::setw(20) << "  Least Components"
               << std::left << std::setw(30) << "  Avg. Inefficient Components"
-              << std::left << std::setw(30) << "  Least Inefficient Components"
+              //<< std::left << std::setw(30) << "  Least Inefficient Components"
               << std::left << std::setw(15) << "  Total Time (s)"
               << std::left << std::setw(10) << "  Total Best"
-              << std::left << std::setw(15) << " Total Best (%)"
+              << std::left << std::setw(15) << "  Total Best (%)"
               << "\033[0m" << std::endl;
     for ( const InitialPartitionerSummary& summary : _ip_summary ) {
       LOG << std::left << std::setw(30) << summary.algorithm
           << std::left << std::setw(15) << summary.average_quality()
+          << std::left << std::setw(20) << summary.average_imbalance()
           << std::left << std::setw(20) << summary.average_components()
-          << std::left << std::setw(20) << summary.least_extra_components
+          //<< std::left << std::setw(20) << summary.least_extra_components
           << std::left << std::setw(30) << summary.average_inefficient_components()
-          << std::left << std::setw(30) << summary.least_inefficient_components
+          //<< std::left << std::setw(30) << summary.least_inefficient_components
           << std::left << std::setw(15) << summary.total_time
           << std::left << std::setw(10) << summary.total_best
           << std::left << std::setw(15) << summary.percentage_best(_total_ip_calls);

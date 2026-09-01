@@ -80,7 +80,7 @@ struct Metrics {
 
   int numViolations() const;
 
-  std::tuple<bool, bool, size_t, size_t, double, HyperedgeWeight> to_tuple() const; 
+  std::tuple<bool, bool, size_t, size_t, HyperedgeWeight, double> to_tuple() const; 
 };
 
 namespace metrics {

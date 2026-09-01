@@ -91,13 +91,18 @@ public:
     void calculate_master_spanning_tree(
         const vec<PackedComponentID>& vertex_to_packed_component,
         const vec<PackedComponentInfo>& packed_component_info,
-        vec<std::set<PackedComponentID>>& component_to_nb,
-        vec<size_t>& subtree_size
+        vec<size_t>& subtree_size,
+        vec<PackedComponentID>& component_to_parent,
+        vec<PackedComponentID>& heads
     );
 
-    void find_biggest_leaf() {
-        
-    };
+    void calculate_communities(
+        const vec<PackedComponentInfo>& packed_component_info,
+        vec<PackedComponentID>& component_to_parent,
+        parallel::scalable_vector<HypernodeID>& communities,
+        const vec<size_t>& subtree_size,
+        const vec<PackedComponentID> heads
+    );
 
     void find_farthest_component_from_component(
         const vec<PackedComponentInfo>& packed_component_info,

@@ -99,14 +99,14 @@ bool Metrics::isBetter(const Metrics& other) const {
   return this->to_tuple() < other.to_tuple();
 }
 
-std::tuple<bool, bool, size_t, size_t, double, HyperedgeWeight> Metrics::to_tuple() const {
+std::tuple<bool, bool, size_t, size_t, HyperedgeWeight, double> Metrics::to_tuple() const {
   return std::tuple {
     this->imbalance.violates_balance,
     this->imbalance.violates_non_empty_blocks,
     this->connectivity.extra_components_count,
     this->connectivity.inefficient_components_count,
-    this->imbalance.imbalance_value,
-    this->quality
+    this->quality,
+    this->imbalance.imbalance_value
   };
 } 
 

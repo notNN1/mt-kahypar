@@ -252,7 +252,8 @@ class InitialPartitioningDataContainer {
 
       // Aggregate Stats
       utils::InitialPartitionerSummary new_summary(algorithm);
-      new_summary.total_sum_quality = result._objective;
+      new_summary.total_sum_quality     = result._objective;
+      new_summary.total_sum_imbalance   = result._imbalance.imbalance_value;
       new_summary.total_time        = time;
       new_summary.total_best        = 0;
       new_summary.total_calls       = 1;

@@ -541,7 +541,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
             }   
         }
 
-        LOG << "Iteration: " << current_iteration << " and gain: " << current_split << " with target: " << target;
+        //LOG << "Iteration: " << current_iteration << " and gain: " << current_split << " with target: " << target;
 
         for (const HypernodeID& node : result) {
             node_queue.push_back(node);
