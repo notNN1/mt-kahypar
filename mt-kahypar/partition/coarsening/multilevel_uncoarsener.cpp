@@ -96,7 +96,7 @@ namespace mt_kahypar {
       vec<vec<connected_components::ComponentInfo>> super_components;
       connected_components::compute_super_components(partitioned_hg, _context, components_per_block, super_components);
 
-      restore_connectivity(partitioned_hg, _context, super_components);
+      restore_connectivity(partitioned_hg, _context, super_components, _current_level);
     }
     
     if ( _current_level == _num_levels ) {

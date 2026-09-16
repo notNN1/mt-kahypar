@@ -35,7 +35,8 @@ template<typename PartitionedHypergraph>
 void restore_connectivity(
   PartitionedHypergraph& phg,
   const Context& context,
-  vec<vec<ComponentInfo>>& super_components
+  vec<vec<ComponentInfo>>& super_components,
+  const uint32_t level
 );
 
 }  // namespace connected_components
