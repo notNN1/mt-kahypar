@@ -33,7 +33,6 @@
 #include "mt-kahypar/partition/refinement/gains/gain_definitions.h"
 #include "mt-kahypar/utils/cast.h"
 #include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/datastructures/dynamic_connectivity_datastructures.h"
 
 namespace mt_kahypar {
 

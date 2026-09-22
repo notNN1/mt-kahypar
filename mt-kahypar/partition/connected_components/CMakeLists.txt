@@ -3,7 +3,8 @@ set(ConnectedComponentsSources
         connectivity_facade.cpp
         spanning_tree_connectivity.cpp
         restore_connectivity.cpp
-        anker_node.cpp)
+        anker_node.cpp
+        spanning_tree_connectivity_UBR.cpp)
 
 target_sources(MtKaHyPar-Sources INTERFACE ${ConnectedComponentsSources})
 

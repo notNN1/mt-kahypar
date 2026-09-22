@@ -47,7 +47,6 @@
 #include "mt-kahypar/utils/range.h"
 #include "mt-kahypar/utils/timer.h"
 #include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/datastructures/dynamic_connectivity_datastructures.h"
 
 namespace mt_kahypar {
 

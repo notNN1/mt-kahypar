@@ -33,7 +33,7 @@
 #include <list>
 
 namespace mt_kahypar {
-namespace ds {
+namespace connected_components {
 
 using Bitset = mt_kahypar::ds::Bitset;
 using ConnectedComponent = mt_kahypar::connected_components::ConnectedComponent;
@@ -56,18 +56,6 @@ private:
 
     std::vector<std::list<Connection>> connected_to;
     
-
-    inline void try_connect_to_incident_without_connection(
-        Bitset& has_connection_to_other_partition,
-        const HypernodeID& hn,
-        const HypernodeID& incident_hn
-    );
-
-    inline void try_connect_to_incident_with_connection(
-        Bitset& has_connection_to_other_partition,
-        const HypernodeID& hn,
-        const HypernodeID& incident_hn
-    );
 
     inline void connect_nodes(
         const HypernodeID& hn,
@@ -100,5 +88,5 @@ public:
     );
 };
 
-}  // namespace ds
+}  // namespace connected_components
 }  // namespace mt_kahypar

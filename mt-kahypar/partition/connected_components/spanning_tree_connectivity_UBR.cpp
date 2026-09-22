@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * MIT License
  *
@@ -22,15 +23,15 @@
  * SOFTWARE.
  ******************************************************************************/
 
-#include "mt-kahypar/datastructures/dynamic_connectivity_datastructures.h"
-#include <tbb/task_group.h>
+
+#include "mt-kahypar/partition/connected_components/spanning_tree_connectivity_UBR.h"
 #include <queue>
 #include <cassert>
 #include "mt-kahypar/definitions.h"
 #include <signal.h>
 
 namespace mt_kahypar {
-namespace ds {
+namespace connected_components {
 
     template<typename PartitionedHypergraph>   
     SpanningTreeConnectivity<PartitionedHypergraph>::SpanningTreeConnectivity(
@@ -135,8 +136,7 @@ namespace ds {
                     if (phg.partID(incident_hn) != current_partition) {
                         continue;
                     }
-
-                    
+       
                     if (!is_same_component(hn, incident_hn)) {
                         connect_nodes(hn, incident_hn);
                     }
@@ -172,35 +172,6 @@ namespace ds {
 
         return count;  
     }
-
-    template<typename PartitionedHypergraph>    
-    inline void  SpanningTreeConnectivity<PartitionedHypergraph>::try_connect_to_incident_without_connection(
-        Bitset& has_connection_to_other_partition,
-        const HypernodeID& hn,
-        const HypernodeID& incident_hn
-    ) {
-        if (
-            this->connected_to[incident_hn].size() == 0
-        ) {
-            if (!is_same_component(hn, incident_hn)) {
-                connect_nodes(hn, incident_hn);
-            }
-        }
-    };
-
-    // connect to nodes without has_connection_to_other_partition
-    template<typename PartitionedHypergraph>    
-    inline void  SpanningTreeConnectivity<PartitionedHypergraph>::try_connect_to_incident_with_connection(
-        Bitset& has_connection_to_other_partition,
-        const HypernodeID& hn,
-        const HypernodeID& incident_hn
-    ) {
-    
-        if (!is_same_component(hn, incident_hn)) {
-            connect_nodes(hn, incident_hn);
-        }
-        
-    };
 
     // is_same_component has to be called before, so hn and incident_hn are directly under the parent in the vertex_to_parent tree
     template<typename PartitionedHypergraph>    
@@ -310,5 +281,5 @@ namespace ds {
 
 INSTANTIATE_CLASS_WITH_PARTITIONED_HG(SpanningTreeConnectivity)
 
-}  // namespace ds
+}  // namespace connected_components
 }  // namespace mt_kahypar

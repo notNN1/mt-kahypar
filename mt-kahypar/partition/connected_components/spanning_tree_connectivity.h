@@ -30,7 +30,6 @@
 #include "mt-kahypar/partition/connected_components/compute_components.h"
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/datastructures/bitset.h"
-#include "mt-kahypar/datastructures/dynamic_connectivity_datastructures.h"
 
 namespace mt_kahypar {
 namespace connected_components {
