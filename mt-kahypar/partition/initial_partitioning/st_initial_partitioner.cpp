@@ -262,8 +262,6 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 
             edge_colored.set((size_t) he);
 
-            // Count uncolored nodes.
-            // current_node is already considered part of this branch.
             size_t available_size = 1;
 
             for (const HypernodeID& incident_hn : hg.pins(he)) {
