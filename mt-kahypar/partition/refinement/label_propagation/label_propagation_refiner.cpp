@@ -67,7 +67,7 @@ namespace mt_kahypar {
 
         Gain delta_before = _gain.localDelta();
 
-        bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta, DynamicConnectivityStrategy::st);
+        bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta, _context.refinement.dynamic_connectivity.label_propagation_dynamic_connectivity_strategy);
         ASSERT(!unconstrained || changed_part);
         is_moved = true;
         if (unconstrained || changed_part) {

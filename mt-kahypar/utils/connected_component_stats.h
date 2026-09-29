@@ -12,9 +12,6 @@ struct DebugState {
 };
 
 
-enum 
-
-
 extern DebugState g_debug;
 
 } // mtkahypar::utils

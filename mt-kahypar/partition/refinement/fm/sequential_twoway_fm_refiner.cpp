@@ -87,10 +87,10 @@ bool SequentialTwoWayFmRefiner<TypeTraits>::refine(Metrics& best_metrics, std::m
 
     // Perform vertex move
     PartitionID from = _phg.partID(hn);
-    _vertex_state[hn] = VertexState::MOVED;
+    _vertex_state[hn] = VertexState::MOVED;  
 
     if ( _phg.changeNodePart(hn, from, to,
-          _context.partition.max_part_weights[to], []{}, DynamicConnectivityStrategy::st, border_vertex_update) ) {
+          _context.partition.max_part_weights[to], []{}, _context.refinement.dynamic_connectivity.kway_fm, border_vertex_update) ) {
 
       // Perform delta gain updates
       updateNeighbors(hn, from, to);

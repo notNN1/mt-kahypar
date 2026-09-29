@@ -203,9 +203,9 @@ struct FlowParameters {
 };
 
 struct DynamicConnectivityParameters {
-  DynamicConnectivityStrategy label_propagation_dynamic_connectivity_strategy;
-  DynamicConnectivityStrategy advanced_rebalancer_dynamic_connectivity_strategy;
-  DynamicConnectivityStrategy kway_fm;
+  DynamicConnectivityStrategy label_propagation_dynamic_connectivity_strategy     = DynamicConnectivityStrategy::do_nothing;
+  DynamicConnectivityStrategy advanced_rebalancer_dynamic_connectivity_strategy   = DynamicConnectivityStrategy::do_nothing;
+  DynamicConnectivityStrategy kway_fm                                             = DynamicConnectivityStrategy::do_nothing;
 };
 
 struct DeterministicRefinementParameters {
@@ -275,12 +275,32 @@ struct SharedMemoryParameters {
   double degree_of_parallelism = 1.0;
 };
 
-struct ConnectivityParameters {
-
+struct ExtraConnectivityOptions {
+  STOptions           st_options            = STOptions::advanced_st_calcultion;
+  BFSSTOptions        advanced_st_options   = BFSSTOptions::advanced_st_plus_subtree_plus_recalculation;
+  RefinementSTOptions refinement_st_options = RefinementSTOptions::two_queue_bfs;
 };
+
+enum STOptions {
+  normal_st = 0,
+  advanced_st_calcultion = 1,
+}
+
+enum BFSSTOptions {
+  normal_st = 0,
+  advanced_st_calcultion = 1,
+  advanced_st_plus_subtree = 2,
+  advanced_st_plus_subtree_plus_recalculation = 3,
+}
+
+enum RefinementSTOptions {
+  union_by_rank = 0,
+  two_queue_bfs = 1,
+}
 
 class Context {
  public:
+  ExtraConnectivityOptions extra_options { };
   PartitioningParameters partition { };
   PreprocessingParameters preprocessing { };
   CoarseningParameters coarsening { };

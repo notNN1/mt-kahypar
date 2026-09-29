@@ -25,7 +25,7 @@
  * SOFTWARE.
  ******************************************************************************/
 
-#include "mt-kahypar/partition/initial_partitioning/greedy_st_initial_partitioner.h"
+#include "mt-kahypar/partition/initial_partitioning/st_bfs_initial_partitioner.h"
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/randomize.h"
@@ -42,7 +42,7 @@ const size_t MAX_SPLITS   = 4;
 
 template<typename TypeTraits>
 void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
-  if ( _ip_data.should_initial_partitioner_run(InitialPartitioningAlgorithm::st) ) {
+  if ( _ip_data.should_initial_partitioner_run(InitialPartitioningAlgorithm::st_bfs) ) {
     HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
     std::uniform_int_distribution<PartitionID> select_random_block(0, _context.partition.k - 1);
@@ -114,63 +114,55 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
 
         if (size_a + size > target) { // split component
 
-          size_t target_for_split = size - (target - size_a);
+            size_t target_for_split = size - (target - size_a);
 
-          for (const HypernodeID& node : component.nodes) {
-              hg.setNodePart(node, 0);
-              size_a += hg.nodeWeight(node);
-          }
+            for (const HypernodeID& node : component.nodes) {
+                hg.setNodePart(node, 0);
+                size_a += hg.nodeWeight(node);
+            }
 
-          //// calculate split 
-          size_t split_size;
-          size_t diff = 0;
+            //// calculate split 
+            size_t split_size;
+            size_t diff = 0;
 
-          double best_split_diff = 1.0;
+            double best_split_diff = 1.0;
 
-          do {
-              nodes_to_swap.clear();
-              split_size = 0;
+            do {
+                nodes_to_swap.clear();
+                split_size = 0;
 
-              calculate_split(hg, component, target_for_split * (1.0 + _context.partition.epsilon), nodes_to_swap, split_size);
+                calculate_split(hg, component, target_for_split * (1.0 + _context.partition.epsilon), nodes_to_swap, split_size);
 
-              diff = target_for_split >= split_size ? target_for_split - split_size : split_size - target_for_split;
-              current_origins++;
+                diff = target_for_split >= split_size ? target_for_split - split_size : split_size - target_for_split;
+                current_origins++;
 
-              if (static_cast<double>(diff) / target_for_split < best_split_diff) {
+                if (static_cast<double>(diff) / target_for_split < best_split_diff) {
                 best_split = nodes_to_swap;
                 best_split_diff = static_cast<double>(diff) / target_for_split;
-              }
+            }
 
-          } while(current_origins < MAX_ORIGINS);
+            } while(current_origins < MAX_ORIGINS);
 
-          //// assign nodes from best split            
-          for (const HypernodeID& node : best_split) {
-            hg.changeNodePart(node, 0, 1, DynamicConnectivityStrategy::do_nothing);
-            size_a -= hg.nodeWeight(node);
-            size_b += hg.nodeWeight(node);
-          }
+            //// assign nodes from best split            
+            for (const HypernodeID& node : best_split) {
+                hg.changeNodePart(node, 0, 1, DynamicConnectivityStrategy::do_nothing);
+                size_a -= hg.nodeWeight(node);
+                size_b += hg.nodeWeight(node);
+            }
             
         }
         else {
-          for (const HypernodeID& node : component.nodes) {
-            hg.setNodePart(node, 0);
-            size_a += hg.nodeWeight(node);
-          }
+            for (const HypernodeID& node : component.nodes) {
+                hg.setNodePart(node, 0);
+                size_a += hg.nodeWeight(node);
+            }
         }
         
     }
 
-    vec<vec<connected_components::ConnectedComponent>> extra_components;
-    connected_components::compute_components_per_block(hg, _context, extra_components);
-    for (const vec<connected_components::ConnectedComponent>& components_per_partition : extra_components) {
-        if (components_per_partition.size() != 1) {
-            LOG << "components in partititon=" << components_per_partition.size();
-        } 
-    }
-
     HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
     double time = std::chrono::duration<double>(end - start).count();
-    _ip_data.commit(InitialPartitioningAlgorithm::st, _rng, _tag, time);
+    _ip_data.commit(InitialPartitioningAlgorithm::st_bfs, _rng, _tag, time);
   }
 }
 

@@ -5,6 +5,6 @@ set(InitialPartitioningSources
         label_propagation_initial_partitioner.cpp
         st_initial_partitioner.cpp
         tarjan_initial_partitioner.cpp
-        greedy_st_initial_partitioner.cpp)
+        st_bfs_initial_partitioner.cpp)
 
 target_sources(MtKaHyPar-Sources INTERFACE ${InitialPartitioningSources})

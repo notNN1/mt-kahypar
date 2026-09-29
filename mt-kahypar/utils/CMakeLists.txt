@@ -2,7 +2,7 @@ set(UtilSources
       timer.cpp
       delete.cpp
       memory_tree.cpp
-      connected_components_stats.cpp
+      connected_component_stats.cpp
     )
 
 target_sources(MtKaHyPar-Sources INTERFACE ${UtilSources})

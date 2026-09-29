@@ -65,26 +65,20 @@ public:
         ConnectedComponent& component,
         vec<HypernodeID>& hn_to_parent,
         vec<vec<HypernodeID>>& hn_to_children,
-        vec<size_t>& subtree_size,
-        vec<size_t>& covered,
-        vec<HypernodeID>& active_nodes
+        vec<size_t>& subtree_size
     ); 
 
     std::pair<HypernodeID, size_t> find_best_node_to_split(
         const ConnectedComponent& component,
         const vec<size_t>& subtree_size,
-        vec<size_t>& covered,
-        const size_t& target,
-        const size_t& current_split_number
+        const size_t& target
     );
 
     void assign_subtree_of_hn(
         PartitionedHypergraph& hg,
         vec<vec<HypernodeID>>& hn_to_children,
-        vec<size_t>& subtree_size,
-        PartitionID partition,
-        vec<size_t>& covered,
-        size_t& current_split_number,
+        size_t& size_a,
+        size_t& size_b,
         HypernodeID hn
     );
 

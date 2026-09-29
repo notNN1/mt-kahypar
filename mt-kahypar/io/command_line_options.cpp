@@ -593,7 +593,7 @@ namespace mt_kahypar {
       "- hdlt\n"
       "- h_vertex_degree\n"
       "- st\n"
-      "- do_nothing"
+      "- do_nothing\n"
       "- in_only\n"
     )->capture_default_str();
 
@@ -1078,7 +1078,8 @@ namespace mt_kahypar {
       "- greedy_round_robin_max_net\n"
       "- greedy_global_max_net\n"
       "- greedy_sequential_max_net\n"
-      "- st"
+      "- st\n"
+      "- st_bfs\n"
       "- tarjan"
       "For example, 'i-enabled-ip-algos=random bfs' enables the random and bfs algorithms."
     )->expected(1, 11)->capture_default_str();
