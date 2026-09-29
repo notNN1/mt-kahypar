@@ -90,11 +90,10 @@ void logTuple(const std::tuple<bool, bool, size_t, size_t, double, HyperedgeWeig
 
 bool Metrics::isBetter(const Metrics& other) const {
   
-
-  if (this->to_tuple() < other.to_tuple() && this->imbalance.imbalance_value > other.imbalance.imbalance_value) {
+  /*if (this->to_tuple() < other.to_tuple() && this->imbalance.imbalance_value > other.imbalance.imbalance_value) {
     logTuple(this->to_tuple());
     logTuple(other.to_tuple());
-  }
+  }*/
 
   return this->to_tuple() < other.to_tuple();
 }
