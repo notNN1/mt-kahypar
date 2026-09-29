@@ -36,6 +36,30 @@ namespace mt_kahypar {
 
 const size_t MAX_CALCULATIONS = 10;
 
+void check_tree(
+    vec<HypernodeID>& hn_to_parent,
+    const connected_components::ConnectedComponent& component
+) {
+    HypernodeID root = kInvalidHypernode;
+    for (const HypernodeID& node : component.nodes) {
+        
+        HypernodeID parent = node;
+        while(parent != hn_to_parent[parent]) {
+            parent = hn_to_parent[parent];
+        }
+
+        if (root == kInvalidHypernode) {
+            root = parent;
+        }
+        else if (root != parent) {
+            LOG << "More than one root!";
+            LOG << "Root:       " << root;
+            LOG << "Other root: " << parent;
+        }
+
+    }
+}
+
 template<typename TypeTraits>
 void STInitialPartitioner<TypeTraits>::partitionImpl() {
     if ( _ip_data.should_initial_partitioner_run(InitialPartitioningAlgorithm::st) ) {
@@ -140,6 +164,8 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
 
                     calculate_spanning_tree(hg, component, hn_to_parent, hn_to_children, subtree_size); 
 
+                    check_tree(hn_to_parent, component);
+
                     std::pair<HypernodeID, size_t> split = find_best_node_to_split(component, subtree_size, target_for_split * (1.0 + _context.partition.epsilon));
 
                     split_size = split.second;
@@ -225,7 +251,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
     }
 
     while (queue.size() > 0) {
-        HypernodeID current_node    = queue.back();
+        HypernodeID current_node = queue.back();
         queue.pop_back();
 
         for (const HyperedgeID& he : hg.incidentEdges(current_node)) {
@@ -236,33 +262,26 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 
             edge_colored.set((size_t) he);
 
+            // Count uncolored nodes.
+            // current_node is already considered part of this branch.
             size_t available_size = 1;
+
             for (const HypernodeID& incident_hn : hg.pins(he)) {
                 if (node_colored.isSet((size_t) incident_hn)) {
                     continue;
                 }
 
-                available_size++;
+                ++available_size;
             }
 
+            const size_t branch_node_count =
+                std::min(max_amount_of_branching, available_size);
 
-            size_t branch_node_count = (available_size > max_amount_of_branching ? max_amount_of_branching : available_size);
-
-            vec<HypernodeID> branch_nodes;
-            branch_nodes.resize(branch_node_count);
+            vec<HypernodeID> branch_nodes(branch_node_count);
             branch_nodes[0] = current_node;
-
-            vec<std::pair<size_t, HypernodeID>> sizes;
-            sizes.resize(branch_node_count);
-
-            vec<std::pair<size_t, HypernodeID>> in_multiple_edges_sizes;
-            in_multiple_edges_sizes.resize(branch_node_count);
-
-            size_t target = available_size / branch_node_count;
 
             size_t found_branch_nodes = 1;
 
-            // find branch nodes without multiple edges
             for (const HypernodeID& incident_hn : hg.pins(he)) {
                 if (found_branch_nodes == branch_node_count) {
                     break;
@@ -279,15 +298,15 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
                 node_colored.set((size_t) incident_hn);
 
                 branch_nodes[found_branch_nodes] = incident_hn;
-                found_branch_nodes++;
+                ++found_branch_nodes;
 
                 calculation_queue.push_back(incident_hn);
+                queue.push_back(incident_hn);
 
                 hn_to_children[current_node].push_back(incident_hn);
                 hn_to_parent[incident_hn] = current_node;
             }
 
-            // find branch nodes with multiple edges
             for (const HypernodeID& incident_hn : hg.pins(he)) {
                 if (found_branch_nodes == branch_node_count) {
                     break;
@@ -304,69 +323,39 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
                 node_colored.set((size_t) incident_hn);
 
                 branch_nodes[found_branch_nodes] = incident_hn;
-                found_branch_nodes++;
+                ++found_branch_nodes;
 
                 calculation_queue.push_back(incident_hn);
+                queue.push_back(incident_hn);
 
                 hn_to_children[current_node].push_back(incident_hn);
                 hn_to_parent[incident_hn] = current_node;
             }
 
-            /*if (found_branch_nodes != branch_node_count) {
-                LOG << "Branch node count: " << branch_node_count;
-                LOG << "found_branch_nodes: " << found_branch_nodes;
-                LOG << "available size: " << available_size;
-                LOG << "rawr";
-                while(true);
-            }*/
+            vec<std::pair<size_t, HypernodeID>> sizes;
+            sizes.resize(branch_node_count);
 
-            for (size_t i = 0; i < branch_node_count; i++) {
-                sizes[i]                    = {0, branch_nodes[i]};
-                in_multiple_edges_sizes[i]  = {0, branch_nodes[i]};
+            for (size_t i = 0; i < branch_node_count; ++i) {
+                sizes[i] = {
+                    hg.nodeWeight(branch_nodes[i]),
+                    branch_nodes[i]
+                };
             }
 
-            // distrbute nodes with multiple edges
             for (const HypernodeID& incident_hn : hg.pins(he)) {
                 if (node_colored.isSet((size_t) incident_hn)) {
                     continue;
                 }
 
-                if (!is_in_multiple_edges.isSet(incident_hn)) {
-                    continue;
-                }
-
                 node_colored.set((size_t) incident_hn);
 
-                std::sort(in_multiple_edges_sizes.begin(), in_multiple_edges_sizes.end());
-
-                HypernodeID attachment_node = in_multiple_edges_sizes[0].second;
-                in_multiple_edges_sizes[0] = {in_multiple_edges_sizes[0].first + hg.nodeWeight(incident_hn), attachment_node};
-
-
-                queue.push_back(incident_hn);
-                calculation_queue.push_back(incident_hn);
-
-                hn_to_children[attachment_node].push_back(incident_hn);
-                hn_to_parent[incident_hn] = attachment_node;
-            }
-
-            // distrbute nodes with multiple edges
-            for (const HypernodeID& incident_hn : hg.pins(he)) {
-                if (node_colored.isSet((size_t) incident_hn)) {
-                    continue;
-                }
-
-                if (!is_in_multiple_edges.isSet(incident_hn)) {
-                    continue;
-                }
-
-                node_colored.set((size_t) incident_hn);
-
+                // Find the branch with the smallest current weight.
                 std::sort(sizes.begin(), sizes.end());
 
-                HypernodeID attachment_node = sizes[0].second;
-                sizes[0] = {sizes[0].first + hg.nodeWeight(incident_hn), attachment_node};
+                const HypernodeID attachment_node = sizes[0].second;
 
+                // Add this node to that branch.
+                sizes[0].first += hg.nodeWeight(incident_hn);
 
                 queue.push_back(incident_hn);
                 calculation_queue.push_back(incident_hn);
