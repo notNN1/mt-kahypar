@@ -1153,7 +1153,22 @@ namespace mt_kahypar {
       "- advanced_st_plus_subtree\n"
       "- advanced_st_plus_subtree_plus_recalculation"
     )->capture_default_str();
-
+    app.add_option(
+      "--i-st-recalculations",
+      context.extra_options.st_max_recalculations,
+      "Max st recalculations"
+    )->capture_default_str();
+    app.add_option(
+      "--i-st-bfs-recalculations",
+      context.extra_options.st_bfs_max_recalculations,
+      "Max st recalculations"
+    )->capture_default_str();
+    app.add_option(
+      "--i-st-bfs-origins",
+      context.extra_options.st_bfs_max_new_origins,
+      "Max new origins for the bfs"
+    )->capture_default_str();
+    
     addRefinementOptions(context, app, true);
     addFlowRefinementOptions(context, app, true);
   }

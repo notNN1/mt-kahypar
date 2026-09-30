@@ -4,7 +4,7 @@
  *
  * This file is part of Mt-KaHyPar.
  *
- * Copyright (C) 2019 Tobias Heuer <tobias.heuer@kit.edu>
+ * Copyright (C) 2026 Simon Lang <simon.lang2@kit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,9 +36,6 @@
 
 
 namespace mt_kahypar {
-
-const size_t MAX_ORIGINS  = 2;
-const size_t MAX_SPLITS   = 5;
 
 template<typename TypeTraits>
 void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
@@ -141,7 +138,7 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
                 best_split_diff = static_cast<double>(diff) / target_for_split;
             }
 
-            } while(current_origins < MAX_ORIGINS);
+            } while(current_origins < _context.extra_options.st_bfs_max_new_origins);
 
             //// assign nodes from best split            
             for (const HypernodeID& node : best_split) {
@@ -373,7 +370,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
     vec<HypernodeID> asignment_queue;
     asignment_queue.reserve(phg.initialNumNodes());
 
-    while (current_split < target && current_iteration < MAX_SPLITS) {
+    while (current_split < target && current_iteration < _context.extra_options.st_bfs_max_recalculations) {
         current_iteration++;
 
         HypernodeID starter_node_st     = kInvalidHypernode;

@@ -34,8 +34,6 @@
 
 namespace mt_kahypar {
 
-const size_t MAX_CALCULATIONS = 10;
-
 void check_tree(
     vec<HypernodeID>& hn_to_parent,
     const connected_components::ConnectedComponent& component
@@ -181,7 +179,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                         best_split_diff = static_cast<double>(diff) / target_for_split;
                     }
 
-                } while(current_origins < MAX_CALCULATIONS);
+                } while(current_origins < _context.extra_options.st_max_recalculations);
 
                 LOG << "Target: " << target_for_split;
 
