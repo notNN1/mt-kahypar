@@ -170,7 +170,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
 
                     split_size = split.second;
 
-                    LOG << "Split size: " << split_size;
+                    //LOG << "Split size: " << split_size;
 
                     diff = target_for_split >= split_size ? target_for_split - split_size : split_size - target_for_split;
                     current_origins++;
