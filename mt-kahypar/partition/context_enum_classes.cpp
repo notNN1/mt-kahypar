@@ -547,4 +547,46 @@ namespace mt_kahypar {
     throw InvalidParameterException("Illegal option: " + type);
     return DynamicConnectivityStrategy::do_nothing;
   }
+
+  STOptions stOptionsFromString(const std::string& type) {
+    if (type == "normal_st") {
+      return STOptions::normal_st;
+    }
+    else if (type == "advanced_st_calcultion") {
+      return STOptions::advanced_st_calcultion;
+    }
+
+    throw InvalidParameterException("Illegal option: " + type);
+    return STOptions::advanced_st_calcultion;
+  }
+
+  BFSSTOptions bfsSTOptionsFromString(const std::string& type) {
+    if (type == "normal_st") {
+      return BFSSTOptions::normal_st;
+    }
+    else if (type == "advanced_st_calcultion") {
+      return BFSSTOptions::advanced_st_calcultion;
+    }
+    else if (type == "advanced_st_plus_subtree") {
+      return BFSSTOptions::advanced_st_plus_subtree;
+    }
+    else if (type == "advanced_st_plus_subtree_plus_recalculation") {
+      return BFSSTOptions::advanced_st_plus_subtree_plus_recalculation;
+    }
+    
+    throw InvalidParameterException("Illegal option: " + type);
+    return BFSSTOptions::advanced_st_plus_subtree_plus_recalculation;
+  }
+
+  RefinementSTOptions refinementSTOptionsFromString(const std::string& type) {
+    if (type == "union_by_rank") {
+      return RefinementSTOptions::union_by_rank;
+    }
+    else if (type == "two_queue_bfs") {
+      return RefinementSTOptions::two_queue_bfs;
+    }
+    
+    throw InvalidParameterException("Illegal option: " + type);
+    return RefinementSTOptions::two_queue_bfs; 
+  }
 }

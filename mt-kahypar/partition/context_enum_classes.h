@@ -188,6 +188,23 @@ enum class DynamicConnectivityStrategy : uint8_t {
   in_only,
 };
 
+enum class STOptions : uint8_t {
+  normal_st = 0,
+  advanced_st_calcultion = 1,
+};
+
+enum class BFSSTOptions : uint8_t {
+  normal_st = 0,
+  advanced_st_calcultion = 1,
+  advanced_st_plus_subtree = 2,
+  advanced_st_plus_subtree_plus_recalculation = 3,
+};
+
+enum class RefinementSTOptions : uint8_t {
+  union_by_rank = 0,
+  two_queue_bfs = 1,
+};
+
 std::ostream & operator<< (std::ostream& os, const FileFormat& type);
 
 std::ostream & operator<< (std::ostream& os, const InstanceType& type);
@@ -232,6 +249,12 @@ std::ostream & operator<< (std::ostream& os, const SteinerTreeFlowValuePolicy& p
 
 std::ostream & operator<< (std::ostream& os, const DynamicConnectivityStrategy& algo);
 
+std::ostream & operator<< (std::ostream& os, const STOptions& algo);
+
+std::ostream & operator<< (std::ostream& os, const BFSSTOptions& algo);
+
+std::ostream & operator<< (std::ostream& os, const RefinementSTOptions& algo);
+
 Mode modeFromString(const std::string& mode);
 
 FileFormat fileFormatFromString(const std::string& type);
@@ -269,5 +292,11 @@ OneToOneMappingStrategy oneToOneMappingStrategyFromString(const std::string& typ
 SteinerTreeFlowValuePolicy steinerTreeFlowValuePolicyFromString(const std::string& policy);
 
 DynamicConnectivityStrategy dynamicConnectivityStrategyFromString(const std::string& type);
+
+STOptions stOptionsFromString(const std::string& type);
+
+BFSSTOptions bfsSTOptionsFromString(const std::string& type);
+
+RefinementSTOptions refinementSTOptionsFromString(const std::string& type);
 
 }  // namesapce mt_kahypar

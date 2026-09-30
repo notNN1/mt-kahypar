@@ -596,6 +596,18 @@ namespace mt_kahypar {
       "- do_nothing\n"
       "- in_only\n"
     )->capture_default_str();
+    app.add_option_function<std::string>(
+      (initial_partitioning ? "--i-r-st-type" : "--r-st-type"), [&, initial_partitioning](const std::string& s) {
+        if (initial_partitioning) {
+          context.extra_options.refinement_st_options = refinementSTOptionsFromString(s);
+        } else {
+          context.extra_options.refinement_st_options = refinementSTOptionsFromString(s);
+        }
+      },
+      "Options of the refinement st:\n"
+      "- union_by_rank\n"
+      "- two_queue_bfs"
+    )->capture_default_str();
 
     // Label Propagation
     app.add_option_function<std::string>(
@@ -1131,6 +1143,24 @@ namespace mt_kahypar {
       "--i-lp-initial-block-size",
       context.initial_partitioning.lp_initial_block_size,
       "Initial block size used for label propagation initial partitioner"
+    )->capture_default_str();
+    app.add_option_function<std::string>(
+      "--i-st-type", [&](const std::string& s) {
+        context.extra_options.st_options = stOptionsFromString(s);
+      },
+      "Improvements of the st initial partitioner:\n"
+      "- normal_st\n"
+      "- advanced_st_calcultion"
+    )->capture_default_str();
+    app.add_option_function<std::string>(
+      "--i-st-bfs-type", [&](const std::string& s) {
+        context.extra_options.bfs_st_options = bfsSTOptionsFromString(s);
+      },
+      "Improvements of the st bfs initial partitioner:\n"
+      "- normal_st\n"
+      "- advanced_st_calcultion\n"
+      "- advanced_st_plus_subtree\n"
+      "- advanced_st_plus_subtree_plus_recalculation"
     )->capture_default_str();
 
     addRefinementOptions(context, app, true);

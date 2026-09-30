@@ -275,26 +275,9 @@ struct SharedMemoryParameters {
   double degree_of_parallelism = 1.0;
 };
 
-enum class STOptions : uint8_t {
-  normal_st = 0,
-  advanced_st_calcultion = 1,
-};
-
-enum class BFSSTOptions : uint8_t {
-  normal_st = 0,
-  advanced_st_calcultion = 1,
-  advanced_st_plus_subtree = 2,
-  advanced_st_plus_subtree_plus_recalculation = 3,
-};
-
-enum class RefinementSTOptions : uint8_t {
-  union_by_rank = 0,
-  two_queue_bfs = 1,
-};
-
 struct ExtraConnectivityOptions {
   STOptions           st_options            = STOptions::advanced_st_calcultion;
-  BFSSTOptions        advanced_st_options   = BFSSTOptions::advanced_st_plus_subtree_plus_recalculation;
+  BFSSTOptions        bfs_st_options   = BFSSTOptions::advanced_st_plus_subtree_plus_recalculation;
   RefinementSTOptions refinement_st_options = RefinementSTOptions::two_queue_bfs;
 };
 
