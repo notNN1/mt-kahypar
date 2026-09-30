@@ -35,6 +35,7 @@
 #include "mt-kahypar/utils/cast.h"
 #include "mt-kahypar/partition/connected_components/compute_components.h"
 #include "mt-kahypar/partition/connected_components/restore_connectivity.h"
+#include "mt-kahypar/utils/connected_component_stats.h"
 
 
 namespace mt_kahypar {
@@ -48,11 +49,18 @@ namespace mt_kahypar {
                   
     LOG  << "level ="  << current_level << ", type = " << (context.type == ContextType::main);
     
+
+    vec<size_t> components_per_partition;
+    components_per_partition.resize(context.partition.k);                                
+
     for (size_t i = 0; i < result.size(); i++) {
       vec<connected_components::ConnectedComponent> block = result[i];
       LOG << "block = " << i << ", component count = " << block.size();
+      components_per_partition[i] = block.size();
     }
     LOG << "\n";
+
+    mt_kahypar::utils::cc_debug.components_per_partition_per_level.push_back(components_per_partition);
   }
 
   template<typename TypeTraits>

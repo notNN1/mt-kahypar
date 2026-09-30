@@ -26,6 +26,7 @@
 
 #include "mt-kahypar/partition/initial_partitioning/tarjan_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/initial_partitioning_data_container.h"
+#include "mt-kahypar/utils/connected_component_stats.h"
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/randomize.h"
@@ -60,7 +61,11 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
 
     for (PackedComponentInfo& pci : packed_component_info) {
       std::shuffle(pci.nodes.begin(), pci.nodes.end(), _rng);
-    }    
+    }   
+    
+    if (mt_kahypar::utils::cc_debug.packed_components_tarjan.size() == 0) {
+      mt_kahypar::utils::cc_debug.packed_components_tarjan = packed_component_info;
+    }
     ////
 
     //// calculate spanning tree

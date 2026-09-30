@@ -33,6 +33,23 @@
 #include <set>
 
 namespace mt_kahypar {
+    
+using PackedComponentID     = uint32_t;   
+
+
+enum NodeType {
+    normal          = 0,
+    articulation    = 1,
+    interface       = 2
+};
+
+struct PackedComponentInfo {
+    PackedComponentID id;
+    size_t total_weight;
+    NodeType type;                              // should only be normal or articulation
+    vec<HypernodeID> nodes;                     // contains all nodes in the component -- does not include the articulation point
+    std::set<HypernodeID> connected_to;              // only interface nodes
+};
 
 template<typename TypeTraits>
 class TarjanInitialPartitioner : public IInitialPartitioner {
@@ -42,7 +59,6 @@ class TarjanInitialPartitioner : public IInitialPartitioner {
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
     using Bitset                = typename mt_kahypar::ds::Bitset;
     using ConnectedComponent    = typename mt_kahypar::connected_components::ConnectedComponent;
-    using PackedComponentID     = uint32_t;   
 
 public:
     TarjanInitialPartitioner(
@@ -61,22 +77,7 @@ public:
     // starts the partitioning
     void partitionImpl() final;
 
-    // for tarjan
-    enum NodeType {
-        normal          = 0,
-        articulation    = 1,
-        interface       = 2
-    };
-
     vec<NodeType> hn_to_node_type;                  // maps each node to its type
-
-    struct PackedComponentInfo {
-        PackedComponentID id;
-        size_t total_weight;
-        NodeType type;                              // should only be normal or articulation
-        vec<HypernodeID> nodes;                     // contains all nodes in the component -- does not include the articulation point
-        std::set<HypernodeID> connected_to;              // only interface nodes
-    };
 
     // Do BFS while not moving over nodes of other types and collect them into a packed component
     // Does not compact interface nodes and instead gives each one a separate PackedComponent
