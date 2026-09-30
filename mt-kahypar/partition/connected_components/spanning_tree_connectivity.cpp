@@ -23,6 +23,7 @@
  ******************************************************************************/
 
 #include "mt-kahypar/partition/connected_components/spanning_tree_connectivity.h"
+#include "mt-kahypar/utils/connected_component_stats.h"
 #include <signal.h>
 
 namespace mt_kahypar {
@@ -161,6 +162,21 @@ void BFSSpanningTreeConnectivity<PartitionedHypergraph>::reset(
             }
         }   
     }
+
+    // calculate lost nodes
+    size_t external_nodes           = 0;
+    size_t blocked_external_nodes   = 0;
+
+    for (const HypernodeID& hn : phg.nodes()) {
+        if (has_connection_to_other_partition.isSet((size_t) hn)) {
+            external_nodes++;
+            if (this->hn_to_num_children[hn] > 0) {
+                blocked_external_nodes++;
+            }
+        }
+    }
+
+    mt_kahypar::utils::cc_debug.eNodes_to_blockedENodes_to_allNodes_per_rebuild.push_back({external_nodes, blocked_external_nodes, phg.initialNumNodes()});
 }
 
 template<typename PartitionedHypergraph>

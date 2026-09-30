@@ -593,20 +593,9 @@ namespace mt_kahypar {
       "- hdlt\n"
       "- h_vertex_degree\n"
       "- st\n"
+      "- st_ubr\n"
       "- do_nothing\n"
       "- in_only\n"
-    )->capture_default_str();
-    app.add_option_function<std::string>(
-      (initial_partitioning ? "--i-r-st-type" : "--r-st-type"), [&, initial_partitioning](const std::string& s) {
-        if (initial_partitioning) {
-          context.extra_options.refinement_st_options = refinementSTOptionsFromString(s);
-        } else {
-          context.extra_options.refinement_st_options = refinementSTOptionsFromString(s);
-        }
-      },
-      "Options of the refinement st:\n"
-      "- union_by_rank\n"
-      "- two_queue_bfs"
     )->capture_default_str();
 
     // Label Propagation
@@ -680,6 +669,7 @@ namespace mt_kahypar {
       "- hdlt\n"
       "- h_vertex_degree\n"
       "- st\n"
+      "- st_ubr\n"
       "- do_nothing"
       "- in_only\n"
     )->capture_default_str();
@@ -869,6 +859,7 @@ namespace mt_kahypar {
       "- hdlt\n"
       "- h_vertex_degree\n"
       "- st\n"
+      "- st_ubr\n"
       "- do_nothing\n"
       "- in_only\n"
     )->capture_default_str();
@@ -1150,7 +1141,7 @@ namespace mt_kahypar {
       },
       "Improvements of the st initial partitioner:\n"
       "- normal_st\n"
-      "- advanced_st_calcultion"
+      "- advanced_st_calculation"
     )->capture_default_str();
     app.add_option_function<std::string>(
       "--i-st-bfs-type", [&](const std::string& s) {
@@ -1158,7 +1149,7 @@ namespace mt_kahypar {
       },
       "Improvements of the st bfs initial partitioner:\n"
       "- normal_st\n"
-      "- advanced_st_calcultion\n"
+      "- advanced_st_calculation\n"
       "- advanced_st_plus_subtree\n"
       "- advanced_st_plus_subtree_plus_recalculation"
     )->capture_default_str();

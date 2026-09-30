@@ -31,6 +31,7 @@
 #include "mt-kahypar/partition/connected_components/compute_components.h"
 #include "mt-kahypar/partition/connected_components/connectivity_facade.h"
 #include "mt-kahypar/partition/connected_components/spanning_tree_connectivity.h"
+#include "mt-kahypar/partition/connected_components/spanning_tree_connectivity_UBR.h"
 #include "mt-kahypar/partition/connected_components/bfs_connectivity.h"
 #include "mt-kahypar/partition/connected_components/anker_node.h"
 
@@ -45,7 +46,9 @@ using ConnectedComponent = mt_kahypar::connected_components::ConnectedComponent;
 template<typename PartitionedHypergraph>
 class ConnectivityFacade {
 private:
-    BFSSpanningTreeConnectivity<PartitionedHypergraph>  stc;                            // reset when: moved without connectivity, uncoarsening 
+    BFSSpanningTreeConnectivity<PartitionedHypergraph>  stc;
+    SpanningTreeConnectivity<PartitionedHypergraph>     stc_ubr;
+
     BFSConnectivity<PartitionedHypergraph>              bfs;
 
     AnkerNodes<PartitionedHypergraph>                   anker;

@@ -25,6 +25,7 @@
 
 
 #include "mt-kahypar/partition/connected_components/spanning_tree_connectivity_UBR.h"
+#include "mt-kahypar/utils/connected_component_stats.h"
 #include <queue>
 #include <cassert>
 #include "mt-kahypar/definitions.h"
@@ -145,19 +146,19 @@ namespace connected_components {
         }
 
         // calculate lost nodes
-        size_t count = 0;
-        size_t count1 = 0;
+        size_t external_nodes           = 0;
+        size_t blocked_external_nodes   = 0;
+
         for (const HypernodeID& hn : phg.nodes()) {
             if (has_connection_to_other_partition.isSet((size_t) hn)) {
-                count1++;
+                external_nodes++;
                 if (this->connected_to[hn].size() > 1) {
-                    count++;
+                    blocked_external_nodes++;
                 }
             }
         }
 
-        LOG << "Number of nodes that are not leaves and connected to other partitions: " << count;
-        LOG << "Number of nodes that are: " << count1 - count;
+        mt_kahypar::utils::cc_debug.eNodes_to_blockedENodes_to_allNodes_per_rebuild.push_back({external_nodes, blocked_external_nodes, phg.initialNumNodes()});
     };
 
 

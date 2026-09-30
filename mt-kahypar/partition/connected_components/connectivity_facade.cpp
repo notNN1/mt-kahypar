@@ -60,6 +60,9 @@ bool ConnectivityFacade<PartitionedHypergraph>::can_move_out_of_partition(
     else if (strategy == DynamicConnectivityStrategy::st) {
         can_move_node = this->stc.canMoveVertex(hypergraph, hn);
     }
+    else if (strategy == DynamicConnectivityStrategy::st_ubr) {
+        can_move_node = this->stc_ubr.canMoveVertex(NULL, hn);
+    }
 
     return can_move_node;
 }
@@ -90,6 +93,8 @@ void ConnectivityFacade<PartitionedHypergraph>::moveVertex(
         if (node_to_update != kInvalidHypernode) {
             this->balancerUpdateNodes.push_back(node_to_update);
         }
+    } else if (strategy == DynamicConnectivityStrategy::st_ubr) {
+        this->stc_ubr.moveVertex(hypergraph, hn, to);
     }
 
     this->last_strategy_used = strategy;
@@ -121,6 +126,9 @@ void ConnectivityFacade<PartitionedHypergraph>::reset_connectivity(
     if (strategy == DynamicConnectivityStrategy::st) {
         this->stc.reset(hypergraph);
     }
+    else if (strategy == DynamicConnectivityStrategy::st_ubr) {
+        this->stc_ubr = SpanningTreeConnectivity<PartitionedHypergraph>(hypergraph, NULL);
+    }
 
     if (strategy != DynamicConnectivityStrategy::do_nothing) {
         vec<uint32_t> node_priority(hypergraph.initialNumNodes(), 1);
@@ -128,6 +136,13 @@ void ConnectivityFacade<PartitionedHypergraph>::reset_connectivity(
         if (strategy == DynamicConnectivityStrategy::st) {
             for (const HypernodeID& node : hypergraph.nodes()) {
                 if (this->stc.canMoveVertex(hypergraph, node)) {
+                    node_priority[node] = 0;
+                }
+            }
+        }
+        if (strategy == DynamicConnectivityStrategy::st_ubr) {
+            for (const HypernodeID& node : hypergraph.nodes()) {
+                if (this->stc_ubr.canMoveVertex(NULL, node)) {
                     node_priority[node] = 0;
                 }
             }

@@ -275,6 +275,7 @@ namespace mt_kahypar {
         case DynamicConnectivityStrategy::hdlt:               return os << "hdlt";
         case DynamicConnectivityStrategy::h_vertex_degree:    return os << "h_vertex_degree";
         case DynamicConnectivityStrategy::st:                 return os << "st";
+        case DynamicConnectivityStrategy::st_ubr:             return os << "st_ubr";
         case DynamicConnectivityStrategy::do_nothing:         return os << "do_nothing";
         case DynamicConnectivityStrategy::in_only:            return os << "in_only";
           // omit default case to trigger compiler warning for missing cases
@@ -537,6 +538,9 @@ namespace mt_kahypar {
     else if (type == "st") {
       return DynamicConnectivityStrategy::st;
     }
+    else if (type == "st_ubr") {
+      return DynamicConnectivityStrategy::st_ubr;
+    }
     else if (type == "do_nothing") {
       return DynamicConnectivityStrategy::do_nothing;
     }
@@ -552,20 +556,20 @@ namespace mt_kahypar {
     if (type == "normal_st") {
       return STOptions::normal_st;
     }
-    else if (type == "advanced_st_calcultion") {
-      return STOptions::advanced_st_calcultion;
+    else if (type == "advanced_st_calculation") {
+      return STOptions::advanced_st_calculation;
     }
 
     throw InvalidParameterException("Illegal option: " + type);
-    return STOptions::advanced_st_calcultion;
+    return STOptions::advanced_st_calculation;
   }
 
   BFSSTOptions bfsSTOptionsFromString(const std::string& type) {
     if (type == "normal_st") {
       return BFSSTOptions::normal_st;
     }
-    else if (type == "advanced_st_calcultion") {
-      return BFSSTOptions::advanced_st_calcultion;
+    else if (type == "advanced_st_calculation") {
+      return BFSSTOptions::advanced_st_calculation;
     }
     else if (type == "advanced_st_plus_subtree") {
       return BFSSTOptions::advanced_st_plus_subtree;
@@ -576,17 +580,5 @@ namespace mt_kahypar {
     
     throw InvalidParameterException("Illegal option: " + type);
     return BFSSTOptions::advanced_st_plus_subtree_plus_recalculation;
-  }
-
-  RefinementSTOptions refinementSTOptionsFromString(const std::string& type) {
-    if (type == "union_by_rank") {
-      return RefinementSTOptions::union_by_rank;
-    }
-    else if (type == "two_queue_bfs") {
-      return RefinementSTOptions::two_queue_bfs;
-    }
-    
-    throw InvalidParameterException("Illegal option: " + type);
-    return RefinementSTOptions::two_queue_bfs; 
   }
 }

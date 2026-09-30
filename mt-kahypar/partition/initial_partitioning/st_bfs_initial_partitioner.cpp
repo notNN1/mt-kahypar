@@ -38,7 +38,7 @@
 namespace mt_kahypar {
 
 const size_t MAX_ORIGINS  = 2;
-const size_t MAX_SPLITS   = 4;
+const size_t MAX_SPLITS   = 5;
 
 template<typename TypeTraits>
 void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
@@ -227,6 +227,10 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
     // find fattest node
     HypernodeWeight biggest_weight = 0;
     for (const HypernodeID& node : phg.nodes()) {
+        if (covered.isSet((size_t) node)) {
+            continue;
+        }
+
         if (phg.nodeWeight(node) > biggest_weight) {
             fattest_node    = node;
             biggest_weight  = phg.nodeWeight(node); 
@@ -279,7 +283,9 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
                 hn_to_children[current_node].push_back(incident_hn);
                 calculation_queue.push_front(incident_hn);
 
-                if (covered_nb.isSet((size_t) incident_hn) || fattest_node == incident_hn) {
+                if (_context.extra_options.bfs_st_options != BFSSTOptions::normal_st && 
+                            (covered_nb.isSet((size_t) incident_hn) || fattest_node == incident_hn)) {
+                                
                     lp_node_queue.push_back(incident_hn);
                 }
                 else {
@@ -456,7 +462,10 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
                     uint32_t true_size = phg.nodeWeight(incident_hn);
 
-                    if (subtree_size[incident_hn] + current_split <= target) {
+                    bool do_subtree_move = _context.extra_options.bfs_st_options == BFSSTOptions::advanced_st_plus_subtree 
+                            || _context.extra_options.bfs_st_options == BFSSTOptions::advanced_st_plus_subtree_plus_recalculation;
+
+                    if (do_subtree_move && subtree_size[incident_hn] + current_split <= target) {
 
                         add_node_to_split(
                             incident_hn,
@@ -506,6 +515,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                         
                     }
                     else if (hn_to_num_children[incident_hn] == 0) {
+
                         add_node_to_split(
                             incident_hn,
                             hn_to_parent,
@@ -521,14 +531,15 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                         continue;
                     }
 
-                    HypernodeID parent = hn_to_parent[incident_hn];
-                    while (parent != hn_to_parent[parent]) {
+                    if (_context.extra_options.bfs_st_options == BFSSTOptions::advanced_st_plus_subtree_plus_recalculation) {
+                        HypernodeID parent = hn_to_parent[incident_hn];
+                        while (parent != hn_to_parent[parent]) {
+                            subtree_size[parent] -= true_size;
+                            parent = hn_to_parent[parent];
+                        }
+
                         subtree_size[parent] -= true_size;
-                        parent = hn_to_parent[parent];
                     }
-
-                    subtree_size[parent] -= true_size;
-
                 }
             }   
         }

@@ -217,7 +217,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
     // find nodes that are in more than one edge
     Bitset is_in_multiple_edges;
 
-    if (_context.extra_options.st_options == STOptions::advanced_st_calcultion) {
+    if (_context.extra_options.st_options == STOptions::advanced_st_calculation) {
         is_in_multiple_edges.resize(hg.initialNumNodes());
 
         for (const HypernodeID& node : component.nodes) {
@@ -281,7 +281,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
                     hn_to_parent[incident_hn] = current_node;
                 }
             }
-            else if (_context.extra_options.st_options == STOptions::advanced_st_calcultion) {
+            else if (_context.extra_options.st_options == STOptions::advanced_st_calculation) {
 
                 size_t available_size = 1;
 

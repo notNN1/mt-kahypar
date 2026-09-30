@@ -276,9 +276,8 @@ struct SharedMemoryParameters {
 };
 
 struct ExtraConnectivityOptions {
-  STOptions           st_options            = STOptions::advanced_st_calcultion;
+  STOptions           st_options            = STOptions::advanced_st_calculation;
   BFSSTOptions        bfs_st_options   = BFSSTOptions::advanced_st_plus_subtree_plus_recalculation;
-  RefinementSTOptions refinement_st_options = RefinementSTOptions::two_queue_bfs;
 };
 
 class Context {

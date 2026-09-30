@@ -182,6 +182,7 @@ enum class SteinerTreeFlowValuePolicy : uint8_t {
 enum class DynamicConnectivityStrategy : uint8_t {
   do_nothing,
   st,
+  st_ubr,
   bfs,
   hdlt,
   h_vertex_degree,
@@ -190,19 +191,14 @@ enum class DynamicConnectivityStrategy : uint8_t {
 
 enum class STOptions : uint8_t {
   normal_st = 0,
-  advanced_st_calcultion = 1,
+  advanced_st_calculation = 1,
 };
 
 enum class BFSSTOptions : uint8_t {
   normal_st = 0,
-  advanced_st_calcultion = 1,
+  advanced_st_calculation = 1,
   advanced_st_plus_subtree = 2,
   advanced_st_plus_subtree_plus_recalculation = 3,
-};
-
-enum class RefinementSTOptions : uint8_t {
-  union_by_rank = 0,
-  two_queue_bfs = 1,
 };
 
 std::ostream & operator<< (std::ostream& os, const FileFormat& type);
@@ -253,8 +249,6 @@ std::ostream & operator<< (std::ostream& os, const STOptions& algo);
 
 std::ostream & operator<< (std::ostream& os, const BFSSTOptions& algo);
 
-std::ostream & operator<< (std::ostream& os, const RefinementSTOptions& algo);
-
 Mode modeFromString(const std::string& mode);
 
 FileFormat fileFormatFromString(const std::string& type);
@@ -296,7 +290,5 @@ DynamicConnectivityStrategy dynamicConnectivityStrategyFromString(const std::str
 STOptions stOptionsFromString(const std::string& type);
 
 BFSSTOptions bfsSTOptionsFromString(const std::string& type);
-
-RefinementSTOptions refinementSTOptionsFromString(const std::string& type);
 
 }  // namesapce mt_kahypar
