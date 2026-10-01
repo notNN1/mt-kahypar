@@ -87,7 +87,6 @@ namespace connected_components {
             connected_components
         );
 
-        edge_already_seen.reset();
 
         this->connected_to.resize(phg.initialNumNodes());
         this->vertex_to_parent_compressed.resize(phg.initialNumNodes());
@@ -97,6 +96,15 @@ namespace connected_components {
             this->vertex_to_parent_compressed[hypernode] = hypernode;
         }
 
+        vec<Bitset> colored_edges_per_partition;
+        colored_edges_per_partition.resize(phg.k());
+
+        for (size_t i = 0; i < phg.k(); i++) {
+            colored_edges_per_partition[i].resize(phg.initialNumEdges());
+        }
+
+        PartitionID current_partition;
+
 
         for (const HypernodeID& hn : phg.nodes()) {
 
@@ -104,13 +112,17 @@ namespace connected_components {
                 continue;
             }
 
+            current_partition = phg.partID(hn);
+
             for (       const HyperedgeID& he          : phg.incidentEdges(hn)          ) {
 
-                if (edge_already_seen.isSet((size_t) he)) {
-                    continue;
-                }
+                if (current_partition != kInvalidPartition) {
+                    if (colored_edges_per_partition[current_partition].isSet((size_t) he)) {
+                        continue;
+                    }
 
-                edge_already_seen.set((size_t) he);
+                    colored_edges_per_partition[current_partition].set((size_t) he);
+                }
 
                 for (   const HypernodeID& incident_hn : phg.pins(he)                   ) {
 
@@ -126,9 +138,10 @@ namespace connected_components {
             }
         }
 
-        edge_already_seen.reset();
+        for (size_t k = 0; k < phg.k(); k++) {
+            colored_edges_per_partition[k].reset();
+        }
 
-        PartitionID current_partition;
         // now only connect nodes with 'has_connection_to_other_partition'
         for (const HypernodeID& hn : phg.nodes()) {
 
@@ -141,12 +154,14 @@ namespace connected_components {
 
             for (       const HyperedgeID& he          : phg.incidentEdges(hn)          ) {
 
-                if (edge_already_seen.isSet((size_t) he)) {
-                    //continue;
+                if (current_partition != kInvalidPartition) {
+                    if (colored_edges_per_partition[current_partition].isSet((size_t) he)) {
+                        continue;
+                    }
+
+                    colored_edges_per_partition[current_partition].set((size_t) he);
                 }
-
-                edge_already_seen.set((size_t) he);
-
+                
                 for (   const HypernodeID& incident_hn : phg.pins(he)                   ) {
 
                     
