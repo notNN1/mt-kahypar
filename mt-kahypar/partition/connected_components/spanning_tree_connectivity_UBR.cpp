@@ -280,14 +280,19 @@ namespace connected_components {
     };
 
     template<typename PartitionedHypergraph>    
-    void SpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
+    HypernodeID SpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
         const PartitionedHypergraph& phg,
         const HypernodeID& hn,
-        const PartitionID& to
+        const PartitionID& to,
+        const HypernodeID& node_to
     ) {
         assert(this->connected_to[hn].size() == 1);
         assert(this->vertex_to_parent_compressed[hn] != hn);
 
+        if (node_to == kInvalidHypernode) {
+            LOG << "There has not been found a node to attach to for node " << hn;
+            raise(SIGSEGV);
+        }
 
         auto it1                = this->connected_to[hn].begin();
         auto it2                = it1->iterator;
@@ -297,18 +302,25 @@ namespace connected_components {
         this->connected_to[incident_hn].erase(it2);
         this->connected_to[hn].erase(it1);
 
-
         // remove hn from component tree
         this->vertex_to_parent_compressed[hn] = hn;
 
-        for (       const HyperedgeID& he           : phg.incidentEdges(hn) ) {
+        /*for (       const HyperedgeID& he           : phg.incidentEdges(hn) ) {
             for (   const HypernodeID& incident_hn  : phg.pins(he)          ) {
                 if (phg.partID(incident_hn) == to && !is_same_component(hn, incident_hn)) {
                     connect_nodes(hn, incident_hn);
                     return;
                 }
             }
+        }*/
+
+        connect_nodes(hn, node_to);
+
+        if (this->connected_to[incident_hn].size() == 1) {
+            return incident_hn;
         }
+
+        return kInvalidHypernode;
 
     };
 

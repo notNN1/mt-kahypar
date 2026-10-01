@@ -94,7 +94,10 @@ void ConnectivityFacade<PartitionedHypergraph>::moveVertex(
             this->balancerUpdateNodes.push_back(node_to_update);
         }
     } else if (strategy == DynamicConnectivityStrategy::st_ubr) {
-        this->stc_ubr.moveVertex(hypergraph, hn, to);
+        HypernodeID node_to_update = this->stc_ubr.moveVertex(hypergraph, hn, to, node_to);
+        if (node_to_update != kInvalidHypernode) {
+            this->balancerUpdateNodes.push_back(node_to_update);
+        }
     }
 
     this->last_strategy_used = strategy;

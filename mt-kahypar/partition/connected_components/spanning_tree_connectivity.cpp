@@ -208,26 +208,24 @@ HypernodeID BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
     const PartitionID& to,
     const HypernodeID& node_to
 ) {
-    this->hn_is_locked.set((size_t) hn);
-
-    HypernodeID parent      = this->hn_to_parent[hn];
-
     if (node_to != kInvalidHypernode) {
-        
-        this->hn_to_num_children[parent]--;
-
-        this->hn_to_parent[hn] = node_to;
-        this->hn_to_num_children[node_to]++;
-
-        if (this->hn_to_num_children[parent] == 0) {
-            return parent;
-        }
-
-        return kInvalidHypernode;
+        LOG << "There has not been found a node to attach to for node " << hn;
+        raise(SIGSEGV);   
     }
 
-    LOG << "There has not been found a node to attach to for node " << hn;
-    raise(SIGSEGV);
+    this->hn_is_locked.set((size_t) hn);
+    HypernodeID parent = this->hn_to_parent[hn];
+
+    this->hn_to_num_children[parent]--;
+
+    this->hn_to_parent[hn] = node_to;
+    this->hn_to_num_children[node_to]++;
+
+    if (this->hn_to_num_children[parent] == 0) {
+        return parent;
+    }
+
+    return kInvalidHypernode;
 }
 
 INSTANTIATE_CLASS_WITH_PARTITIONED_HG(BFSSpanningTreeConnectivity)
