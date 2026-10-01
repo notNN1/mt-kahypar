@@ -34,6 +34,7 @@
 #include "mt-kahypar/partition/mapping/target_graph.h"
 #include "mt-kahypar/utils/utilities.h"
 #include "mt-kahypar/utils/timer.h"
+#include "mt-kahypar/utils/connected_component_stats.h"
 
 namespace mt_kahypar::io::serializer {
 

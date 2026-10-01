@@ -14,6 +14,15 @@ struct DebugState {
     vec<mt_kahypar::PackedComponentInfo> packed_components_tarjan;
 };
 
+template<typename PartitionedHypergraph>
+double get_average_node_degree(const PartitionedHypergraph& phg);
+
+template<typename PartitionedHypergraph>
+size_t get_maximum_node_degree(const PartitionedHypergraph& phg);
+
+template<typename PartitionedHypergraph>
+size_t get_minimum_node_degree(const PartitionedHypergraph& phg);
+
 
 extern DebugState cc_debug;
 

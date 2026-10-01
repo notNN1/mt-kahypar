@@ -40,19 +40,37 @@ namespace connected_components {
         const Context& context
     ) {
 
+        Bitset edge_already_seen;
+        edge_already_seen.resize(phg.initialNumEdges());
+
         // find nodes that have connections to other partitions
         Bitset has_connection_to_other_partition;
         has_connection_to_other_partition.resize(phg.initialNumNodes());
 
         for (const HypernodeID& hn : phg.nodes()) {            
-            PartitionID current_partition = phg.partID(hn);
+        PartitionID current_partition = phg.partID(hn);
 
             for (const HyperedgeID& he : phg.incidentEdges(hn)) {
+
+                if (edge_already_seen.isSet((size_t) he)) {
+                    continue;
+                }
+
+                edge_already_seen.set((size_t) he);
+
                 for (const HypernodeID& incident_hn : phg.pins(he)) {
 
                     if (current_partition != phg.partID(incident_hn)) {
                         has_connection_to_other_partition.set((size_t) hn);
                         break;
+                    }
+                }
+
+                if (has_connection_to_other_partition.isSet((size_t) hn)) {
+                    // now all the nodes have connections to different partitions as well
+
+                    for (const HypernodeID& incident_hn : phg.pins(he)) {
+                        has_connection_to_other_partition.set((size_t) incident_hn);
                     }
                 }
             }
@@ -69,13 +87,11 @@ namespace connected_components {
             connected_components
         );
 
+        edge_already_seen.reset();
 
         this->connected_to.resize(phg.initialNumNodes());
         this->vertex_to_parent_compressed.resize(phg.initialNumNodes());
         this->vertex_to_rank.resize(phg.initialNumNodes());
-
-        Bitset edge_already_seen;
-        edge_already_seen.resize(phg.initialNumEdges());
 
         for (HypernodeID hypernode : phg.nodes()) {
             this->vertex_to_parent_compressed[hypernode] = hypernode;
@@ -274,6 +290,7 @@ namespace connected_components {
             for (   const HypernodeID& incident_hn  : phg.pins(he)          ) {
                 if (phg.partID(incident_hn) == to && !is_same_component(hn, incident_hn)) {
                     connect_nodes(hn, incident_hn);
+                    return;
                 }
             }
         }

@@ -140,7 +140,7 @@ void ConnectivityFacade<PartitionedHypergraph>::reset_connectivity(
                 }
             }
         }
-        if (strategy == DynamicConnectivityStrategy::st_ubr) {
+        else if (strategy == DynamicConnectivityStrategy::st_ubr) {
             for (const HypernodeID& node : hypergraph.nodes()) {
                 if (this->stc_ubr.canMoveVertex(NULL, node)) {
                     node_priority[node] = 0;

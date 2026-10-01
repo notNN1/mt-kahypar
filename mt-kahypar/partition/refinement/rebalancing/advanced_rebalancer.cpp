@@ -60,7 +60,7 @@ namespace impl {
     
     for (PartitionID i = 0; i < context.partition.k; ++i) {
 
-      if (!phg.canMoveVertex(DynamicConnectivityStrategy::st, u, i)) {
+      if (!phg.canMoveVertex(context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy, u, i)) {
         continue;
       }
 
@@ -107,7 +107,7 @@ namespace impl {
 
       if (i != from && i != kInvalidPartition) {
 
-        if (!phg.canMoveVertex(DynamicConnectivityStrategy::st, u, i)) {
+        if (!phg.canMoveVertex(context.refinement.dynamic_connectivity.advanced_rebalancer_dynamic_connectivity_strategy, u, i)) {
           continue;
         }
 
