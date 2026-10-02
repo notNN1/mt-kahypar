@@ -208,7 +208,7 @@ HypernodeID BFSSpanningTreeConnectivity<PartitionedHypergraph>::moveVertex(
     const PartitionID& to,
     const HypernodeID& node_to
 ) {
-    if (node_to != kInvalidHypernode) {
+    if (node_to == kInvalidHypernode) {
         LOG << "There has not been found a node to attach to for node " << hn;
         raise(SIGSEGV);   
     }

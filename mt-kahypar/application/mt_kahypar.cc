@@ -54,8 +54,8 @@ int main(int argc, char* argv[]) {
   Context context(false);
   processCommandLineInput(context, argc, argv);
 
-  connected_components::Test test;
-  test.test_rebalancer();
+  // connected_components::Test test;
+  // test.test_rebalancer();
 
   if ( context.partition.preset_type == PresetType::UNDEFINED ) {
     ERR("No preset specified (--preset-type)");

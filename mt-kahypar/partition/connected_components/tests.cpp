@@ -72,7 +72,6 @@ void Test::test_rebalancer() {
             << " partition: " << phg.partID(node);
     }
 
-    while(true);
 }
 
 
