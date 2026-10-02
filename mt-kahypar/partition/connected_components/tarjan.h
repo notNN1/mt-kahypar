@@ -25,13 +25,9 @@
  #pragma once
 
 #include "mt-kahypar/datastructures/hypergraph_common.h"
-#include "mt-kahypar/parallel/stl/scalable_vector.h"
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/partition/connected_components/compute_components.h"
-#include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/datastructures/bitset.h"
-#include "mt-kahypar/datastructures/static_hypergraph.h"
-#include "mt-kahypar/datastructures/static_hypergraph_factory.h"
 
 #include <algorithm>
 #include <signal.h>
@@ -41,9 +37,6 @@ namespace connected_components {
 
 using Bitset = mt_kahypar::ds::Bitset;
 using Time   = size_t;
-
-using Hypergraph = ds::StaticHypergraph;
-using Factory = Hypergraph::Factory;
 
 template<typename PartitionedHypergraph>
 struct Tarjan {
@@ -229,14 +222,35 @@ private:
     }
 
 public: 
-    void test_tarjan() {
+    /*void test_tarjan() {
         LOG << "Begin tarjan test";
         test_tarjan_path_middle();
         test_tarjan_leaf();
         test_tarjan_cycle();
-        //test_circular_expansion();
+        //test_circular_expansion();x
         //test_contraction();
         LOG << "End tarjan test";
+    }
+
+    void test_refinement() {
+        auto hg = Factory::construct(
+            5,
+            4,
+            {
+                {0,1},
+                {1,2},
+                {2,3},
+                {3,4}
+            },
+            nullptr,
+            nullptr,
+            true
+        );
+
+        PartitionedHypergraph phg(2, hg);
+
+
+
     }
 
     void test_circular_expansion() {
@@ -407,7 +421,7 @@ public:
         if (!phg.canMoveVertex(DynamicConnectivityStrategy::bfs, 2, 1)) {
             LOG << "3There should be no articulation points in the cycle";
         }
-    }
+    }*/
 };
 
 }  // namespace connected_components

@@ -383,6 +383,38 @@ namespace impl {
 
         if (!moved) continue;
 
+        auto reinsert_neighbor = [&] (HypernodeID v) {
+          _node_state[v].markAsMovable();          // state -> 1
+          std::pair<PartitionID, float> result = impl::computeBestTargetBlock(phg, _context, _gain_cache, v, phg.partID(v));
+
+          float gain              = result.second;
+          PartitionID new_part    = result.second;
+
+          _target_part[v] = new_part;
+
+          const size_t num_pqs = 2 * _context.shared_memory.num_threads;
+
+          std::atomic<int> seed { 555 };
+          tbb::enumerable_thread_specific<impl::AccessToken> ets_tokens([&]() {
+            return impl::AccessToken(seed.fetch_add(1, std::memory_order_relaxed), num_pqs);
+          });
+
+          auto& token = ets_tokens.local();
+          int my_pq_id = -1;
+          while (true) {
+            my_pq_id = token.getRandomPQ();
+            if (_pqs[my_pq_id].lock.tryLock()) break;   // lock succeeds -> use this PQ
+          }
+          _pqs[my_pq_id].pq.insert(v, gain);
+          _pqs[my_pq_id].lock.unlock();
+          _pq_id[v] = my_pq_id;
+        };
+
+        for (const HypernodeID& movable_node : phg.getBalancerUpdates()) {
+          LOG << "New movable node: " << movable_node;
+          reinsert_neighbor(movable_node);
+        }
+
         auto update_neighbor = [&](HypernodeID v) {
           if (v != m.node && _node_state[v].tryLock()) {
             int my_pq_id = _pq_id[v];

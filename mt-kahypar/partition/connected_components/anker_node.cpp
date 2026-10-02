@@ -100,6 +100,10 @@ HypernodeID AnkerNodes<PartitionedHypergraph>::find_node_in_partition(
     // else find new anker node
     for (const HyperedgeID& he : phg.incidentEdges(hn)) {
         for (const HypernodeID& incident_hn : phg.pins(he)) {
+            if (hn == incident_hn) {
+                continue;
+            }
+
             if (phg.partID(incident_hn) == partition) {
                 this->node_to_partition[hn][partition] = incident_hn;
                 return incident_hn;
