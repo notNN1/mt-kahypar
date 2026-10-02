@@ -384,12 +384,16 @@ namespace impl {
         if (!moved) continue;
 
         auto reinsert_neighbor = [&] (HypernodeID v) {
-          _node_state[v].markAsMovable();          // state -> 1
           std::pair<PartitionID, float> result = impl::computeBestTargetBlock(phg, _context, _gain_cache, v, phg.partID(v));
 
           float gain              = result.second;
-          PartitionID new_part    = result.second;
+          PartitionID new_part    = result.first;
 
+          if (new_part == kInvalidPartition) {
+            return;
+          }
+
+          _node_state[v].markAsMovable();          // state -> 1
           _target_part[v] = new_part;
 
           const size_t num_pqs = 2 * _context.shared_memory.num_threads;
@@ -405,6 +409,7 @@ namespace impl {
             my_pq_id = token.getRandomPQ();
             if (_pqs[my_pq_id].lock.tryLock()) break;   // lock succeeds -> use this PQ
           }
+
           _pqs[my_pq_id].pq.insert(v, gain);
           _pqs[my_pq_id].lock.unlock();
           _pq_id[v] = my_pq_id;
@@ -418,6 +423,7 @@ namespace impl {
         auto update_neighbor = [&](HypernodeID v) {
           if (v != m.node && _node_state[v].tryLock()) {
             int my_pq_id = _pq_id[v];
+
             ASSERT(my_pq_id != -1);
             if (nodes_to_update[my_pq_id].empty()) {
               pqs_to_update.push_back(my_pq_id);
