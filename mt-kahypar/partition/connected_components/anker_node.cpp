@@ -23,6 +23,7 @@
  ******************************************************************************/
 
 #include "mt-kahypar/partition/connected_components/anker_node.h"
+#include "mt-kahypar/utils/connected_component_stats.h"
 
 namespace mt_kahypar {
 namespace connected_components {
@@ -96,6 +97,8 @@ HypernodeID AnkerNodes<PartitionedHypergraph>::find_node_in_partition(
     if (anker_node != kInvalidHypernode && partition == phg.partID(anker_node)) {
         return anker_node;
     }
+
+    mt_kahypar::utils::cc_debug.increse_anker_rebuilds();
 
     // else find new anker node
     for (const HyperedgeID& he : phg.incidentEdges(hn)) {

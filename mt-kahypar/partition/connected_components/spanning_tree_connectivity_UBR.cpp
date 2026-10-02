@@ -189,7 +189,7 @@ namespace connected_components {
             }
         }
 
-        mt_kahypar::utils::cc_debug.eNodes_to_blockedENodes_to_allNodes_per_rebuild.push_back({external_nodes, blocked_external_nodes, phg.initialNumNodes()});
+        mt_kahypar::utils::cc_debug.add_st_rebuild_stats(blocked_external_nodes, external_nodes);
     };
 
 

@@ -63,9 +63,7 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
       std::shuffle(pci.nodes.begin(), pci.nodes.end(), _rng);
     }   
     
-    if (mt_kahypar::utils::cc_debug.packed_components_tarjan.size() == 0) {
-      mt_kahypar::utils::cc_debug.packed_components_tarjan = packed_component_info;
-    }
+    mt_kahypar::utils::cc_debug.s_initialize_components_tarjan(packed_component_info);
     ////
 
     //// calculate spanning tree

@@ -6,22 +6,79 @@
 
 namespace mt_kahypar::utils {
 
-struct DebugState {
-    vec<vec<size_t>> components_per_partition_per_level;
-
-    vec<std::tuple<size_t, size_t, size_t>> eNodes_to_blockedENodes_to_allNodes_per_rebuild;
-
-    vec<mt_kahypar::PackedComponentInfo> packed_components_tarjan;
+struct IPState {
+    vec<mt_kahypar::PackedComponentInfo> packed_components_tarjan;  // singleton intialization
 };
 
-template<typename PartitionedHypergraph>
-double get_average_node_degree(const PartitionedHypergraph& phg);
 
-template<typename PartitionedHypergraph>
-size_t get_maximum_node_degree(const PartitionedHypergraph& phg);
+struct StatsPerReset {
+    // refinement st rebuilds
+    size_t st_blocked_enodes;
+    size_t st_enodes;
 
-template<typename PartitionedHypergraph>
-size_t get_minimum_node_degree(const PartitionedHypergraph& phg);
+    // anker nodes
+    size_t recomputations;
+};
+
+
+struct StatePerLevel {
+    size_t total_nodes;
+
+    // connectivity
+    vec<size_t> components_per_partition;
+
+    vec<StatsPerReset> stats_per_reset;
+};
+
+class DebugState {
+private:
+    IPState                 ip_state;
+    vec<StatePerLevel>      state_per_level;
+public:
+
+    DebugState() {
+        this->add_new_level(0);
+        this->add_new_reset();
+    }
+
+    // refinement
+    void add_new_level(size_t total_nodes) {
+        state_per_level.push_back({ });
+        state_per_level.back().total_nodes = total_nodes;
+    }
+
+    void add_new_reset() {
+        state_per_level.back().stats_per_reset.push_back({ });
+    }
+
+    void s_initialize_components_per_partition(vec<size_t> components_per_partition) {
+        if (this->state_per_level.back().components_per_partition.size() != 0) {
+            return;
+        }
+
+        this->state_per_level.back().components_per_partition = components_per_partition;
+    };
+
+    void add_st_rebuild_stats(size_t st_blocked_enodes, size_t st_enodes) {
+        this->state_per_level.back().stats_per_reset.back().st_blocked_enodes = st_blocked_enodes;
+        this->state_per_level.back().stats_per_reset.back().st_enodes = st_enodes;
+    }
+
+    void increse_anker_rebuilds() {
+        this->state_per_level.back().stats_per_reset.back().recomputations++;
+    }
+
+    // ip
+    void s_initialize_components_tarjan(vec<mt_kahypar::PackedComponentInfo> components) {
+        if (this->ip_state.packed_components_tarjan.size() != 0) {
+            return;
+        }
+
+        this->ip_state.packed_components_tarjan = components;
+    };
+};
+
+
 
 
 extern DebugState cc_debug;

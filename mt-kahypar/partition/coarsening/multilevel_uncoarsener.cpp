@@ -60,7 +60,8 @@ namespace mt_kahypar {
     }
     LOG << "\n";
 
-    mt_kahypar::utils::cc_debug.components_per_partition_per_level.push_back(components_per_partition);
+    mt_kahypar::utils::cc_debug.add_new_level(phg.initialNumNodes());
+    mt_kahypar::utils::cc_debug.s_initialize_components_per_partition(components_per_partition);
   }
 
   template<typename TypeTraits>

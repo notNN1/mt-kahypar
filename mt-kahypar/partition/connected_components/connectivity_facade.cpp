@@ -23,6 +23,7 @@
  ******************************************************************************/
 
 #include "mt-kahypar/partition/connected_components/connectivity_facade.h"
+#include "mt-kahypar/utils/connected_component_stats.h"
 
 namespace mt_kahypar {
 namespace connected_components {
@@ -125,6 +126,7 @@ void ConnectivityFacade<PartitionedHypergraph>::reset_connectivity(
     const PartitionedHypergraph& hypergraph,
     const DynamicConnectivityStrategy& strategy
 ) {
+    mt_kahypar::utils::cc_debug.add_new_reset();
 
     if (strategy == DynamicConnectivityStrategy::st) {
         this->stc.reset(hypergraph);
