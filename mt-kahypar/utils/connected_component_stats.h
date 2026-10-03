@@ -37,13 +37,16 @@ private:
 public:
 
     DebugState() {
-        this->add_new_level(0);
+        this->add_new_level();
         this->add_new_reset();
     }
 
     // refinement
-    void add_new_level(size_t total_nodes) {
+    void add_new_level() {
         state_per_level.push_back({ });
+    }
+
+    void set_total_nodes(size_t total_nodes) {
         state_per_level.back().total_nodes = total_nodes;
     }
 
