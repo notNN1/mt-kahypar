@@ -110,6 +110,7 @@ void compute_components(
   vec<ConnectedComponent>& result
 ) {
   (void)context;
+  result.clear();
 
   Bitset node_colored;
   node_colored.resize(phg.initialNumNodes());
@@ -129,7 +130,6 @@ void compute_components(
     node_colored.set((size_t) hn);
     
     ConnectedComponent cc = { };
-    edge_colored.reset();
 
     while (node_queue.size() > 0) {
       HypernodeID current = node_queue.front();

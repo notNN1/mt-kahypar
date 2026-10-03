@@ -42,7 +42,6 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
   if ( _ip_data.should_initial_partitioner_run(InitialPartitioningAlgorithm::st_bfs) ) {
     HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
-    std::uniform_int_distribution<PartitionID> select_random_block(0, _context.partition.k - 1);
 
     ////// get components sorted by their size
     vec<connected_components::ConnectedComponent> components;
@@ -177,7 +176,7 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
 ) {
     fattest_node = kInvalidHypernode;
 
-    for (const HypernodeID& node : phg.nodes()) {
+    for (const HypernodeID& node : component.nodes) {
         hn_to_children[node].clear();
         hn_to_parent[node] = node;
         hn_to_num_children[node] = 0;
@@ -200,7 +199,7 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
     Bitset covered_nb;
     covered_nb.resize(phg.initialNumNodes());
 
-    for (const HypernodeID& node : phg.nodes()) {
+    for (const HypernodeID& node : component.nodes) {
         if (covered.isSet((size_t) node)) {
             for (const HyperedgeID& he : phg.incidentEdges(node)) {
 
@@ -223,7 +222,7 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
 
     // find fattest node
     HypernodeWeight biggest_weight = 0;
-    for (const HypernodeID& node : phg.nodes()) {
+    for (const HypernodeID& node : component.nodes) {
         if (covered.isSet((size_t) node)) {
             continue;
         }
@@ -296,8 +295,14 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
         }
     }
 
+    /*for (const HypernodeID& node : component.nodes) {
+        if (!node_colored.isSet((size_t) node) && !covered.isSet((size_t) node)) {
+            LOG << "Node not colored";
+        }
+    }
+
     HypernodeID one_parent = kInvalidHypernode;
-    for (const HypernodeID& node : phg.nodes()) {
+    for (const HypernodeID& node : component.nodes) {
         if (covered.isSet((size_t) node)) {
             continue;
         }
@@ -313,11 +318,12 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
         }
         else if (one_parent != parent) {
             LOG << "There are at least 2 parents";
+            LOG << "Component size " << component.nodes.size();
             //while(true);
         }
-    }
+    }*/
 
-    for (const HypernodeID& node : phg.nodes()) {
+    for (const HypernodeID& node : component.nodes) {
         subtree_size[node] = phg.nodeWeight(node);
     }
 
