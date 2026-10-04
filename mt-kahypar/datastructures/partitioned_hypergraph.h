@@ -35,6 +35,7 @@
 #include <tbb/parallel_invoke.h>
 
 #include "kahypar-resources/meta/mandatory.h"
+#include "mt-kahypar/utils/connected_component_stats.h"
 
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/datastructures/connectivity_info.h"

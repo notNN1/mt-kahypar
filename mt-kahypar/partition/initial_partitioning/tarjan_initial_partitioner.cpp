@@ -26,7 +26,6 @@
 
 #include "mt-kahypar/partition/initial_partitioning/tarjan_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/initial_partitioning_data_container.h"
-#include "mt-kahypar/utils/connected_component_stats.h"
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/randomize.h"
@@ -63,7 +62,12 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
       std::shuffle(pci.nodes.begin(), pci.nodes.end(), _rng);
     }   
     
-    mt_kahypar::utils::cc_debug.s_initialize_components_tarjan(packed_component_info);
+    vec<mt_kahypar::utils::PackedComponentInfo> pci_reduced;
+    for (PackedComponentInfo& pci : packed_component_info) {
+      pci_reduced.push_back({pci.total_weight, pci.type});
+    } 
+
+    mt_kahypar::utils::cc_debug.s_initialize_components_tarjan(pci_reduced);
     ////
 
     //// calculate spanning tree
@@ -282,10 +286,10 @@ void TarjanInitialPartitioner<TypeTraits>::compact_regions(
       continue;
     }
 
-    NodeType current_node_type = NodeType::normal;
+    utils::NodeType current_node_type = utils::NodeType::normal;
     
     if (tarjan.is_articulation_point(hypergraph, hn)) {
-      current_node_type = NodeType::articulation;
+      current_node_type = utils::NodeType::articulation;
     }
 
     node_queue.push(hn);
@@ -314,12 +318,12 @@ void TarjanInitialPartitioner<TypeTraits>::compact_regions(
         edge_colored.set((size_t) he);
 
         for (const HypernodeID& incident_hn : hypergraph.pins(he)) {
-          if (current_node_type == NodeType::normal && tarjan.is_articulation_point(hypergraph, incident_hn)) {
+          if (current_node_type == utils::NodeType::normal && tarjan.is_articulation_point(hypergraph, incident_hn)) {
             border_nodes.insert(incident_hn);
             continue;
           }
 
-          if (current_node_type == NodeType::articulation && !tarjan.is_articulation_point(hypergraph, incident_hn)) {
+          if (current_node_type == utils::NodeType::articulation && !tarjan.is_articulation_point(hypergraph, incident_hn)) {
             border_nodes.insert(incident_hn);
             continue;
           }

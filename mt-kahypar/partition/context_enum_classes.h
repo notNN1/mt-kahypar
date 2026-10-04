@@ -201,6 +201,11 @@ enum class BFSSTOptions : uint8_t {
   advanced_st_plus_subtree_plus_recalculation = 3,
 };
 
+enum class AdvancedRebalancerOptions :uint8_t {
+  default_mode    = 0,
+  connectivity_fix  = 1,
+};
+
 std::ostream & operator<< (std::ostream& os, const FileFormat& type);
 
 std::ostream & operator<< (std::ostream& os, const InstanceType& type);
@@ -249,6 +254,8 @@ std::ostream & operator<< (std::ostream& os, const STOptions& algo);
 
 std::ostream & operator<< (std::ostream& os, const BFSSTOptions& algo);
 
+std::ostream & operator<< (std::ostream& os, const AdvancedRebalancerOptions& algo);
+
 Mode modeFromString(const std::string& mode);
 
 FileFormat fileFormatFromString(const std::string& type);
@@ -290,5 +297,7 @@ DynamicConnectivityStrategy dynamicConnectivityStrategyFromString(const std::str
 STOptions stOptionsFromString(const std::string& type);
 
 BFSSTOptions bfsSTOptionsFromString(const std::string& type);
+
+AdvancedRebalancerOptions advancedRebalancerOptionsFromString(const std::string& type);
 
 }  // namesapce mt_kahypar

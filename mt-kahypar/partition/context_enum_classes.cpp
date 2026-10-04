@@ -283,6 +283,14 @@ namespace mt_kahypar {
       return os << static_cast<uint8_t>(type);
   }
 
+  std::ostream & operator<< (std::ostream& os, const AdvancedRebalancerOptions& algo) {
+    switch (algo) {
+        case AdvancedRebalancerOptions::default_mode:                return os << "default_mode";
+        case AdvancedRebalancerOptions::connectivity_fix:            return os << "connectivity_fix";
+      }
+      return os << static_cast<uint8_t>(algo);
+  }
+
   Mode modeFromString(const std::string& mode) {
     if (mode == "rb" || mode == "recursive_bipartitioning") {
       return Mode::recursive_bipartitioning;
@@ -580,5 +588,17 @@ namespace mt_kahypar {
     
     throw InvalidParameterException("Illegal option: " + type);
     return BFSSTOptions::advanced_st_plus_subtree_plus_recalculation;
+  }
+
+  AdvancedRebalancerOptions advancedRebalancerOptionsFromString(const std::string& type) {
+    if (type == "default_mode") {
+      return AdvancedRebalancerOptions::default_mode;
+    }
+    else if (type == "connectivity_fix") {
+      return AdvancedRebalancerOptions::connectivity_fix;
+    }
+    
+    throw InvalidParameterException("Illegal option: " + type);
+    return AdvancedRebalancerOptions::default_mode;
   }
 }

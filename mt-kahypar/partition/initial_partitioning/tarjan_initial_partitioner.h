@@ -30,23 +30,17 @@
 #include "mt-kahypar/partition/initial_partitioning/initial_partitioning_data_container.h"
 #include "mt-kahypar/datastructures/bitset.h"
 #include "mt-kahypar/partition/connected_components/compute_components.h"
+#include "mt-kahypar/utils/connected_component_stats.h"
 #include <set>
 
 namespace mt_kahypar {
     
 using PackedComponentID     = uint32_t;   
 
-
-enum NodeType {
-    normal          = 0,
-    articulation    = 1,
-    interface       = 2
-};
-
 struct PackedComponentInfo {
     PackedComponentID id;
     size_t total_weight;
-    NodeType type;                              // should only be normal or articulation
+    utils::NodeType type;
     vec<HypernodeID> nodes;                     // contains all nodes in the component -- does not include the articulation point
     std::set<HypernodeID> connected_to;              // only interface nodes
 };
@@ -77,7 +71,7 @@ public:
     // starts the partitioning
     void partitionImpl() final;
 
-    vec<NodeType> hn_to_node_type;                  // maps each node to its type
+    vec<utils::NodeType> hn_to_node_type;                  // maps each node to its type
 
     // Do BFS while not moving over nodes of other types and collect them into a packed component
     // Does not compact interface nodes and instead gives each one a separate PackedComponent

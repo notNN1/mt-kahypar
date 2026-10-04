@@ -1,13 +1,23 @@
 #pragma once
 
 #include "mt-kahypar/definitions.h"
-#include "mt-kahypar/partition/initial_partitioning/tarjan_initial_partitioner.h"
 
 
 namespace mt_kahypar::utils {
 
+enum NodeType {
+    normal          = 0,
+    articulation    = 1,
+    interface       = 2
+};
+
+struct PackedComponentInfo {
+    size_t total_weight;
+    NodeType type;                              
+};
+
 struct IPState {
-    vec<mt_kahypar::PackedComponentInfo> packed_components_tarjan;  // singleton intialization
+    vec<PackedComponentInfo> packed_components_tarjan;  // singleton intialization
 };
 
 
@@ -72,7 +82,7 @@ public:
     }
 
     // ip
-    void s_initialize_components_tarjan(vec<mt_kahypar::PackedComponentInfo> components) {
+    void s_initialize_components_tarjan(vec<PackedComponentInfo> components) {
         if (this->ip_state.packed_components_tarjan.size() != 0) {
             return;
         }

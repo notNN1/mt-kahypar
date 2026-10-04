@@ -394,6 +394,14 @@ namespace mt_kahypar {
       context.partition.ignore_hyperedge_size_threshold,
       "Hyperedges larger than this threshold are partially ignored during partitioning."
     )->capture_default_str();
+    app.add_option_function<std::string>(
+      "--r-advanced-rebalancer-connectivity-option", [&](const std::string& s) {
+        context.extra_options.ar_options = advancedRebalancerOptionsFromString(s);
+      },
+      "Extra fixes for the advanced rebalancer:\n"
+      "- default_mode\n"
+      "- connectivity_fix"
+    )->capture_default_str();
     auto time_limit = app.add_option(
       "--time-limit",
       context.partition.time_limit,
