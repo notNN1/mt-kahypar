@@ -118,7 +118,7 @@ class PartitionedHypergraph {
         "Refinement", "pin_count_update_ownership", hypergraph.initialNumEdges(), true, false) {
     _part_ids.assign(hypergraph.initialNumNodes(), kInvalidPartition, false);
     _cf.initialize(*this);
-
+    mt_kahypar::utils::cc_debug.set_total_nodes(hypergraph.initialNumNodes());
   }
 
   explicit PartitionedHypergraph(const PartitionID k,
@@ -145,6 +145,7 @@ class PartitionedHypergraph {
         "Refinement", "pin_count_update_ownership", hypergraph.initialNumEdges(), true);
     });
     _cf.initialize(*this);
+    mt_kahypar::utils::cc_debug.set_total_nodes(hypergraph.initialNumNodes());
   }
 
   // REVIEW NOTE why do we delete copy assignment/construction? wouldn't it be useful to make a copy, e.g. for initial partitioning
@@ -179,6 +180,7 @@ class PartitionedHypergraph {
   void setHypergraph(Hypergraph& hypergraph) {
     _hg = &hypergraph;
     this->_cf.reset_connectivity(*this);
+    mt_kahypar::utils::cc_debug.set_total_nodes(hypergraph.initialNumNodes());
   }
 
   // ! Initial number of hypernodes
