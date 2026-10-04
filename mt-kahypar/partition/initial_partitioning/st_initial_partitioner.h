@@ -65,7 +65,8 @@ public:
         ConnectedComponent& component,
         vec<HypernodeID>& hn_to_parent,
         vec<vec<HypernodeID>>& hn_to_children,
-        vec<size_t>& subtree_size
+        vec<size_t>& subtree_size,
+        double target_distribution
     ); 
 
     std::pair<HypernodeID, size_t> find_best_node_to_split(

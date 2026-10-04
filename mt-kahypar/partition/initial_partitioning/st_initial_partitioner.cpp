@@ -162,7 +162,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                     nodes_to_swap.clear();
                     split_size = 0;
 
-                    calculate_spanning_tree(hg, component, hn_to_parent, hn_to_children, subtree_size); 
+                    calculate_spanning_tree(hg, component, hn_to_parent, hn_to_children, subtree_size, target_for_split / size); 
 
                     check_tree(hn_to_parent, component);
 
@@ -183,7 +183,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
 
                 } while(current_origins < _context.extra_options.st_max_recalculations);
 
-                LOG << "Target: " << target_for_split;
+                //LOG << "Target: " << target_for_split;
 
                 //// assign nodes from best split            
                 assign_subtree_of_hn(hg, best_hn_to_children, size_a, size_b, best_split);
@@ -204,7 +204,8 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
     ConnectedComponent& component,
     vec<HypernodeID>& hn_to_parent,
     vec<vec<HypernodeID>>& hn_to_children,
-    vec<size_t>& subtree_size
+    vec<size_t>& subtree_size,
+    double target_distribution
 ) {
     assert(component.nodes.size() > 0);
 
@@ -240,7 +241,6 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
     edge_colored.resize(hg.initialNumEdges());
 
     size_t max_amount_of_branching = 2;
-
     
     for (const HypernodeID& node : component.nodes) {
         subtree_size[node] = hg.nodeWeight(node);
@@ -285,6 +285,9 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
                     }
 
                     ++available_size;
+                    if (available_size == max_amount_of_branching) {
+                        break;
+                    }
                 }
 
                 const size_t branch_node_count =
@@ -355,6 +358,8 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
                     };
                 }
 
+                size_t branch = 0;
+
                 for (const HypernodeID& incident_hn : hg.pins(he)) {
                     if (node_colored.isSet((size_t) incident_hn)) {
                         continue;
@@ -362,13 +367,19 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 
                     node_colored.set((size_t) incident_hn);
 
-                    // Find the branch with the smallest current weight.
-                    std::sort(sizes.begin(), sizes.end());
+                    if (branch_node_count == 1) {
+                        branch = 0;
+                    }
+                    else if (static_cast<double>(sizes[0].first) > target_distribution * static_cast<double>(sizes[0].first + sizes[1].first)) {
+                        branch = 1;
+                    } else {
+                        branch = 0;
+                    }
 
-                    const HypernodeID attachment_node = sizes[0].second;
+                    const HypernodeID attachment_node = sizes[branch].second;
 
                     // Add this node to that branch.
-                    sizes[0].first += hg.nodeWeight(incident_hn);
+                    sizes[branch].first += hg.nodeWeight(incident_hn);
 
                     queue.push_back(incident_hn);
                     calculation_queue.push_back(incident_hn);
@@ -446,7 +457,7 @@ void STInitialPartitioner<TypeTraits>::assign_subtree_of_hn(
         }
     }
 
-    LOG << "total size: " << total_size;
+    //LOG << "total size: " << total_size;
 }
 
 INSTANTIATE_CLASS_WITH_TYPE_TRAITS(STInitialPartitioner)
