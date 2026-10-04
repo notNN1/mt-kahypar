@@ -99,16 +99,19 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
         connected_components::ConnectedComponent component  = component_and_size.second;
 
 
-        if (size_a >= target) {
+        if (size_a + size < target && size_a > size_b) {
+            for (const HypernodeID& node : component.nodes) {
+                hg.setNodePart(node, 0);
+                size_a += hg.nodeWeight(node);
+            }
+        }
+        else if (size_b + size < target && size_b >= size_a) {
             for (const HypernodeID& node : component.nodes) {
                 hg.setNodePart(node, 1);
                 size_b += hg.nodeWeight(node);
             }
-            continue;
-        }
-
-
-        if (size_a + size > target) { // split component
+        } 
+        else { // split component
 
             size_t target_for_split = size - (target - size_a);
 
@@ -146,14 +149,7 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
                 size_b += hg.nodeWeight(node);
             }
             
-        }
-        else {
-            for (const HypernodeID& node : component.nodes) {
-                hg.setNodePart(node, 0);
-                size_a += hg.nodeWeight(node);
-            }
-        }
-        
+        } 
     }
 
     HighResClockTimepoint end = std::chrono::high_resolution_clock::now();

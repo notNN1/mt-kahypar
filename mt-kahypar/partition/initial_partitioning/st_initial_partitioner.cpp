@@ -131,17 +131,19 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
             size_t size                                         = component_and_size.first;
             connected_components::ConnectedComponent component  = component_and_size.second;
 
-
-            if (size_a >= target) {
+            if (size_a + size < target && size_a > size_b) {
+                for (const HypernodeID& node : component.nodes) {
+                    hg.setNodePart(node, 0);
+                    size_a += hg.nodeWeight(node);
+                }
+            }
+            else if (size_b + size < target && size_b >= size_a) {
                 for (const HypernodeID& node : component.nodes) {
                     hg.setNodePart(node, 1);
                     size_b += hg.nodeWeight(node);
                 }
-                continue;
             }
-
-
-            if (size_a + size > target) { // split component
+            else {  // split component
 
                 size_t target_for_split = size - (target - size_a);
 
@@ -186,12 +188,6 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                 //// assign nodes from best split            
                 assign_subtree_of_hn(hg, best_hn_to_children, size_a, size_b, best_split);
                 
-            }
-            else {
-                for (const HypernodeID& node : component.nodes) {
-                    hg.setNodePart(node, 0);
-                    size_a += hg.nodeWeight(node);
-                }
             }
             
         }
