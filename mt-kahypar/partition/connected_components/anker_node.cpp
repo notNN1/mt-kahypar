@@ -52,7 +52,7 @@ void AnkerNodes<PartitionedHypergraph>::initialize(
                 continue;
             }
 
-            if (nodes_for_partition[part] != kInvalidHypernode && node_priority[nodes_for_partition[part]] >= node_priority[incident_hn]) {
+            if (nodes_for_partition[part] != kInvalidHypernode && node_priority[nodes_for_partition[part]] > node_priority[incident_hn]) {
                 continue;
             }
 

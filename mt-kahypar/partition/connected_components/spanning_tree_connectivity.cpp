@@ -189,10 +189,6 @@ bool BFSSpanningTreeConnectivity<PartitionedHypergraph>::canMoveVertex(
         raise(SIGSEGV);
     }
 
-    if (this->hn_to_parent[hn] == hn ) { //|| this->hn_is_locked.isSet((size_t) hn)) {
-        return false;
-    }
-
     if (this->hn_to_num_children[hn] != 0) {
         return false;
     }

@@ -178,10 +178,6 @@ void TarjanInitialPartitioner<TypeTraits>::calculate_communities(
     to_update.clear();
   }
 
-  for (const PackedComponentInfo& comp_info : packed_component_info) {
-
-  }
-
   //// find subtree size for each head with the correct size in the same tree
   vec<size_t>             best_size(packed_component_info.size(), std::numeric_limits<size_t>::max());
   vec<PackedComponentID>  best_component(packed_component_info.size(), std::numeric_limits<uint32_t>::max());
