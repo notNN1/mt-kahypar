@@ -185,12 +185,10 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
     Bitset edge_colored;
     edge_colored.resize(phg.initialNumEdges());
 
-    vec<HyperedgeID> node_queue;
-    node_queue.reserve(phg.initialNumNodes());
+    std::deque<HyperedgeID> node_queue;
     node_queue.push_back(starter_node);
 
-    vec<HyperedgeID> lp_node_queue;
-    lp_node_queue.reserve(phg.initialNumNodes());
+    std::deque<HyperedgeID> lp_node_queue;
     
     Bitset covered_nb;
     covered_nb.resize(phg.initialNumNodes());
@@ -232,18 +230,17 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
     edge_colored.reset();
     std::deque<HypernodeID> calculation_queue;
 
-
     while (node_queue.size() > 0 || lp_node_queue.size() > 0) {
 
         HypernodeID current_node;
 
         if (node_queue.size() > 0) {
-            current_node = node_queue.back();
-            node_queue.pop_back();
+            current_node = node_queue.front();
+            node_queue.pop_front();
         }
         else {
-            current_node = lp_node_queue.back();
-            lp_node_queue.pop_back();
+            current_node = lp_node_queue.front();
+            lp_node_queue.pop_front();
         }
 
         for (const HyperedgeID& he : phg.incidentEdges(current_node)) {
@@ -273,7 +270,6 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
                 hn_to_num_children[current_node]++;
 
                 hn_to_children[current_node].push_back(incident_hn);
-                calculation_queue.push_front(incident_hn);
 
                 if (_context.extra_options.bfs_st_options != BFSSTOptions::normal_st && 
                             (covered_nb.isSet((size_t) incident_hn) || fattest_node == incident_hn)) {
@@ -291,33 +287,19 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
         }
     }
 
-    /*for (const HypernodeID& node : component.nodes) {
-        if (!node_colored.isSet((size_t) node) && !covered.isSet((size_t) node)) {
-            LOG << "Node not colored";
+
+    // calculate subtree sizes
+    node_queue.push_back(starter_node);
+
+    while (node_queue.size() != 0) {
+        HypernodeID current_node = node_queue.back();
+        node_queue.pop_back();
+
+        for (const HypernodeID& incident_hn : hn_to_children[current_node]) {
+            node_queue.push_back(incident_hn);
+            calculation_queue.push_front(incident_hn);
         }
     }
-
-    HypernodeID one_parent = kInvalidHypernode;
-    for (const HypernodeID& node : component.nodes) {
-        if (covered.isSet((size_t) node)) {
-            continue;
-        }
-
-        HypernodeID parent = hn_to_parent[node];
-
-        while(hn_to_parent[parent] != parent) {
-            parent = hn_to_parent[parent];
-        }
-
-        if (one_parent == kInvalidHypernode) {
-            one_parent = parent;
-        }
-        else if (one_parent != parent) {
-            LOG << "There are at least 2 parents";
-            LOG << "Component size " << component.nodes.size();
-            //while(true);
-        }
-    }*/
 
     for (const HypernodeID& node : component.nodes) {
         subtree_size[node] = phg.nodeWeight(node);

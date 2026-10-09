@@ -40,47 +40,45 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
     std::uniform_int_distribution<PartitionID> select_random_block(0, _context.partition.k - 1);
     
-    // compute components and do tarjan for each component
+    // compute regions and do tarjan for each region
     connected_components::Tarjan<PartitionedHypergraph> tarjan;
     tarjan.initialize(hg);
 
-    vec<PackedComponentID> vertex_to_packed_component;
-    vec<PackedComponentInfo> packed_component_info;
-    compact_regions(hg, vertex_to_packed_component, packed_component_info, tarjan);
+    vec<PackedComponentID> vertex_to_region;
+    vec<RegionInfo> region_info;
+    compact_regions(hg, vertex_to_region, region_info, tarjan);
 
     //// shuffle everything
-    std::shuffle(packed_component_info.begin(), packed_component_info.end(), _rng);
-    for (size_t i = 0; i < packed_component_info.size(); i++) {
-      packed_component_info[i].id = i;
+    std::shuffle(region_info.begin(), region_info.end(), _rng);
+    for (size_t i = 0; i < region_info.size(); i++) {
+      region_info[i].id = i;
 
-      for (const HypernodeID& node : packed_component_info[i].nodes) {
-        vertex_to_packed_component[node] = i;
+      for (const HypernodeID& node : region_info[i].nodes) {
+        vertex_to_region[node] = i;
       }
     }
 
-    for (PackedComponentInfo& pci : packed_component_info) {
+    for (RegionInfo& pci : region_info) {
       std::shuffle(pci.nodes.begin(), pci.nodes.end(), _rng);
     }   
     
-    vec<mt_kahypar::utils::PackedComponentInfo> pci_reduced;
-    for (PackedComponentInfo& pci : packed_component_info) {
+    vec<mt_kahypar::utils::RegionInfo> pci_reduced;
+    for (RegionInfo& pci : region_info) {
       pci_reduced.push_back({pci.total_weight, pci.type});
     } 
-
-    mt_kahypar::utils::cc_debug.s_initialize_components_tarjan(pci_reduced);
     ////
 
     //// calculate spanning tree
     vec<size_t>                         subtree_size;
-    vec<PackedComponentID>              component_to_parent;
+    vec<PackedComponentID>              region_to_parent;
     vec<PackedComponentID>              heads;
 
-    calculate_master_spanning_tree(vertex_to_packed_component, packed_component_info, subtree_size, component_to_parent, heads);
+    calculate_master_spanning_tree(vertex_to_region, region_info, subtree_size, region_to_parent, heads);
 
     
     //// calculate communities and create new hypergraph
     parallel::scalable_vector<HypernodeID> communities(hg.initialNumNodes());
-    calculate_communities(packed_component_info, component_to_parent, communities, subtree_size, heads);
+    calculate_communities(region_info, region_to_parent, communities, subtree_size, heads);
     
     auto& old_hg    = hg.hypergraph();
     auto new_hg     = old_hg.contract(communities, true);
@@ -134,105 +132,133 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
 
 template<typename TypeTraits>
 void TarjanInitialPartitioner<TypeTraits>::calculate_communities(
-  const vec<PackedComponentInfo>& packed_component_info,
-  vec<PackedComponentID>& component_to_parent,
+  const vec<RegionInfo>& region_info,
+  vec<PackedComponentID>& region_to_parent,
   parallel::scalable_vector<HypernodeID>& communities,
   const vec<size_t>& subtree_size,
   const vec<PackedComponentID> heads
 
 ) {
-  //// get packed component to head
-  vec<PackedComponentID> packed_component_to_head;
-  packed_component_to_head.resize(packed_component_info.size());
+  //// get packed region to head
+  vec<PackedComponentID> region_to_head;
+  region_to_head.resize(region_info.size());
 
-  for (const PackedComponentInfo& comp_info : packed_component_info) {
-    packed_component_to_head[comp_info.id] = comp_info.id;
+  for (const RegionInfo& comp_info : region_info) {
+    region_to_head[comp_info.id] = comp_info.id;
   }
 
   Bitset updated;
-  updated.resize(packed_component_info.size());
+  updated.resize(region_info.size());
 
   vec<PackedComponentID> to_update;
 
-  for (const PackedComponentInfo& comp_info : packed_component_info) {
-    if (component_to_parent[comp_info.id] == comp_info.id) {
-      packed_component_to_head[comp_info.id] = comp_info.id;
+  for (const RegionInfo& comp_info : region_info) {
+    if (region_to_parent[comp_info.id] == comp_info.id) {
+      region_to_head[comp_info.id] = comp_info.id;
       continue;
     }
 
     PackedComponentID parent = comp_info.id;
-    while (parent != component_to_parent[parent]) {
+    while (parent != region_to_parent[parent]) {
       if (updated.isSet((size_t) parent)) {
-        parent = packed_component_to_head[parent];
+        parent = region_to_head[parent];
         break;
       }
       to_update.push_back(parent);
-      parent = component_to_parent[parent];
+      parent = region_to_parent[parent];
     }
 
     for (const PackedComponentID& comp : to_update) {
       updated.set((size_t) comp);
-      packed_component_to_head[comp] = parent;
+      region_to_head[comp] = parent;
     }
 
     to_update.clear();
   }
 
   //// find subtree size for each head with the correct size in the same tree
-  vec<size_t>             best_size(packed_component_info.size(), std::numeric_limits<size_t>::max());
-  vec<PackedComponentID>  best_component(packed_component_info.size(), std::numeric_limits<uint32_t>::max());
+  vec<size_t>             best_size(region_info.size(), std::numeric_limits<size_t>::max());
+  vec<PackedComponentID>  best_region(region_info.size(), std::numeric_limits<uint32_t>::max());
 
-  for (const PackedComponentInfo& comp_info : packed_component_info) {
-    PackedComponentID head = packed_component_to_head[comp_info.id];
+  vec<size_t>             best_size_articulation(region_info.size(), std::numeric_limits<size_t>::max());
+  vec<PackedComponentID>  best_region_articulation(region_info.size(), std::numeric_limits<uint32_t>::max());
+
+
+  for (const RegionInfo& comp_info : region_info) {
+    PackedComponentID head = region_to_head[comp_info.id];
     size_t target = subtree_size[head] / 2;
 
-    if (subtree_size[comp_info.id] > target && subtree_size[comp_info.id] < best_size[head]) {
+    if (subtree_size[comp_info.id] >= target && subtree_size[comp_info.id] < best_size[head] && comp_info.type == mt_kahypar::utils::NodeType::normal) {
       best_size[head]       = subtree_size[comp_info.id];
-      best_component[head]  = comp_info.id;
+      best_region[head]     = comp_info.id;
+    }
+    else if (subtree_size[comp_info.id] >= target && subtree_size[comp_info.id] < best_size_articulation[head] && comp_info.type == mt_kahypar::utils::NodeType::articulation) {
+      best_size_articulation[head]    = subtree_size[comp_info.id];
+      best_region_articulation[head]  = comp_info.id;
     }
   }
+
+  // take region with articulation points, if there is no normal region with a reasonable subtree size
+  for (const RegionInfo& comp_info : region_info) {
+    PackedComponentID head = region_to_head[comp_info.id];
+
+    if (head != comp_info.id) {
+      continue;
+    }
+
+    size_t target         = subtree_size[head] / 2;
+    size_t upper_target   = target * (1 + _context.partition.epsilon);
+
+    if (best_size[head] > best_size_articulation[head] && best_size[head] > upper_target) {
+      best_size[head]   = best_size_articulation[head];
+      best_region[head] =  best_region_articulation[head];
+    }
+  }
+
   ////
+
+  //mt_kahypar::utils::cc_debug.s_initialize_regions_tarjan(pci_reduced, );
 
   //// find communities
   updated.reset();
   
   HypernodeID         community = 0;
   
-  vec<HypernodeID>    packed_component_to_community;
-  packed_component_to_community.resize(packed_component_info.size());
+  vec<HypernodeID>    region_to_community;
+  region_to_community.resize(region_info.size());
 
-  for (const PackedComponentInfo& comp_info : packed_component_info) {
-    PackedComponentID head = packed_component_to_head[comp_info.id];
+  for (const RegionInfo& comp_info : region_info) {
+    PackedComponentID head = region_to_head[comp_info.id];
 
-    if (comp_info.id == best_component[head]) {
+    if (comp_info.id == best_region[head]) {
       continue;
     }
 
     PackedComponentID parent = comp_info.id;
-    while (parent != component_to_parent[parent]) {
-      if (updated.isSet((size_t) parent) || parent == best_component[head]) {
+    while (parent != region_to_parent[parent]) {
+      if (updated.isSet((size_t) parent) || parent == best_region[head]) {
         break;
       }
 
       to_update.push_back(parent);
-      parent = component_to_parent[parent];
+      parent = region_to_parent[parent];
     }
 
     HypernodeID parent_community = kInvalidHypernode;
 
-    if (parent == best_component[head]) {
+    if (parent == best_region[head]) {
       parent_community = community++;
-    } else if (parent == component_to_parent[parent] && !updated.isSet((size_t) parent)) {
+    } else if (parent == region_to_parent[parent] && !updated.isSet((size_t) parent)) {
       parent_community = community++;
       to_update.push_back(parent);
     } 
     else {
-      parent_community = packed_component_to_community[parent];
+      parent_community = region_to_community[parent];
     }
 
     for (const PackedComponentID& comp : to_update) {
       updated.set((size_t) comp);
-      packed_component_to_community[comp] = parent_community;
+      region_to_community[comp] = parent_community;
     }
 
     to_update.clear();
@@ -240,10 +266,10 @@ void TarjanInitialPartitioner<TypeTraits>::calculate_communities(
   ////
 
   //// assign nodes
-  for (const PackedComponentInfo& comp_info : packed_component_info) {
-    PackedComponentID head = packed_component_to_head[comp_info.id];
+  for (const RegionInfo& comp_info : region_info) {
+    PackedComponentID head = region_to_head[comp_info.id];
 
-    if (comp_info.id == best_component[head]) {
+    if (comp_info.id == best_region[head]) {
       for (const HypernodeID& node : comp_info.nodes) {
         communities[node] = community++;
       }
@@ -251,7 +277,7 @@ void TarjanInitialPartitioner<TypeTraits>::calculate_communities(
     }
 
     for (const HypernodeID& node : comp_info.nodes) {
-      communities[node] = packed_component_to_community[comp_info.id];
+      communities[node] = region_to_community[comp_info.id];
     }
   }
   ////
@@ -260,12 +286,12 @@ void TarjanInitialPartitioner<TypeTraits>::calculate_communities(
 template<typename TypeTraits>
 void TarjanInitialPartitioner<TypeTraits>::compact_regions(
   const PartitionedHypergraph& hypergraph,
-  vec<PackedComponentID>& vertex_to_packed_component,
-  vec<PackedComponentInfo>& packed_component_info,
+  vec<PackedComponentID>& vertex_to_region,
+  vec<RegionInfo>& region_info,
   connected_components::Tarjan<PartitionedHypergraph>& tarjan
 ) {
 
-  vertex_to_packed_component.resize(hypergraph.initialNumNodes());
+  vertex_to_region.resize(hypergraph.initialNumNodes());
 
   Bitset node_colored;
   node_colored.resize(hypergraph.initialNumNodes());
@@ -274,7 +300,7 @@ void TarjanInitialPartitioner<TypeTraits>::compact_regions(
   edge_colored.resize(hypergraph.initialNumEdges());
 
   std::queue<HypernodeID> node_queue;
-  PackedComponentID current_component = 0;
+  PackedComponentID current_region = 0;
 
   for (const HypernodeID& hn : hypergraph.nodes()) {
 
@@ -303,7 +329,7 @@ void TarjanInitialPartitioner<TypeTraits>::compact_regions(
 
       nodes.push_back(current);
       total_weight += hypergraph.nodeWeight(current);
-      vertex_to_packed_component[current] = current_component;
+      vertex_to_region[current] = current_region;
 
       for (const HyperedgeID& he : hypergraph.incidentEdges(current)) {
 
@@ -334,85 +360,85 @@ void TarjanInitialPartitioner<TypeTraits>::compact_regions(
       }
     }
     
-    packed_component_info.push_back({(uint32_t) current_component, total_weight, current_node_type, nodes, border_nodes});
-    current_component++;
+    region_info.push_back({(uint32_t) current_region, total_weight, current_node_type, nodes, border_nodes});
+    current_region++;
   }
 };
 
 template<typename TypeTraits>
 void TarjanInitialPartitioner<TypeTraits>::calculate_master_spanning_tree(
-  const vec<PackedComponentID>& vertex_to_packed_component,
-  const vec<PackedComponentInfo>& packed_component_info,
+  const vec<PackedComponentID>& vertex_to_region,
+  const vec<RegionInfo>& region_info,
   vec<size_t>& subtree_size,
-  vec<PackedComponentID>& component_to_parent,
+  vec<PackedComponentID>& region_to_parent,
   vec<PackedComponentID>& heads
 ) {
 
   //// setup variables
-  component_to_parent.resize(packed_component_info.size());
+  region_to_parent.resize(region_info.size());
 
-  Bitset component_used;
-  component_used.resize(packed_component_info.size());
+  Bitset region_used;
+  region_used.resize(region_info.size());
 
-  Bitset component_colored;
-  component_colored.resize(packed_component_info.size());
+  Bitset region_colored;
+  region_colored.resize(region_info.size());
 
-  vec<PackedComponentID> component_queue;
+  vec<PackedComponentID> region_queue;
   std::deque<PackedComponentID> calculation_queue;
   ////
 
-  for (const PackedComponentInfo& comp_info : packed_component_info) {
-    component_to_parent[comp_info.id] = comp_info.id;
+  for (const RegionInfo& comp_info : region_info) {
+    region_to_parent[comp_info.id] = comp_info.id;
   }
 
-  vec<PackedComponentInfo> packed_component_info_copy = packed_component_info;
+  vec<RegionInfo> region_info_copy = region_info;
 
-  std::sort(packed_component_info_copy.begin(), packed_component_info_copy.end(),
-    [](const PackedComponentInfo& a, const PackedComponentInfo& b) {
+  std::sort(region_info_copy.begin(), region_info_copy.end(),
+    [](const RegionInfo& a, const RegionInfo& b) {
       return a.nodes.size() < b.nodes.size();
     });
 
-  for (const PackedComponentInfo& parent : packed_component_info_copy) {
-    if (component_colored.isSet((size_t) parent.id)) {
+  for (const RegionInfo& parent : region_info_copy) {
+    if (region_colored.isSet((size_t) parent.id)) {
       continue;
     }
 
     heads.push_back(parent.id);
 
-    component_queue.push_back(parent.id);
-    component_colored.set((size_t) parent.id);
+    region_queue.push_back(parent.id);
+    region_colored.set((size_t) parent.id);
 
-    while (component_queue.size() > 0) {
-      PackedComponentID current_id = component_queue.back();
-      component_queue.pop_back();
+    while (region_queue.size() > 0) {
+      PackedComponentID current_id = region_queue.back();
+      region_queue.pop_back();
 
-      PackedComponentInfo current_component = packed_component_info[current_id];
+      RegionInfo current_region = region_info[current_id];
 
-      for (const HypernodeID& incident_hn : current_component.connected_to) {
-        PackedComponentID component_id = vertex_to_packed_component[incident_hn];
+      for (const HypernodeID& incident_hn : current_region.connected_to) {
+        PackedComponentID region_id = vertex_to_region[incident_hn];
 
-        if (component_colored.isSet((size_t) component_id)) {
+        if (region_colored.isSet((size_t) region_id)) {
           continue;
         }
 
-        component_queue.push_back(component_id);
-        calculation_queue.push_front(component_id);
+        region_queue.push_back(region_id);
+        calculation_queue.push_front(region_id);
 
-        component_colored.set((size_t) component_id);
-        component_to_parent[component_id] = current_id; 
+        region_colored.set((size_t) region_id);
+        region_to_parent[region_id] = current_id; 
       } 
     }    
   }
 
   // calculate spanning tree sizes
-  subtree_size.resize(packed_component_info.size());
+  subtree_size.resize(region_info.size());
 
-  for (const PackedComponentInfo& component : packed_component_info) {
-    subtree_size[component.id] = component.total_weight;
+  for (const RegionInfo& region : region_info) {
+    subtree_size[region.id] = region.total_weight;
   }
 
-  for (const PackedComponentID& component_id : calculation_queue) {
-    subtree_size[component_to_parent[component_id]] += subtree_size[component_id];
+  for (const PackedComponentID& region_id : calculation_queue) {
+    subtree_size[region_to_parent[region_id]] += subtree_size[region_id];
   }
 };
 

@@ -37,7 +37,7 @@ namespace mt_kahypar {
     
 using PackedComponentID     = uint32_t;   
 
-struct PackedComponentInfo {
+struct RegionInfo {
     PackedComponentID id;
     size_t total_weight;
     utils::NodeType type;
@@ -77,22 +77,22 @@ public:
     // Does not compact interface nodes and instead gives each one a separate PackedComponent
     void compact_regions(
         const PartitionedHypergraph& hypergraph,
-        vec<PackedComponentID>& vertex_to_packed_component,
-        vec<PackedComponentInfo>& packed_component_info,
+        vec<PackedComponentID>& vertex_to_region,
+        vec<RegionInfo>& region_info,
         connected_components::Tarjan<PartitionedHypergraph>& tarjan
     );
 
     // calculates a spanning tree over the packed components
     void calculate_master_spanning_tree(
-        const vec<PackedComponentID>& vertex_to_packed_component,
-        const vec<PackedComponentInfo>& packed_component_info,
+        const vec<PackedComponentID>& vertex_to_region,
+        const vec<RegionInfo>& region_info,
         vec<size_t>& subtree_size,
         vec<PackedComponentID>& component_to_parent,
         vec<PackedComponentID>& heads
     );
 
     void calculate_communities(
-        const vec<PackedComponentInfo>& packed_component_info,
+        const vec<RegionInfo>& region_info,
         vec<PackedComponentID>& component_to_parent,
         parallel::scalable_vector<HypernodeID>& communities,
         const vec<size_t>& subtree_size,
@@ -100,9 +100,9 @@ public:
     );
 
     void find_farthest_component_from_component(
-        const vec<PackedComponentInfo>& packed_component_info,
-        const PackedComponentInfo& starter_component,
-        PackedComponentInfo& end_component
+        const vec<RegionInfo>& region_info,
+        const RegionInfo& starter_component,
+        RegionInfo& end_component
     );
 
     void build_spanning_tree_from_node_in_direction() {

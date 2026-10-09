@@ -11,13 +11,14 @@ enum NodeType {
     interface       = 2
 };
 
-struct PackedComponentInfo {
+struct RegionInfo {
     size_t total_weight;
     NodeType type;                              
 };
 
 struct IPState {
-    vec<PackedComponentInfo> packed_components_tarjan;  // singleton intialization
+    vec<RegionInfo> regions_tarjan;  // singleton intialization
+    RegionInfo chosen_region;
 };
 
 
@@ -87,12 +88,13 @@ public:
     }
 
     // ip
-    void s_initialize_components_tarjan(vec<PackedComponentInfo> components) {
-        if (this->ip_state.packed_components_tarjan.size() != 0) {
+    void s_initialize_regions_tarjan(vec<RegionInfo> regions, RegionInfo chosen_region) {
+        if (this->ip_state.regions_tarjan.size() != 0) {
             return;
         }
 
-        this->ip_state.packed_components_tarjan = components;
+        this->ip_state.regions_tarjan = regions;
+        this->ip_state.chosen_region = chosen_region;
     };
 };
 
