@@ -28,6 +28,7 @@ struct StatsPerReset {
 
     // anker nodes
     size_t recomputations;
+    size_t node_moves;
 };
 
 
@@ -79,6 +80,10 @@ public:
 
     void increse_anker_rebuilds() {
         this->state_per_level.back().stats_per_reset.back().recomputations++;
+    }
+
+    void increse_node_changes() {
+        this->state_per_level.back().stats_per_reset.back().node_moves++;
     }
 
     // ip

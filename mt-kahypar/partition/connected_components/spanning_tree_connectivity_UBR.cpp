@@ -77,7 +77,6 @@ namespace connected_components {
         }
 
         // There are nodes, that cannot be avoided when building the spanning tree, which are also nodes, that connect to other partitions
-        // Save these in nodes_unavoidable
         // Then a new run for the connected component tries to use these nodes first, to build the spanning tree
 
         vec<vec<ConnectedComponent>> connected_components;
@@ -273,10 +272,10 @@ namespace connected_components {
         const Context& context,
         const HypernodeID& hn
     ) {
-        if (this->vertex_to_parent_compressed[hn] == hn) {
+        if (this->vertex_to_parent_compressed[hn] == hn && this->connected_to[hn].size() > 0) {
             return false;   
         }
-        return this->connected_to[hn].size() == 1;
+        return this->connected_to[hn].size() <= 1;
     };
 
     template<typename PartitionedHypergraph>    

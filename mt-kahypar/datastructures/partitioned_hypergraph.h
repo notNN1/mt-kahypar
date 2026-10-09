@@ -619,6 +619,7 @@ class PartitionedHypergraph {
     if (to_weight_after <= max_weight_to && this->_cf.canMoveVertex(connectivity_strategy, *this, u, to)) {
       
       this->_cf.moveVertex(connectivity_strategy, *this, u, to);
+      mt_kahypar::utils::cc_debug.increse_node_changes();
 
       _part_ids[u] = to;
       _part_weights[from].fetch_sub(wu, std::memory_order_relaxed);
