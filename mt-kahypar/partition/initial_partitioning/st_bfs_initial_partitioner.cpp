@@ -167,10 +167,8 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
     vec<size_t>& subtree_size,
     vec<size_t>& hn_to_num_children,
     const HypernodeID& starter_node,
-    HypernodeID& fattest_node,
     const Bitset& covered
 ) {
-    fattest_node = kInvalidHypernode;
 
     for (const HypernodeID& node : component.nodes) {
         hn_to_children[node].clear();
@@ -211,19 +209,6 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
                     covered_nb.set((size_t) incident_he);
                 }
             }
-        }
-    }
-
-    // find fattest node
-    HypernodeWeight biggest_weight = 0;
-    for (const HypernodeID& node : component.nodes) {
-        if (covered.isSet((size_t) node)) {
-            continue;
-        }
-
-        if (phg.nodeWeight(node) > biggest_weight) {
-            fattest_node    = node;
-            biggest_weight  = phg.nodeWeight(node); 
         }
     }
 
@@ -271,19 +256,13 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
 
                 hn_to_children[current_node].push_back(incident_hn);
 
-                if (_context.extra_options.bfs_st_options != BFSSTOptions::normal_st && 
-                            (covered_nb.isSet((size_t) incident_hn) || fattest_node == incident_hn)) {
-                                
+                if (_context.extra_options.bfs_st_options != BFSSTOptions::normal_st && (covered_nb.isSet((size_t) incident_hn))) {
                     lp_node_queue.push_back(incident_hn);
                 }
                 else {
                     node_queue.push_back(incident_hn);
                 }
             }
-        }
-
-        if (node_queue.size() == 0) {
-            fattest_node = current_node;
         }
     }
 
@@ -358,7 +337,6 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
         current_iteration++;
 
         HypernodeID starter_node_st     = kInvalidHypernode;
-        HypernodeID fattest_node        = kInvalidHypernode;
 
         if (!component.nodes.empty()) {
             const size_t start = std::uniform_int_distribution<size_t>(
@@ -389,24 +367,20 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
         //LOG << "starter_node_st: " << starter_node_st;
 
-        calculate_component_spanning_tree(phg, component, hn_to_parent, hn_to_children, subtree_size, hn_to_num_children, starter_node_st, fattest_node, covered);
+        calculate_component_spanning_tree(phg, component, hn_to_parent, hn_to_children, subtree_size, hn_to_num_children, starter_node_st, covered);
 
         if (result.size() == 0) {
 
-            if (false && hn_to_num_children[fattest_node] == 0) {
-                starter_node = fattest_node;
-            } else {
-                for (const HypernodeID& node : component.nodes) {
-                    if (hn_to_num_children[node] == 0 && phg.nodeWeight(node) <= target) {
-                        starter_node = node;
-                    }
-                }
-
-                if (starter_node == kInvalidHypernode) {
-                    continue;
+            for (const HypernodeID& node : component.nodes) {
+                if (hn_to_num_children[node] == 0 && phg.nodeWeight(node) <= target) {
+                    starter_node = node;
                 }
             }
 
+            if (starter_node == kInvalidHypernode) {
+                continue;
+            }
+            
             add_node_to_split(
                 starter_node,
                 hn_to_parent,
