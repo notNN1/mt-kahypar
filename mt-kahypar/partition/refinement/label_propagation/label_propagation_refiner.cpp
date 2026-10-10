@@ -124,9 +124,9 @@ namespace mt_kahypar {
 
     // Update metrics statistics
     Gain delta = old_metric.quality - best_metrics.quality;
-    //ASSERT(best_metrics.isBetter(old_metric) || best_metrics.isEqual(old_metric), "LP refiner worsen solution");
+    //ASSERT(best_metrics.isBetter(old_metric, _context) || best_metrics.isEqual(old_metric, _context), "LP refiner worsen solution");
     utils::Utilities::instance().getStats(_context.utility_id).update_stat("lp_improvement", delta);
-    return best_metrics.isBetter(old_metric);
+    return best_metrics.isBetter(old_metric, _context);
   }
 
 
@@ -213,7 +213,7 @@ namespace mt_kahypar {
     // not decrease. Race conditions during applying/reverting moves can lead to a situation where reverting some moves
     // looks beneficial but results in a net negative. This is however so rare in practice that we can accept it instead
     // of investing more running time to fix it.
-    ASSERT(!did_rebalance || !best_metrics.isBetter(current_metrics));
+    ASSERT(!did_rebalance || !best_metrics.isBetter(current_metrics, _context));
     unused(did_rebalance);
     const Gain old_quality = best_metrics.quality;
     best_metrics = current_metrics;
@@ -289,7 +289,7 @@ namespace mt_kahypar {
     // We consider the new partition an improvement if either
     // (1) the old partiton was imbalanced and balance is improved or
     // (2) the quality is improved while still being balanced
-    if ( current_metrics.isBetter(best_metrics) ) {
+    if ( current_metrics.isBetter(best_metrics, _context) ) {
       return false;
     } else {
       // rollback and stop LP

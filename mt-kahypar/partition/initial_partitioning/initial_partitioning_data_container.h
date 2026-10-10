@@ -70,11 +70,11 @@ class InitialPartitioningDataContainer {
       _imbalance(imbalance),
       _connectivity(connectivity) { }
 
-    bool is_other_better(const PartitioningResult& other) const {
+    bool is_other_better(const PartitioningResult& other, const Context& context) const {
       Metrics      my_metric{_objective, _imbalance, _connectivity };
       Metrics   other_metric{ other._objective, other._imbalance, other._connectivity };
-      return other_metric.isBetter(my_metric) ||
-             ( other_metric.isEqual(my_metric)     // tie breaking for deterministic mode
+      return other_metric.isBetter(my_metric, context) ||
+             ( other_metric.isEqual(my_metric, context)     // tie breaking for deterministic mode
                 && std::tie(other._random_tag, other._deterministic_tag) < std::tie(_random_tag, _deterministic_tag) );
     }
 
@@ -319,7 +319,7 @@ class InitialPartitioningDataContainer {
       auto refined = performRefinementOnPartition(_partition, _result, prng);
 
       // Compare current best partition with refined partition
-      if ( _result.is_other_better(refined) ) {
+      if ( _result.is_other_better(refined, _context) ) {
         for ( const HypernodeID& hn : _partitioned_hypergraph.nodes() ) {
           const PartitionID part_id = _partitioned_hypergraph.partID(hn);
           ASSERT(hn < _partition.size());
@@ -530,13 +530,13 @@ class InitialPartitioningDataContainer {
       my_result._random_tag = prng();   // this is deterministic since we call the prng owned exclusively by the flat IP algo object
       my_result._deterministic_tag = deterministic_tag;
       PartitioningResult worst_in_population = _best_partitions[0].first;
-      if (worst_in_population.is_other_better(my_result)) {
+      if (worst_in_population.is_other_better(my_result, _context)) {
         _pop_lock.lock();
         worst_in_population = _best_partitions[0].first;
-        if (worst_in_population.is_other_better(my_result)) {
+        if (worst_in_population.is_other_better(my_result, _context)) {
           // remove current worst and replace with my result
           my_ip_data.copyPartition(_best_partitions[0].second);
-          auto comp = [&](const auto& l, const auto& r) { return r.first.is_other_better(l.first); };
+          auto comp = [&](const auto& l, const auto& r) { return r.first.is_other_better(l.first, _context); };
           assert(std::is_heap(_best_partitions.begin(), _best_partitions.end(), comp));
           _best_partitions[0].first = my_result;
           std::pop_heap(_best_partitions.begin(), _best_partitions.end(), comp);
@@ -545,7 +545,7 @@ class InitialPartitioningDataContainer {
         _pop_lock.unlock();
       }
     } else {
-      if (my_ip_data._result.is_other_better(my_result)) {
+      if (my_ip_data._result.is_other_better(my_result, _context)) {
         my_ip_data._result = my_result;
         my_ip_data.copyPartition(my_ip_data._partition);
       }
@@ -582,7 +582,7 @@ class InitialPartitioningDataContainer {
 
       // bring them in a deterministic order
       std::sort(_best_partitions.begin(), _best_partitions.end(), [&](const auto& l, const auto& r) {
-        return r.first.is_other_better(l.first);
+        return r.first.is_other_better(l.first, _context);
       });
 
       if ( _context.initial_partitioning.perform_refinement_on_best_partitions ) {
@@ -596,7 +596,7 @@ class InitialPartitioningDataContainer {
           refined._deterministic_tag = my_objectives._deterministic_tag;
           refined._random_tag = my_objectives._random_tag;
 
-          if (my_objectives.is_other_better(refined)) {
+          if (my_objectives.is_other_better(refined, _context)) {
             for (HypernodeID node : my_phg.nodes()) {
               my_partition[node] = my_phg.partID(node);
             }
@@ -613,7 +613,7 @@ class InitialPartitioningDataContainer {
 
       size_t best_index = 0;
       for (size_t i = 1; i < _best_partitions.size(); ++i) {
-        if (_best_partitions[best_index].first.is_other_better(_best_partitions[i].first) ) {
+        if (_best_partitions[best_index].first.is_other_better(_best_partitions[i].first, _context) ) {
           best_index = i;
         }
       }
@@ -649,10 +649,10 @@ class InitialPartitioningDataContainer {
       for ( LocalInitialPartitioningHypergraph& partition : _local_hg ) {
         ++number_of_threads;
         partition.aggregate_stats(stats);
-        if ( !best || best->_result.is_other_better(partition._result) ) {
+        if ( !best || best->_result.is_other_better(partition._result, _context) ) {
           best = &partition;
         }
-        if ( !worst || !worst->_result.is_other_better(partition._result) ) {
+        if ( !worst || !worst->_result.is_other_better(partition._result, _context) ) {
           worst = &partition;
         }
         if ( !best_imbalance || partition._result._imbalance.isBetter(best_imbalance->_result._imbalance) ||

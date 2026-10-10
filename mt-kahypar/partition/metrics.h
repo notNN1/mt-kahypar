@@ -72,11 +72,9 @@ struct Metrics {
   BalanceMetrics      imbalance;
   ConnectivityMetrics connectivity;
 
-  bool use_new_metric = true;
+  bool isBetter(const Metrics& other, const Context& context) const;
 
-  bool isBetter(const Metrics& other) const;
-
-  bool isEqual(const Metrics& other) const;
+  bool isEqual(const Metrics& other, const Context& context) const;
 
   void log() const;
 

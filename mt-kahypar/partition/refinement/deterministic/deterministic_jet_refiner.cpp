@@ -168,7 +168,7 @@ void DeterministicJetRefiner<GraphAndGainTypes>::runJetRounds(PartitionedHypergr
 
         // if the parition was ever balanced => look for balanced partition with better quality
         // if the partition was never balanced => look for less imbalanced partition regardless of quality
-        if (current_metrics.isBetter(best_metrics)) {
+        if (current_metrics.isBetter(best_metrics, _context)) {
             if (best_metrics.quality - current_metrics.quality > _context.refinement.jet.relative_improvement_threshold * best_metrics.quality) {
                 rounds_without_improvement = 0;
             }

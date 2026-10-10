@@ -88,8 +88,8 @@ void logTuple(const std::tuple<bool, bool, size_t, size_t, double, HyperedgeWeig
         << "  HyperedgeWeight: " << std::get<5>(data) << "\n";
 }
 
-bool Metrics::isBetter(const Metrics& other) const {
-  if (use_new_metric) {
+bool Metrics::isBetter(const Metrics& other, const Context& context) const {
+  if (context.partition.use_new_metric) {
     return this->to_tuple() < other.to_tuple();
   }
   else {
@@ -119,8 +119,8 @@ std::tuple<bool, bool, size_t, size_t, HyperedgeWeight, double> Metrics::to_tupl
   };
 } 
 
-bool Metrics::isEqual(const Metrics& other) const {
-  if (use_new_metric) {
+bool Metrics::isEqual(const Metrics& other, const Context& context) const {
+  if (context.partition.use_new_metric) {
     return quality == other.quality && imbalance.isEqual(other.imbalance) && connectivity.isEqual(other.connectivity);
   }
   else {

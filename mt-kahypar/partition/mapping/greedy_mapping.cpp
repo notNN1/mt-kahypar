@@ -288,8 +288,8 @@ void GreedyMapping<CommunicationHypergraph>::mapToTargetGraph(CommunicationHyper
     current_metrics.quality = metrics::quality(tmp_communication_phg, Objective::steiner_tree);
     current_metrics.imbalance = metrics::imbalance(tmp_communication_phg, context);
     best_lock.lock();
-    if ( current_metrics.isBetter(best_metrics) ||
-         (current_metrics.isEqual(best_metrics) && hn > best_hn_id) ) {
+    if ( current_metrics.isBetter(best_metrics, context) ||
+         (current_metrics.isEqual(best_metrics, context) && hn > best_hn_id) ) {
       best_metrics = current_metrics;
       best_hn_id = hn;
       for ( const HypernodeID& u : tmp_communication_phg.nodes() ) {

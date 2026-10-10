@@ -66,6 +66,8 @@ namespace mt_kahypar {
     str << "  Number of V-Cycles:                 " << params.num_vcycles << std::endl;
     str << "  Ignore HE Size Threshold:           " << params.ignore_hyperedge_size_threshold << std::endl;
     str << "  Large HE Size Threshold:            " << params.large_hyperedge_size_threshold << std::endl;
+    str << "  Use New Metric:                     " << std::boolalpha
+        << params.use_new_metric << std::endl;
     if ( params.allow_empty_blocks || verbose ) {
       str << "  Allow Empty Blocks:                 " << std::boolalpha
           << params.allow_empty_blocks << std::endl;

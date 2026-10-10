@@ -257,6 +257,11 @@ namespace mt_kahypar {
       context.partition.use_individual_part_weights = true;
       return value;
     })->check(CLI::PositiveNumber)->type_name("LIST[UINT]");
+    app.add_option(
+      "--use-new-metric",
+      context.partition.use_new_metric,
+      "Use the new metric ordering (false selects the old metric ordering)."
+    )->capture_default_str();
     app.add_flag(
       "--allow-empty-blocks",
       context.partition.allow_empty_blocks,
