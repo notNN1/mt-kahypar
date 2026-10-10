@@ -184,34 +184,69 @@ void TarjanInitialPartitioner<TypeTraits>::calculate_communities(
   vec<PackedComponentID>  best_region_articulation(region_info.size(), std::numeric_limits<uint32_t>::max());
 
 
-  for (const RegionInfo& comp_info : region_info) {
-    PackedComponentID head = region_to_head[comp_info.id];
-    size_t target = subtree_size[head] / 2;
-
-    if (subtree_size[comp_info.id] >= target && subtree_size[comp_info.id] < best_size[head] && comp_info.type == mt_kahypar::utils::NodeType::normal) {
-      best_size[head]       = subtree_size[comp_info.id];
-      best_region[head]     = comp_info.id;
-    }
-    else if (subtree_size[comp_info.id] >= target && subtree_size[comp_info.id] < best_size_articulation[head] && comp_info.type == mt_kahypar::utils::NodeType::articulation) {
-      best_size_articulation[head]    = subtree_size[comp_info.id];
-      best_region_articulation[head]  = comp_info.id;
-    }
-  }
-
-  // take region with articulation points, if there is no normal region with a reasonable subtree size
-  for (const RegionInfo& comp_info : region_info) {
-    PackedComponentID head = region_to_head[comp_info.id];
-
-    if (head != comp_info.id) {
-      continue;
+  if (_context.extra_options.tarjan_min_max_region) {
+    // Removing a region leaves its parent side and one branch per tree child.
+    // The selected region stays uncontracted; these branches are compacted.
+    vec<size_t> largest_child_subtree(region_info.size(), 0);
+    for (const RegionInfo& region : region_info) {
+      const PackedComponentID parent = region_to_parent[region.id];
+      if (parent != region.id) {
+        largest_child_subtree[parent] =
+          std::max(largest_child_subtree[parent], subtree_size[region.id]);
+      }
     }
 
-    size_t target         = subtree_size[head] / 2;
-    size_t upper_target   = target * (1 + _context.partition.epsilon);
+    for (const RegionInfo& region : region_info) {
+      const PackedComponentID head = region_to_head[region.id];
+      const size_t tree_weight = subtree_size[head];
+      // Strictly greater than half, also for odd total weights, without overflow.
+      if (subtree_size[region.id] <= tree_weight / 2) {
+        continue;
+      }
+      const size_t largest_branch = std::max(
+        tree_weight - subtree_size[region.id], largest_child_subtree[region.id]);
+      // Prefer eligible normal regions; minimize the largest branch within each type.
+      // Break equal scores by region ID, independent of traversal order.
+      if (best_region[head] == std::numeric_limits<uint32_t>::max() ||
+          (region.type == utils::NodeType::normal &&
+           region_info[best_region[head]].type != utils::NodeType::normal) ||
+          (region.type == region_info[best_region[head]].type &&
+           (largest_branch < best_size[head] ||
+            (largest_branch == best_size[head] && region.id < best_region[head])))) {
+        best_size[head] = largest_branch;
+        best_region[head] = region.id;
+      }
+    }
+  } else {
+    for (const RegionInfo& comp_info : region_info) {
+      PackedComponentID head = region_to_head[comp_info.id];
+      size_t target = subtree_size[head] / 2;
 
-    if (best_size[head] > best_size_articulation[head] && best_size[head] > upper_target) {
-      best_size[head]   = best_size_articulation[head];
-      best_region[head] =  best_region_articulation[head];
+      if (subtree_size[comp_info.id] >= target && subtree_size[comp_info.id] < best_size[head] && comp_info.type == mt_kahypar::utils::NodeType::normal) {
+        best_size[head]       = subtree_size[comp_info.id];
+        best_region[head]     = comp_info.id;
+      }
+      else if (subtree_size[comp_info.id] >= target && subtree_size[comp_info.id] < best_size_articulation[head] && comp_info.type == mt_kahypar::utils::NodeType::articulation) {
+        best_size_articulation[head]    = subtree_size[comp_info.id];
+        best_region_articulation[head]  = comp_info.id;
+      }
+    }
+
+    // take region with articulation points, if there is no normal region with a reasonable subtree size
+    for (const RegionInfo& comp_info : region_info) {
+      PackedComponentID head = region_to_head[comp_info.id];
+
+      if (head != comp_info.id) {
+        continue;
+      }
+
+      size_t target         = subtree_size[head] / 2;
+      size_t upper_target   = target * (1 + _context.partition.epsilon);
+
+      if (best_size[head] > best_size_articulation[head] && best_size[head] > upper_target) {
+        best_size[head]   = best_size_articulation[head];
+        best_region[head] =  best_region_articulation[head];
+      }
     }
   }
 

@@ -277,6 +277,7 @@ struct SharedMemoryParameters {
 };
 
 struct ExtraConnectivityOptions {
+  bool                tarjan_min_max_region     = false;
   size_t              st_max_recalculations     = 10;
   size_t              st_bfs_max_recalculations = 5;
   size_t              st_bfs_max_new_origins    = 2;

@@ -1148,6 +1148,12 @@ namespace mt_kahypar {
       context.initial_partitioning.lp_initial_block_size,
       "Initial block size used for label propagation initial partitioner"
     )->capture_default_str();
+    app.add_option(
+      "--i-tarjan-min-max-region",
+      context.extra_options.tarjan_min_max_region,
+      "Select a Tarjan region with subtree weight greater than half the tree weight, "
+      "preferring normal regions and minimizing the largest parent-side or child-subtree weight."
+    )->capture_default_str();
     app.add_option_function<std::string>(
       "--i-st-type", [&](const std::string& s) {
         context.extra_options.st_options = stOptionsFromString(s);
