@@ -85,7 +85,6 @@ public:
     }
 
     void increse_node_changes() {
-        LOG << "size node" << this->state_per_level.back().stats_per_reset.size();
         this->state_per_level.back().stats_per_reset.back().node_moves++;
     }
 
