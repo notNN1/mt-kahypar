@@ -89,13 +89,23 @@ void logTuple(const std::tuple<bool, bool, size_t, size_t, double, HyperedgeWeig
 }
 
 bool Metrics::isBetter(const Metrics& other) const {
-  
-  /*if (this->to_tuple() < other.to_tuple() && this->imbalance.imbalance_value > other.imbalance.imbalance_value) {
-    logTuple(this->to_tuple());
-    logTuple(other.to_tuple());
-  }*/
-
-  return this->to_tuple() < other.to_tuple();
+  if (use_new_metric) {
+    return this->to_tuple() < other.to_tuple();
+  }
+  else {
+    if (imbalance.numViolations() < other.imbalance.numViolations()) {
+      return true;
+    } else if (imbalance.numViolations() == other.imbalance.numViolations()) {
+      bool improvesBalanceViolation = other.imbalance.violates_balance && imbalance.isBetter(other.imbalance);
+      bool worsensBalanceViolation = imbalance.violates_balance && other.imbalance.isBetter(imbalance);
+      return improvesBalanceViolation
+            || (!worsensBalanceViolation && quality < other.quality)
+            || (!worsensBalanceViolation && quality == other.quality
+                  && imbalance.imbalance_value < other.imbalance.imbalance_value);
+    } else {
+      return false;
+    }
+  }
 }
 
 std::tuple<bool, bool, size_t, size_t, HyperedgeWeight, double> Metrics::to_tuple() const {
@@ -110,7 +120,12 @@ std::tuple<bool, bool, size_t, size_t, HyperedgeWeight, double> Metrics::to_tupl
 } 
 
 bool Metrics::isEqual(const Metrics& other) const {
-  return quality == other.quality && imbalance.isEqual(other.imbalance) && connectivity.isEqual(other.connectivity);
+  if (use_new_metric) {
+    return quality == other.quality && imbalance.isEqual(other.imbalance) && connectivity.isEqual(other.connectivity);
+  }
+  else {
+    return quality == other.quality && imbalance.isEqual(other.imbalance);
+  }
 }
 
 int Metrics::numViolations() const {
