@@ -68,7 +68,6 @@ public:
         vec<size_t>& subtree_size,
         vec<size_t>& hn_to_num_children,
         const HypernodeID& starter_node,
-        HypernodeID& fattest_node,
         const Bitset& covered
     );
 
