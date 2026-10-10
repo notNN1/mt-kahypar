@@ -99,13 +99,13 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
         connected_components::ConnectedComponent component  = component_and_size.second;
 
 
-        if (size_a + size < target && size_a > size_b) {
+        if (size_a + size <= target && size_a > size_b) {
             for (const HypernodeID& node : component.nodes) {
                 hg.setNodePart(node, 0);
                 size_a += hg.nodeWeight(node);
             }
         }
-        else if (size_b + size < target && size_b >= size_a) {
+        else if (size_b + size <= target && size_b >= size_a) {
             for (const HypernodeID& node : component.nodes) {
                 hg.setNodePart(node, 1);
                 size_b += hg.nodeWeight(node);
@@ -381,12 +381,11 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
           }
         }
 
-        already_started_from.set((size_t) starter_node_st);
-
         if (starter_node_st == kInvalidHypernode) {
-            LOG << "That should not happen";
-            while(true);
+            return;
         }
+
+        already_started_from.set((size_t) starter_node_st);
 
         //LOG << "starter_node_st: " << starter_node_st;
 

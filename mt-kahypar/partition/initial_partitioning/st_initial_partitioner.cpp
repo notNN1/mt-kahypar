@@ -131,13 +131,13 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
             size_t size                                         = component_and_size.first;
             connected_components::ConnectedComponent component  = component_and_size.second;
 
-            if (size_a + size < target && size_a > size_b) {
+            if (size_a + size <= target && size_a > size_b) {
                 for (const HypernodeID& node : component.nodes) {
                     hg.setNodePart(node, 0);
                     size_a += hg.nodeWeight(node);
                 }
             }
-            else if (size_b + size < target && size_b >= size_a) {
+            else if (size_b + size <= target && size_b >= size_a) {
                 for (const HypernodeID& node : component.nodes) {
                     hg.setNodePart(node, 1);
                     size_b += hg.nodeWeight(node);
@@ -156,7 +156,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                 size_t split_size;
                 size_t diff = 0;
 
-                double best_split_diff = 1.0;
+                double best_split_diff = std::numeric_limits<double>::max();
 
                 do {
                     nodes_to_swap.clear();
@@ -175,7 +175,9 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                     diff = target_for_split >= split_size ? target_for_split - split_size : split_size - target_for_split;
                     current_origins++;
 
-                    if (static_cast<double>(diff) / target_for_split < best_split_diff) {
+                    LOG << "diff: " << static_cast<double>(diff) / target_for_split;
+
+                    if (static_cast<double>(diff) / target_for_split < best_split_diff && split.first != kInvalidHypernode) {
                         best_split = split.first;
                         best_hn_to_children = hn_to_children;
                         best_split_diff = static_cast<double>(diff) / target_for_split;
@@ -185,11 +187,11 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
 
                 //LOG << "Target: " << target_for_split;
 
-                //// assign nodes from best split            
-                assign_subtree_of_hn(hg, best_hn_to_children, size_a, size_b, best_split);
-                
+                //// assign nodes from best split
+                if (best_split != kInvalidHypernode) {
+                    assign_subtree_of_hn(hg, best_hn_to_children, size_a, size_b, best_split);
+                }
             }
-            
         }
         
         HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
@@ -411,11 +413,11 @@ std::pair<HypernodeID, size_t> STInitialPartitioner<TypeTraits>::find_best_node_
 ) {
     assert(component.nodes.size() > 0);
 
-    size_t best_size        = 0;
+    size_t best_size        = std::numeric_limits<size_t>::max();
     HypernodeID best_node   = kInvalidHypernode;
     
     for (const HypernodeID& node : component.nodes) {
-        if (subtree_size[node] > best_size && subtree_size[node] <= target) {
+        if (subtree_size[node] < best_size && subtree_size[node] >= target) {
             best_size = subtree_size[node];
             best_node = node;
         }
@@ -449,10 +451,6 @@ void STInitialPartitioner<TypeTraits>::assign_subtree_of_hn(
         total_size += hg.nodeWeight(current_node);
 
         for (const HypernodeID& child : hn_to_children[current_node]) {
-            if (child == current_node) {
-                continue;
-            }
-
             queue.push(child);
         }
     }

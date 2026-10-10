@@ -49,13 +49,14 @@ private:
 public:
 
     DebugState() {
-        this->add_new_level();
-        this->add_new_reset();
+        add_new_level();
+        add_new_reset();
     }
 
     // refinement
     void add_new_level() {
         state_per_level.push_back({ });
+        add_new_reset();
     }
 
     void set_total_nodes(size_t total_nodes) {
@@ -84,6 +85,7 @@ public:
     }
 
     void increse_node_changes() {
+        LOG << "size node" << this->state_per_level.back().stats_per_reset.size();
         this->state_per_level.back().stats_per_reset.back().node_moves++;
     }
 
