@@ -361,24 +361,24 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
         HypernodeID fattest_node        = kInvalidHypernode;
 
         if (!component.nodes.empty()) {
-          const size_t start = std::uniform_int_distribution<size_t>(
-              0, component.nodes.size() - 1
-          )(_rng);
+            const size_t start = std::uniform_int_distribution<size_t>(
+                0, component.nodes.size() - 1
+            )(_rng);
 
-          for (size_t i = 0; i < component.nodes.size(); ++i) {
-              const HypernodeID node = component.nodes[(start + i) % component.nodes.size()];
+            for (size_t i = 0; i < component.nodes.size(); ++i) {
+                const HypernodeID node = component.nodes[(start + i) % component.nodes.size()];
 
-              if (!covered.isSet((size_t) node)) {
+                if (!covered.isSet((size_t) node)) {
 
-                if (starter_node_st == kInvalidHypernode) {
-                    starter_node_st = node;
+                    if (starter_node_st == kInvalidHypernode) {
+                        starter_node_st = node;
+                    }
+                    else if (already_started_from.isSet((size_t) starter_node_st) && !already_started_from.isSet((size_t) node)) {
+                        starter_node_st = node;
+                    }
+                    
                 }
-                else if (already_started_from.isSet((size_t) starter_node_st) && !already_started_from.isSet((size_t) node)) {
-                    starter_node_st = node;
-                }
-                break;
-              }
-          }
+            }
         }
 
         if (starter_node_st == kInvalidHypernode) {
@@ -407,11 +407,17 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                 }
             }
 
-            node_colored.set((size_t) starter_node);
-            covered.set((size_t) starter_node);
-            result.push_back(starter_node);
-            node_queue.push_back(starter_node);
-            current_split += phg.nodeWeight(starter_node);
+            add_node_to_split(
+                starter_node,
+                hn_to_parent,
+                hn_to_num_children,
+                node_colored,
+                covered,
+                current_split,
+                phg.nodeWeight(starter_node),
+                node_queue,
+                result
+            );
         }
 
         while (node_queue.size() > 0) {

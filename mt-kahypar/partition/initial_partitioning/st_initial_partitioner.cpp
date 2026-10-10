@@ -162,11 +162,11 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                     nodes_to_swap.clear();
                     split_size = 0;
 
-                    calculate_spanning_tree(hg, component, hn_to_parent, hn_to_children, subtree_size, target_for_split / size); 
+                    calculate_spanning_tree(hg, component, hn_to_parent, hn_to_children, subtree_size, static_cast<double>(target_for_split) / size); 
 
                     check_tree(hn_to_parent, component);
 
-                    std::pair<HypernodeID, size_t> split = find_best_node_to_split(component, subtree_size, target_for_split * (1.0 + _context.partition.epsilon));
+                    std::pair<HypernodeID, size_t> split = find_best_node_to_split(component, subtree_size, target_for_split);
 
                     split_size = split.second;
 
