@@ -285,21 +285,24 @@ namespace connected_components {
         const PartitionID& to,
         const HypernodeID& node_to
     ) {
-        assert(this->connected_to[hn].size() == 1);
-        assert(this->vertex_to_parent_compressed[hn] != hn);
+        assert(this->connected_to[hn].size() <= 1);
 
         if (node_to == kInvalidHypernode) {
             LOG << "There has not been found a node to attach to for node " << hn;
             raise(SIGSEGV);
         }
 
-        auto it1                = this->connected_to[hn].begin();
-        auto it2                = it1->iterator;
-        HypernodeID incident_hn = it1->node;
+        HypernodeID incident_hn = kInvalidHypernode;
+        // Singleton components have no connection to remove.
+        if (!this->connected_to[hn].empty()) {
+            auto it1 = this->connected_to[hn].begin();
+            auto it2 = it1->iterator;
+            incident_hn = it1->node;
 
-        // erase parent from child
-        this->connected_to[incident_hn].erase(it2);
-        this->connected_to[hn].erase(it1);
+            // erase parent from child
+            this->connected_to[incident_hn].erase(it2);
+            this->connected_to[hn].erase(it1);
+        }
 
         // remove hn from component tree
         this->vertex_to_parent_compressed[hn] = hn;
@@ -315,7 +318,7 @@ namespace connected_components {
 
         connect_nodes(hn, node_to);
 
-        if (this->connected_to[incident_hn].size() == 1) {
+        if (incident_hn != kInvalidHypernode && this->connected_to[incident_hn].size() == 1) {
             return incident_hn;
         }
 
