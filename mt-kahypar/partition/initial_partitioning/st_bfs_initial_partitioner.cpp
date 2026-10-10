@@ -354,7 +354,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
     vec<HypernodeID> asignment_queue;
     asignment_queue.reserve(phg.initialNumNodes());
 
-    while (current_split < target && current_iteration < _context.extra_options.st_bfs_max_recalculations) {
+    while (current_split <= target && current_iteration < _context.extra_options.st_bfs_max_recalculations) {
         current_iteration++;
 
         HypernodeID starter_node_st     = kInvalidHypernode;
@@ -397,7 +397,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                 starter_node = fattest_node;
             } else {
                 for (const HypernodeID& node : component.nodes) {
-                    if (hn_to_num_children[node] == 0 && phg.nodeWeight(node) < target) {
+                    if (hn_to_num_children[node] == 0 && phg.nodeWeight(node) <= target) {
                         starter_node = node;
                     }
                 }
