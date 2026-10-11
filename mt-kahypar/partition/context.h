@@ -245,6 +245,8 @@ struct InitialPartitioningParameters {
   RefinementParameters refinement = { };
   DynamicConnectivityParameters dynamic_connectivity;
   std::vector<bool> enabled_ip_algos;
+  // An empty list inherits enabled_ip_algos (excluding Tarjan itself).
+  std::vector<bool> enabled_ip_algos_tarjan;
   size_t runs = 20;
   bool use_adaptive_ip_runs = true;
   size_t min_adaptive_ip_runs = 5;

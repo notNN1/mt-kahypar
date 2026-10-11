@@ -293,6 +293,18 @@ namespace mt_kahypar {
   void printParams(std::ostream& str, const InitialPartitioningParameters& params, const PartitioningParameters& pp, bool verbose) {
     str << "Initial Partitioning Parameters:" << std::endl;
     str << "  Initial Partitioning Mode:          " << params.mode << std::endl;
+    str << "  Tarjan IP Algorithms:               ";
+    const auto& tarjan_algos = params.enabled_ip_algos_tarjan.empty() ?
+      params.enabled_ip_algos : params.enabled_ip_algos_tarjan;
+    for ( size_t i = 0; i < tarjan_algos.size(); ++i ) {
+      if ( tarjan_algos[i] && static_cast<InitialPartitioningAlgorithm>(i) != InitialPartitioningAlgorithm::tarjan ) {
+        str << static_cast<InitialPartitioningAlgorithm>(i) << " ";
+      }
+    }
+    if ( params.enabled_ip_algos_tarjan.empty() ) {
+      str << "(inherited)";
+    }
+    str << std::endl;
     str << "  Number of Runs:                     " << params.runs << std::endl;
     str << "  Use Adaptive IP Runs:               " << std::boolalpha << params.use_adaptive_ip_runs << std::endl;
     if ( params.use_adaptive_ip_runs ) {

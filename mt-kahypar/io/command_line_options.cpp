@@ -1107,6 +1107,23 @@ namespace mt_kahypar {
       "- tarjan"
       "For example, 'i-enabled-ip-algos=random bfs' enables the random and bfs algorithms."
     )->expected(1, 11)->capture_default_str();
+    app.add_option_function<std::vector<std::string>>(
+      "--ip-enabled-algos-tarjan", [&](const std::vector<std::string>& list) {
+        std::vector<bool> enabled_ip_algos(static_cast<size_t>(InitialPartitioningAlgorithm::UNDEFINED), false);
+        for (const auto& name: list) {
+          const auto algo = initialPartitioningAlgorithmFromString(name);
+          if ( algo == InitialPartitioningAlgorithm::tarjan ) {
+            throw InvalidParameterException("Tarjan cannot be enabled inside Tarjan initial partitioning.");
+          }
+          enabled_ip_algos.at(static_cast<size_t>(algo)) = true;
+        }
+        context.initial_partitioning.enabled_ip_algos_tarjan = std::move(enabled_ip_algos);
+      },
+      "Algorithms to execute on the contracted graph during Tarjan initial partitioning. "
+      "Accepts the same algorithm names as --i-enabled-ip-algos, except tarjan. "
+      "If omitted, inherits --i-enabled-ip-algos excluding tarjan. "
+      "For example, '--ip-enabled-algos-tarjan st bfs' enables st and bfs inside Tarjan."
+    )->expected(1, 11);
     app.add_option(
       "--i-runs",
       context.initial_partitioning.runs,

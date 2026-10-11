@@ -36,6 +36,8 @@ namespace mt_kahypar {
 template<typename TypeTraits>
 void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
   if ( _ip_data.should_initial_partitioner_run(InitialPartitioningAlgorithm::tarjan) ) {
+    const auto& enabled_ip_algos = _context.initial_partitioning.enabled_ip_algos_tarjan.empty() ?
+      _context.initial_partitioning.enabled_ip_algos : _context.initial_partitioning.enabled_ip_algos_tarjan;
 
     HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
@@ -58,7 +60,7 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
 
     for ( uint8_t i = 0; i < static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED); ++i ) {
       if ( static_cast<InitialPartitioningAlgorithm>(i) != InitialPartitioningAlgorithm::tarjan 
-      && _context.initial_partitioning.enabled_ip_algos[i]) {
+      && enabled_ip_algos[i]) {
         auto algorithm = static_cast<InitialPartitioningAlgorithm>(i);
 
         // Create one initial partitioner.

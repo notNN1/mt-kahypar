@@ -120,6 +120,28 @@ namespace mt_kahypar {
       throw InvalidParameterException(
         "At least one initial partitioning algorithm must be enabled!");
     }
+    const auto& tarjan_algos = context.initial_partitioning.enabled_ip_algos_tarjan;
+    const size_t tarjan_index = static_cast<size_t>(InitialPartitioningAlgorithm::tarjan);
+    if ( !tarjan_algos.empty() ) {
+      if ( tarjan_algos.size() != static_cast<size_t>(InitialPartitioningAlgorithm::UNDEFINED) ) {
+        throw InvalidParameterException("Invalid size of enabled Tarjan IP algorithms vector!");
+      }
+      if ( tarjan_algos[tarjan_index] ) {
+        throw InvalidParameterException("Tarjan cannot be enabled inside Tarjan initial partitioning.");
+      }
+    }
+    if ( context.initial_partitioning.enabled_ip_algos[tarjan_index] ) {
+      const auto& enabled_tarjan_algos = tarjan_algos.empty() ?
+        context.initial_partitioning.enabled_ip_algos : tarjan_algos;
+      bool is_one_tarjan_ip_algo_enabled = false;
+      for ( size_t i = 0; i < enabled_tarjan_algos.size(); ++i ) {
+        is_one_tarjan_ip_algo_enabled |= i != tarjan_index && enabled_tarjan_algos[i];
+      }
+      if ( !is_one_tarjan_ip_algo_enabled ) {
+        throw InvalidParameterException(
+          "Tarjan requires at least one inner initial partitioning algorithm. Set --ip-enabled-algos-tarjan.");
+      }
+    }
 
     // Check fixed vertex support compatibility
     if ( hypergraph.hasFixedVertices() ) {
