@@ -53,7 +53,7 @@ struct BalanceMetrics {
 
 
 struct ConnectivityMetrics {
-  u_int32_t extra_components_count;                      // #components - k
+  u_int32_t extra_components_count;                      // max(#components - k, 0)
   u_int32_t inefficient_components_count;
 
   bool isBetter(const ConnectivityMetrics& other) const;

@@ -319,7 +319,10 @@ ConnectivityMetrics connectivity(const PartitionedHypergraph& phg, const Context
     vec<vec<connected_components::ComponentInfo>> filtered_super_components;
     connected_components::find_inefficient_super_components(context, super_components, filtered_super_components);
 
-  u_int32_t extra_components_count        = total_component_count - phg.k();
+  // Empty blocks can leave fewer than k components; avoid unsigned underflow.
+  const u_int32_t num_blocks = static_cast<u_int32_t>(phg.k());
+  u_int32_t extra_components_count = total_component_count > num_blocks ?
+    total_component_count - num_blocks : 0;
   u_int32_t inefficient_components_count  = filtered_super_components.size(); 
   return { extra_components_count, inefficient_components_count };
 }
