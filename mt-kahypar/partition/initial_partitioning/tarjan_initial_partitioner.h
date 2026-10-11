@@ -35,16 +35,6 @@
 
 namespace mt_kahypar {
     
-using PackedComponentID     = uint32_t;   
-
-struct RegionInfo {
-    PackedComponentID id;
-    size_t total_weight;
-    utils::NodeType type;
-    vec<HypernodeID> nodes;                     // contains all nodes in the component -- does not include the articulation point
-    std::set<HypernodeID> connected_to;              // only interface nodes
-};
-
 template<typename TypeTraits>
 class TarjanInitialPartitioner : public IInitialPartitioner {
 
@@ -70,45 +60,6 @@ public:
  private:
     // starts the partitioning
     void partitionImpl() final;
-
-    vec<utils::NodeType> hn_to_node_type;                  // maps each node to its type
-
-    // Do BFS while not moving over nodes of other types and collect them into a packed component
-    // Does not compact interface nodes and instead gives each one a separate PackedComponent
-    void compact_regions(
-        const PartitionedHypergraph& hypergraph,
-        vec<PackedComponentID>& vertex_to_region,
-        vec<RegionInfo>& region_info,
-        connected_components::Tarjan<PartitionedHypergraph>& tarjan
-    );
-
-    // calculates a spanning tree over the packed components
-    void calculate_master_spanning_tree(
-        const vec<PackedComponentID>& vertex_to_region,
-        const vec<RegionInfo>& region_info,
-        vec<size_t>& subtree_size,
-        vec<PackedComponentID>& component_to_parent,
-        vec<PackedComponentID>& heads
-    );
-
-    void calculate_communities(
-        const vec<RegionInfo>& region_info,
-        vec<PackedComponentID>& component_to_parent,
-        parallel::scalable_vector<HypernodeID>& communities,
-        const vec<size_t>& subtree_size,
-        const vec<PackedComponentID> heads
-    );
-
-    void find_farthest_component_from_component(
-        const vec<RegionInfo>& region_info,
-        const RegionInfo& starter_component,
-        RegionInfo& end_component
-    );
-
-    void build_spanning_tree_from_node_in_direction() {
-
-    };
-
 
     InitialPartitioningDataContainer<TypeTraits>& _ip_data;
     const Context& _context;

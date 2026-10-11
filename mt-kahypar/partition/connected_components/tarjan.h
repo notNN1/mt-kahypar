@@ -66,7 +66,20 @@ public:
     void initialize(const PartitionedHypergraph& phg) {
         reset_fields(phg);
 
-        vec<vec<HypernodeID>> hn_to_new_incident_nodes = phg.get_circular_edge_expansion();
+        vec<vec<HypernodeID>> hn_to_new_incident_nodes;
+        if constexpr (PartitionedHypergraph::is_graph) {
+            // Graphs already have ordinary adjacency; no hyperedge expansion is needed.
+            hn_to_new_incident_nodes.resize(phg.initialNumNodes());
+            for (const HypernodeID node : phg.nodes()) {
+                for (const HyperedgeID edge : phg.incidentEdges(node)) {
+                    for (const HypernodeID pin : phg.pins(edge)) {
+                        if (pin != node) hn_to_new_incident_nodes[node].push_back(pin);
+                    }
+                }
+            }
+        } else {
+            hn_to_new_incident_nodes = phg.get_circular_edge_expansion();
+        }
         
         for (const HypernodeID& node : phg.nodes()) {
             if (disc[node] == 0) {
@@ -186,7 +199,7 @@ private:
                 while(current != current_bt) {
                     if (bt_queue.empty()) {
                         LOG << "empty";
-                        while(true);
+                        raise(SIGSEGV);
                     }
 
                     bt_queue.pop_back();

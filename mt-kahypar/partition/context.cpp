@@ -636,6 +636,8 @@ namespace mt_kahypar {
     printParams(str, context.initial_partitioning, context.partition, context.partition.verbose_logging);
     str << "-------------------------------------------------------------------------------\n";
     printParams(str, context.refinement, context.partition, context.partition.verbose_logging);
+    str << "  Tarjan Coarsening During Refinement: " << std::boolalpha
+        << context.extra_options.tarjan_refinement << std::endl;
     str << "-------------------------------------------------------------------------------\n";
     if ( context.partition.objective == Objective::steiner_tree ) {
       printParams(str, context.mapping, context.partition, context.partition.verbose_logging);

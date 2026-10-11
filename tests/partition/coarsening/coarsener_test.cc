@@ -94,6 +94,35 @@ TEST_F(AMultilevelCoarsener, ProjectsPartitionBackToOriginalHypergraph) {
   }
 }
 
+TEST_F(AMultilevelCoarsener, TarjanRefinementRestoresEveryLevelAndItsPartition) {
+  using PartitionedHypergraph = typename StaticHypergraphTypeTraits::PartitionedHypergraph;
+  context.coarsening.contraction_limit = 4;
+  context.extra_options.tarjan_refinement = true;
+  context.refinement.label_propagation.algorithm = LabelPropagationAlgorithm::do_nothing;
+  context.refinement.jet.algorithm = JetAlgorithm::do_nothing;
+  context.refinement.fm.algorithm = FMAlgorithm::do_nothing;
+  context.refinement.flows.algorithm = FlowAlgorithm::do_nothing;
+  context.refinement.rebalancing.algorithm = RebalancingAlgorithm::do_nothing;
+  context.type = ContextType::initial_partitioning;
+  doCoarsening();
+  auto& coarsest = utils::cast<PartitionedHypergraph>(coarsener->coarsestPartitionedHypergraph());
+  for (const HypernodeID node : coarsest.nodes()) coarsest.setNodePart(node, node % 2);
+  vec<PartitionID> expected(hypergraph.initialNumNodes());
+  for (const HypernodeID node : hypergraph.nodes()) {
+    HypernodeID coarse_node = node;
+    for (const auto& level : uncoarseningData->hierarchy) {
+      coarse_node = level.mapToContractedHypergraph(coarse_node);
+    }
+    expected[node] = coarsest.partID(coarse_node);
+  }
+  const auto expected_cut = metrics::quality(coarsest, context);
+  auto result = uncoarsener->uncoarsen();
+  EXPECT_EQ(&result.hypergraph(), &hypergraph);
+  EXPECT_EQ(result.initialNumNodes(), hypergraph.initialNumNodes());
+  for (const HypernodeID node : result.nodes()) EXPECT_EQ(result.partID(node), expected[node]);
+  EXPECT_EQ(metrics::quality(result, context), expected_cut);
+}
+
 #ifdef KAHYPAR_ENABLE_HIGHEST_QUALITY_FEATURES
 using ANLevelCoarsener = ACoarsener<DynamicHypergraphTypeTraits,
                                     NLevelCoarsener,

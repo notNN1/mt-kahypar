@@ -36,6 +36,7 @@
 #include "mt-kahypar/partition/connected_components/compute_components.h"
 #include "mt-kahypar/partition/connected_components/restore_connectivity.h"
 #include "mt-kahypar/utils/connected_component_stats.h"
+#include "mt-kahypar/partition/connected_components/tarjan_region_coarsening.h"
 
 
 namespace mt_kahypar {
@@ -96,18 +97,12 @@ namespace mt_kahypar {
   void MultilevelUncoarsener<TypeTraits>::projectToNextLevelAndRefineImpl() {
     PartitionedHypergraph& partitioned_hg = *_uncoarseningData.partitioned_hg;
 
-    if ( _context.partition.connected_blocks && _context.type == ContextType::main ) {
-      logConnectivityInformation(partitioned_hg, _context, _current_level);
-
-      vec<vec<connected_components::ConnectedComponent>> components_per_block;
-      connected_components::compute_components_per_block(partitioned_hg, _context, components_per_block);
-
-      vec<vec<connected_components::ComponentInfo>> super_components;
-      connected_components::compute_super_components(partitioned_hg, _context, components_per_block, super_components);
-
-      restore_connectivity(partitioned_hg, _context, super_components, _current_level);
+    // Preserve the original placement of connectivity repair in ordinary uncoarsening.
+    // In the Tarjan path, repair runs after projection on the temporary graph.
+    if (!_context.extra_options.tarjan_refinement || !Hypergraph::is_static_hypergraph) {
+      repairConnectivity(partitioned_hg);
     }
-    
+
     if ( _current_level == _num_levels ) {
       // We always start with a refinement pass on the smallest hypergraph.
       // The next calls to this function will then project the partition to the next level
@@ -198,6 +193,114 @@ namespace mt_kahypar {
   template<typename TypeTraits>
   void MultilevelUncoarsener<TypeTraits>::refineImpl() {
     PartitionedHypergraph& partitioned_hypergraph = *_uncoarseningData.partitioned_hg;
+    if constexpr (Hypergraph::is_static_hypergraph) {
+      if (_context.extra_options.tarjan_refinement) {
+        refineWithTarjanCoarsening(partitioned_hypergraph);
+        return;
+      }
+    }
+    _current_metrics = {metrics::quality(partitioned_hypergraph, _context),
+                        metrics::imbalance(partitioned_hypergraph, _context),
+                        metrics::connectivity(partitioned_hypergraph, _context)};
+    refinePartition(partitioned_hypergraph);
+  }
+
+  template<typename TypeTraits>
+  void MultilevelUncoarsener<TypeTraits>::repairConnectivity(PartitionedHypergraph& partitioned_hypergraph) {
+    if (_context.partition.connected_blocks && _context.type == ContextType::main) {
+      logConnectivityInformation(partitioned_hypergraph, _context, _current_level);
+      vec<vec<connected_components::ConnectedComponent>> components_per_block;
+      connected_components::compute_components_per_block(partitioned_hypergraph, _context, components_per_block);
+      vec<vec<connected_components::ComponentInfo>> super_components;
+      connected_components::compute_super_components(partitioned_hypergraph, _context, components_per_block, super_components);
+      connected_components::restore_connectivity(partitioned_hypergraph, _context, super_components, _current_level);
+    }
+  }
+
+  template<typename TypeTraits>
+  void MultilevelUncoarsener<TypeTraits>::repairConnectivityAndRefine(PartitionedHypergraph& partitioned_hypergraph) {
+    repairConnectivity(partitioned_hypergraph);
+    _current_metrics = {metrics::quality(partitioned_hypergraph, _context),
+                        metrics::imbalance(partitioned_hypergraph, _context),
+                        metrics::connectivity(partitioned_hypergraph, _context)};
+    refinePartition(partitioned_hypergraph);
+  }
+
+  template<typename TypeTraits>
+  void MultilevelUncoarsener<TypeTraits>::refineWithTarjanCoarsening(PartitionedHypergraph& partitioned_hypergraph) {
+    if constexpr (Hypergraph::is_static_hypergraph) {
+      _timer.start_timer("tarjan_coarsening", "Tarjan Coarsening for Refinement");
+      // Use a reproducible seed per level, including the initial coarsest pass.
+      std::mt19937 rng(static_cast<uint32_t>(_context.partition.seed) + static_cast<uint32_t>(_current_level));
+      connected_components::TarjanRegionCoarsening<PartitionedHypergraph> region_coarsening(_context, rng);
+      auto communities = region_coarsening.computeCommunities(partitioned_hypergraph);
+      region_coarsening.respectPartition(partitioned_hypergraph, communities);
+
+      Hypergraph& level_hypergraph = partitioned_hypergraph.hypergraph();
+      vec<PartitionID> original_blocks(partitioned_hypergraph.initialNumNodes(), kInvalidPartition);
+      for (const HypernodeID node : partitioned_hypergraph.nodes()) {
+        original_blocks[node] = partitioned_hypergraph.partID(node);
+      }
+      const HypernodeID level_num_nodes = partitioned_hypergraph.initialNumNodes();
+      auto contracted_hypergraph = level_hypergraph.contract(communities, true);
+      vec<PartitionID> contracted_blocks(contracted_hypergraph.initialNumNodes(), kInvalidPartition);
+      for (const HypernodeID node : partitioned_hypergraph.nodes()) {
+        const HypernodeID coarse_node = communities[node];
+        ASSERT(contracted_blocks[coarse_node] == kInvalidPartition ||
+               contracted_blocks[coarse_node] == original_blocks[node]);
+        contracted_blocks[coarse_node] = original_blocks[node];
+      }
+
+      // Restore the current level before the temporary hypergraph is destroyed,
+      // including when a refiner throws. The original hierarchy remains intact.
+      const auto restore_level = [&](const bool refined) {
+        const HypernodeID coarse_num_nodes = partitioned_hypergraph.initialNumNodes();
+        partitioned_hypergraph.setHypergraph(level_hypergraph);
+        partitioned_hypergraph.resetData();
+        GainCachePtr::resetGainCache(_gain_cache, coarse_num_nodes, partitioned_hypergraph.k());
+        partitioned_hypergraph.doParallelForAllNodes([&](const HypernodeID node) {
+          const PartitionID block = refined ? contracted_blocks[communities[node]] : original_blocks[node];
+          partitioned_hypergraph.setOnlyNodePart(node, block);
+        });
+        partitioned_hypergraph.initializePartition();
+        _current_metrics = {metrics::quality(partitioned_hypergraph, _context),
+                            metrics::imbalance(partitioned_hypergraph, _context),
+                            metrics::connectivity(partitioned_hypergraph, _context)};
+        GainCachePtr::initializeGainCache(partitioned_hypergraph, _gain_cache);
+        if (_rebalancer) {
+          auto phg = utils::partitioned_hg_cast(partitioned_hypergraph);
+          _rebalancer->initialize(phg);
+        }
+      };
+      try {
+        // Reuse the existing partition object and refiner storage, which are sized
+        // for the input graph. Only the temporary hypergraph and assignment change.
+        partitioned_hypergraph.setHypergraph(contracted_hypergraph);
+        partitioned_hypergraph.resetData();
+        GainCachePtr::resetGainCache(_gain_cache, level_num_nodes, partitioned_hypergraph.k());
+        partitioned_hypergraph.doParallelForAllNodes([&](const HypernodeID node) {
+          partitioned_hypergraph.setOnlyNodePart(node, contracted_blocks[node]);
+        });
+        partitioned_hypergraph.initializePartition();
+        _timer.stop_timer("tarjan_coarsening");
+        repairConnectivityAndRefine(partitioned_hypergraph);
+        for (const HypernodeID node : partitioned_hypergraph.nodes()) {
+          contracted_blocks[node] = partitioned_hypergraph.partID(node);
+        }
+      } catch (...) {
+        restore_level(false);
+        throw;
+      }
+      _timer.start_timer("tarjan_projection", "Projecting Tarjan Partition");
+      restore_level(true);
+      _timer.stop_timer("tarjan_projection");
+    } else {
+      repairConnectivityAndRefine(partitioned_hypergraph);
+    }
+  }
+
+  template<typename TypeTraits>
+  void MultilevelUncoarsener<TypeTraits>::refinePartition(PartitionedHypergraph& partitioned_hypergraph) {
     double time_limit = std::numeric_limits<double>::max();
     if (_current_level >= 0 && _current_level != _num_levels) {
       // there is a refinement run on the coarsest graph before projection. There is no value stored for this run, so we must avoid looking it up.

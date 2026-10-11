@@ -567,6 +567,14 @@ namespace mt_kahypar {
 
   void addRefinementOptions(Context& context, CLI::App& app, const bool initial_partitioning) {
     app.option_defaults()->group(initial_partitioning ? "Refinement Options for Initial Partitioning" : "Refinement Options");
+    if (!initial_partitioning) {
+      app.add_option(
+        "--r-tarjan-coarsening",
+        context.extra_options.tarjan_refinement,
+        "Run each multilevel refinement pass on a temporary Tarjan-contracted graph, "
+        "then project the partition back to the current level."
+      )->capture_default_str();
+    }
     app.add_option(
       (initial_partitioning ? "--i-r-refine-until-no-improvement" : "--r-refine-until-no-improvement"),
       (!initial_partitioning ? context.refinement.refine_until_no_improvement :

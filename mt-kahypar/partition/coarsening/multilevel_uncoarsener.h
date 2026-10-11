@@ -76,6 +76,14 @@ class MultilevelUncoarsener : public IUncoarsener<TypeTraits>,
 
   void refineImpl() override;
 
+  void refinePartition(PartitionedHypergraph& partitioned_hypergraph);
+
+  void repairConnectivity(PartitionedHypergraph& partitioned_hypergraph);
+
+  void repairConnectivityAndRefine(PartitionedHypergraph& partitioned_hypergraph);
+
+  void refineWithTarjanCoarsening(PartitionedHypergraph& partitioned_hypergraph);
+
   void rebalancingImpl() override;
 
   gain_cache_t getGainCacheImpl() override {
