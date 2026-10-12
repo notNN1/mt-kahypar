@@ -94,7 +94,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
         ////// Setup important variables
         if (_context.partition.k != 2) {
             LOG << "k is not 2!!!";
-            while (true);
+            raise(SIGSEGV);
         }
 
         size_t size_a = 0;
