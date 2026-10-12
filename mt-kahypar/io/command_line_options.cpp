@@ -569,6 +569,11 @@ namespace mt_kahypar {
     app.option_defaults()->group(initial_partitioning ? "Refinement Options for Initial Partitioning" : "Refinement Options");
     if (!initial_partitioning) {
       app.add_option(
+        "--r-restore-connectivity",
+        context.extra_options.restore_connectivity,
+        "Restore block connectivity during multilevel uncoarsening. Requires --connected-blocks=true."
+      )->capture_default_str();
+      app.add_option(
         "--r-tarjan-coarsening",
         context.extra_options.tarjan_refinement,
         "Run each multilevel refinement pass on a temporary Tarjan-contracted graph, "

@@ -68,6 +68,7 @@ std::string serialize(const PartitionedHypergraph& hypergraph,
         << " use_new_metric=" << context.partition.use_new_metric
         << " tarjan_min_max_region=" << context.extra_options.tarjan_min_max_region
         << " tarjan_refinement=" << context.extra_options.tarjan_refinement
+        << " restore_connectivity=" << context.extra_options.restore_connectivity
         << " perform_parallel_recursion_in_deep_multilevel=" << context.partition.perform_parallel_recursion_in_deep_multilevel;
     oss << " large_hyperedge_size_threshold_factor=" << context.partition.large_hyperedge_size_threshold_factor
         << " smallest_large_he_size_threshold=" << context.partition.smallest_large_he_size_threshold

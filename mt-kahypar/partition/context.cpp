@@ -648,6 +648,8 @@ namespace mt_kahypar {
     printParams(str, context.initial_partitioning, context.partition, context.partition.verbose_logging);
     str << "-------------------------------------------------------------------------------\n";
     printParams(str, context.refinement, context.partition, context.partition.verbose_logging);
+    str << "  Restore Connectivity:               " << std::boolalpha
+        << context.extra_options.restore_connectivity << std::endl;
     str << "  Tarjan Coarsening During Refinement: " << std::boolalpha
         << context.extra_options.tarjan_refinement << std::endl;
     str << "-------------------------------------------------------------------------------\n";
