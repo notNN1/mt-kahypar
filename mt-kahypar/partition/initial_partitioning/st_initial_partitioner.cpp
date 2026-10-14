@@ -101,6 +101,8 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
         size_t size_b = 0;
 
         size_t target = hg.totalWeight() / 2;
+        size_t upper_target = target * (1.0 + _context.partition.epsilon);
+        size_t lower_target = target * (1.0 - _context.partition.epsilon);
 
         vec<HypernodeID> nodes_to_swap;
         nodes_to_swap.reserve(hg.initialNumNodes());
@@ -145,7 +147,8 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
             }
             else {  // split component
 
-                size_t target_for_split = size - (target - size_a);
+                size_t lower_target_for_split           = size - (upper_target - size_a);
+                size_t target_for_split                 = size - (target - size_a); 
 
                 for (const HypernodeID& node : component.nodes) {
                     hg.setNodePart(node, 0);
@@ -166,11 +169,9 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
 
                     check_tree(hn_to_parent, component);
 
-                    std::pair<HypernodeID, size_t> split = find_best_node_to_split(component, subtree_size, target_for_split);
+                    std::pair<HypernodeID, size_t> split = find_best_node_to_split(component, subtree_size, target_for_split, lower_target_for_split);
 
                     split_size = split.second;
-
-                    //LOG << "Split size: " << split_size;
 
                     diff = target_for_split >= split_size ? target_for_split - split_size : split_size - target_for_split;
                     current_origins++;
@@ -409,16 +410,21 @@ template<typename TypeTraits>
 std::pair<HypernodeID, size_t> STInitialPartitioner<TypeTraits>::find_best_node_to_split(
     const ConnectedComponent& component,
     const vec<size_t>& subtree_size,
-    const size_t& target
+    const size_t& target,
+    const size_t& lower_target
 ) {
     assert(component.nodes.size() > 0);
 
-    size_t best_size        = std::numeric_limits<size_t>::max();
+    size_t best_diff        = std::numeric_limits<size_t>::max();
     HypernodeID best_node   = kInvalidHypernode;
     
     for (const HypernodeID& node : component.nodes) {
-        if (subtree_size[node] < best_size && subtree_size[node] >= target) {
-            best_size = subtree_size[node];
+
+        size_t current_subtree = subtree_size[node];
+        size_t diff = current_subtree >= target ? current_subtree - target : target - current_subtree;
+
+        if (current_subtree >= lower_target && diff < best_diff) {
+            best_diff = diff;
             best_node = node;
         }
     }

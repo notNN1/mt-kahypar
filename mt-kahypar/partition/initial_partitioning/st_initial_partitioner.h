@@ -72,7 +72,8 @@ public:
     std::pair<HypernodeID, size_t> find_best_node_to_split(
         const ConnectedComponent& component,
         const vec<size_t>& subtree_size,
-        const size_t& target
+        const size_t& target,
+        const size_t& lower_target
     );
 
     void assign_subtree_of_hn(
