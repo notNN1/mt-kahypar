@@ -68,7 +68,14 @@ public:
         vec<size_t>& subtree_size,
         vec<size_t>& hn_to_num_children,
         const HypernodeID& starter_node,
-        const Bitset& covered
+        const Bitset& covered,
+        const Bitset& discovered
+    );
+
+    HypernodeID select_starter_node(
+        const ConnectedComponent& component,
+        const Bitset& covered,
+        const Bitset& already_started_from
     );
 
     void calculate_split(

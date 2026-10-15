@@ -167,7 +167,8 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
     vec<size_t>& subtree_size,
     vec<size_t>& hn_to_num_children,
     const HypernodeID& starter_node,
-    const Bitset& covered
+    const Bitset& covered,
+    const Bitset& discovered
 ) {
 
     for (const HypernodeID& node : component.nodes) {
@@ -187,30 +188,6 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
     node_queue.push_back(starter_node);
 
     std::deque<HyperedgeID> lp_node_queue;
-    
-    Bitset covered_nb;
-    covered_nb.resize(phg.initialNumNodes());
-
-    for (const HypernodeID& node : component.nodes) {
-        if (covered.isSet((size_t) node)) {
-            for (const HyperedgeID& he : phg.incidentEdges(node)) {
-
-                if (edge_colored.isSet((size_t) he)) {
-                    continue;
-                }
-
-                edge_colored.set((size_t) he);
-
-                for (const HypernodeID& incident_he : phg.pins(he)) {
-                    if (covered.isSet((size_t) incident_he)) {
-                        continue;
-                    }
-
-                    covered_nb.set((size_t) incident_he);
-                }
-            }
-        }
-    }
 
     edge_colored.reset();
     std::deque<HypernodeID> calculation_queue;
@@ -237,6 +214,7 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
             edge_colored.set((size_t) he);
 
             for (const HypernodeID& incident_hn : phg.pins(he)) {
+
                 if (incident_hn == current_node) {
                     continue;
                 }
@@ -256,7 +234,7 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
 
                 hn_to_children[current_node].push_back(incident_hn);
 
-                if (_context.extra_options.bfs_st_options != BFSSTOptions::normal_st && (covered_nb.isSet((size_t) incident_hn))) {
+                if (_context.extra_options.bfs_st_options != BFSSTOptions::normal_st && (discovered.isSet((size_t) incident_hn))) {
                     lp_node_queue.push_back(incident_hn);
                 }
                 else {
@@ -291,6 +269,37 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
 
 
 template<typename TypeTraits>
+HypernodeID GreedySTInitialPartitioner<TypeTraits>::select_starter_node(
+    const ConnectedComponent& component,
+    const Bitset& covered,
+    const Bitset& already_started_from
+) {
+    HypernodeID starter_node = kInvalidHypernode;
+
+    if (!component.nodes.empty()) {
+        const size_t start = std::uniform_int_distribution<size_t>(
+            0, component.nodes.size() - 1
+        )(_rng);
+
+        for (size_t i = 0; i < component.nodes.size(); ++i) {
+            const HypernodeID node = component.nodes[(start + i) % component.nodes.size()];
+
+            if (covered.isSet((size_t) node)) {
+                continue;
+            }
+
+            if (starter_node == kInvalidHypernode ||
+                (already_started_from.isSet((size_t) starter_node) &&
+                 !already_started_from.isSet((size_t) node))) {
+                starter_node = node;
+            }
+        }
+    }
+
+    return starter_node;
+}
+
+template<typename TypeTraits>
 void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
     const PartitionedHypergraph& phg,
     ConnectedComponent& component,
@@ -313,8 +322,12 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
     Bitset covered;
     covered.resize(phg.initialNumNodes());
+
+    Bitset discovered;
+    discovered.resize(phg.initialNumNodes());
     ////
 
+    //// BFS parameters
     HypernodeID starter_node    = kInvalidHypernode;
 
     size_t current_iteration    = 0;
@@ -333,31 +346,14 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
     vec<HypernodeID> asignment_queue;
     asignment_queue.reserve(phg.initialNumNodes());
 
+    vec<uint32_t> active_adjacent_vertices_per_hn;
+    active_adjacent_vertices_per_hn.resize(phg.initialNumNodes());
+    ////
+
+
     while (current_split <= target && current_iteration < _context.extra_options.st_bfs_max_recalculations) {
-        current_iteration++;
-
-        HypernodeID starter_node_st     = kInvalidHypernode;
-
-        if (!component.nodes.empty()) {
-            const size_t start = std::uniform_int_distribution<size_t>(
-                0, component.nodes.size() - 1
-            )(_rng);
-
-            for (size_t i = 0; i < component.nodes.size(); ++i) {
-                const HypernodeID node = component.nodes[(start + i) % component.nodes.size()];
-
-                if (!covered.isSet((size_t) node)) {
-
-                    if (starter_node_st == kInvalidHypernode) {
-                        starter_node_st = node;
-                    }
-                    else if (already_started_from.isSet((size_t) starter_node_st) && !already_started_from.isSet((size_t) node)) {
-                        starter_node_st = node;
-                    }
-                    
-                }
-            }
-        }
+        //// generate spanning tree
+        const HypernodeID starter_node_st = select_starter_node(component, covered, already_started_from);
 
         if (starter_node_st == kInvalidHypernode) {
             return;
@@ -365,15 +361,17 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
         already_started_from.set((size_t) starter_node_st);
 
-        //LOG << "starter_node_st: " << starter_node_st;
+        calculate_component_spanning_tree(phg, component, hn_to_parent, hn_to_children, subtree_size, hn_to_num_children, starter_node_st, covered, discovered);
+        ////
 
-        calculate_component_spanning_tree(phg, component, hn_to_parent, hn_to_children, subtree_size, hn_to_num_children, starter_node_st, covered);
 
+        //// Select a starting vertex for the BFS
         if (result.size() == 0) {
 
             for (const HypernodeID& node : component.nodes) {
                 if (hn_to_num_children[node] == 0 && phg.nodeWeight(node) <= target) {
                     starter_node = node;
+                    break;
                 }
             }
 
@@ -381,6 +379,8 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                 continue;
             }
             
+            discovered.set((size_t) starter_node);
+
             add_node_to_split(
                 starter_node,
                 hn_to_parent,
@@ -393,7 +393,9 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                 result
             );
         }
+        ////
 
+        //// BFS
         while (node_queue.size() > 0) {
 
             HypernodeID current_node = node_queue.front();
@@ -416,7 +418,10 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                         continue;
                     }
 
+                    discovered.set((size_t) incident_hn);
+
                     if (current_split + phg.nodeWeight(incident_hn) > target) {
+                        active_adjacent_vertices_per_hn[current_node]++;
                         continue;
                     }
 
@@ -503,14 +508,22 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                 }
             }   
         }
+        ////
 
-        //LOG << "Iteration: " << current_iteration << " and gain: " << current_split << " with target: " << target;
-
+        //// Restart the BFS with processed vertices, that still have uncovered neighbors
         for (const HypernodeID& node : result) {
+            if (active_adjacent_vertices_per_hn[node] == 0) {
+                active_adjacent_vertices_per_hn[node] = 0;
+                continue;
+            }
+
+            active_adjacent_vertices_per_hn[node] = 0;
             node_queue.push_back(node);
         }
+        ////
 
         edge_colored.reset();
+        current_iteration++;
     }
 
 }
