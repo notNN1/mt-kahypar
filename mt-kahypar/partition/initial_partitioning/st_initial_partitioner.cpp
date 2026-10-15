@@ -176,7 +176,7 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
                     diff = target_for_split >= split_size ? target_for_split - split_size : split_size - target_for_split;
                     current_origins++;
 
-                    LOG << "diff: " << static_cast<double>(diff) / target_for_split;
+                    //LOG << "diff: " << static_cast<double>(diff) / target_for_split;
 
                     if (static_cast<double>(diff) / target_for_split < best_split_diff && split.first != kInvalidHypernode) {
                         best_split = split.first;
@@ -212,22 +212,17 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 ) {
     assert(component.nodes.size() > 0);
 
-    // find nodes that are in more than one edge
-    Bitset is_in_multiple_edges;
-
-    if (_context.extra_options.st_options == STOptions::advanced_st_calculation) {
-        is_in_multiple_edges.resize(hg.initialNumNodes());
-
-        for (const HypernodeID& node : component.nodes) {
-            if (hg.incidentEdges(node).size() > 1) {
-                is_in_multiple_edges.set((size_t) node);
-            }
-        }
-    }
-
     // setup datastructures for BFS
     std::deque<HypernodeID> queue;
     std::deque<HypernodeID> calculation_queue;
+
+    const auto attach_node = [&](const HypernodeID node, const HypernodeID parent) {
+        queue.push_back(node);
+        calculation_queue.push_back(node);
+
+        hn_to_children[parent].push_back(node);
+        hn_to_parent[node] = parent;
+    };
 
     Bitset node_colored;
     node_colored.resize(hg.initialNumNodes());
@@ -270,95 +265,27 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
                     }
 
                     node_colored.set((size_t) incident_hn);
-
-                    calculation_queue.push_back(incident_hn);
-                    queue.push_back(incident_hn);
-
-                    hn_to_children[current_node].push_back(incident_hn);
-                    hn_to_parent[incident_hn] = current_node;
+                    attach_node(incident_hn, current_node);
                 }
             }
             else if (_context.extra_options.st_options == STOptions::advanced_st_calculation) {
 
-                size_t available_size = 1;
-
-                for (const HypernodeID& incident_hn : hg.pins(he)) {
-                    if (node_colored.isSet((size_t) incident_hn)) {
-                        continue;
-                    }
-
-                    ++available_size;
-                    if (available_size == max_amount_of_branching) {
-                        break;
-                    }
-                }
-
-                const size_t branch_node_count =
-                    std::min(max_amount_of_branching, available_size);
-
-                vec<HypernodeID> branch_nodes(branch_node_count);
-                branch_nodes[0] = current_node;
-
-                size_t found_branch_nodes = 1;
-
-                for (const HypernodeID& incident_hn : hg.pins(he)) {
-                    if (found_branch_nodes == branch_node_count) {
-                        break;
-                    }
-
-                    if (node_colored.isSet((size_t) incident_hn)) {
-                        continue;
-                    }
-
-                    if (is_in_multiple_edges.isSet(incident_hn)) {
-                        continue;
-                    }
-
-                    node_colored.set((size_t) incident_hn);
-
-                    branch_nodes[found_branch_nodes] = incident_hn;
-                    ++found_branch_nodes;
-
-                    calculation_queue.push_back(incident_hn);
-                    queue.push_back(incident_hn);
-
-                    hn_to_children[current_node].push_back(incident_hn);
-                    hn_to_parent[incident_hn] = current_node;
-                }
-
-                for (const HypernodeID& incident_hn : hg.pins(he)) {
-                    if (found_branch_nodes == branch_node_count) {
-                        break;
-                    }
-
-                    if (node_colored.isSet((size_t) incident_hn)) {
-                        continue;
-                    }
-
-                    if (!is_in_multiple_edges.isSet(incident_hn)) {
-                        continue;
-                    }
-
-                    node_colored.set((size_t) incident_hn);
-
-                    branch_nodes[found_branch_nodes] = incident_hn;
-                    ++found_branch_nodes;
-
-                    calculation_queue.push_back(incident_hn);
-                    queue.push_back(incident_hn);
-
-                    hn_to_children[current_node].push_back(incident_hn);
-                    hn_to_parent[incident_hn] = current_node;
-                }
-
                 vec<std::pair<size_t, HypernodeID>> sizes;
-                sizes.resize(branch_node_count);
+                sizes.reserve(max_amount_of_branching);
+                sizes.emplace_back(hg.nodeWeight(current_node), current_node);
 
-                for (size_t i = 0; i < branch_node_count; ++i) {
-                    sizes[i] = {
-                        hg.nodeWeight(branch_nodes[i]),
-                        branch_nodes[i]
-                    };
+                for (const HypernodeID& incident_hn : hg.pins(he)) {
+                    if (sizes.size() == max_amount_of_branching) {
+                        break;
+                    }
+
+                    if (node_colored.isSet((size_t) incident_hn)) {
+                        continue;
+                    }
+
+                    node_colored.set((size_t) incident_hn);
+                    sizes.emplace_back(hg.nodeWeight(incident_hn), incident_hn);
+                    attach_node(incident_hn, current_node);
                 }
 
                 size_t branch = 0;
@@ -370,7 +297,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 
                     node_colored.set((size_t) incident_hn);
 
-                    if (branch_node_count == 1) {
+                    if (sizes.size() == 1) {
                         branch = 0;
                     }
                     else if (static_cast<double>(sizes[0].first) > target_distribution * static_cast<double>(sizes[0].first + sizes[1].first)) {
@@ -384,11 +311,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
                     // Add this node to that branch.
                     sizes[branch].first += hg.nodeWeight(incident_hn);
 
-                    queue.push_back(incident_hn);
-                    calculation_queue.push_back(incident_hn);
-
-                    hn_to_children[attachment_node].push_back(incident_hn);
-                    hn_to_parent[incident_hn] = attachment_node;
+                    attach_node(incident_hn, attachment_node);
                 }
             }
         }
@@ -416,6 +339,7 @@ std::pair<HypernodeID, size_t> STInitialPartitioner<TypeTraits>::find_best_node_
     assert(component.nodes.size() > 0);
 
     size_t best_diff        = std::numeric_limits<size_t>::max();
+    size_t best_size        = std::numeric_limits<size_t>::max();
     HypernodeID best_node   = kInvalidHypernode;
     
     for (const HypernodeID& node : component.nodes) {
@@ -425,6 +349,7 @@ std::pair<HypernodeID, size_t> STInitialPartitioner<TypeTraits>::find_best_node_
 
         if (current_subtree >= lower_target && diff < best_diff) {
             best_diff = diff;
+            best_size = current_subtree;
             best_node = node;
         }
     }
