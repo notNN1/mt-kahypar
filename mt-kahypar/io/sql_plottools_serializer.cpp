@@ -242,6 +242,9 @@ std::string serialize(const PartitionedHypergraph& hypergraph,
 
     // Initial Partitioning Stats
     oss << utils::Utilities::instance().getInitialPartitioningStats(context.utility_id);
+    const auto bfs_averages = utils::cc_debug.average_bfs_stats();
+    oss << " bfs_avg_assigned_vertices=" << bfs_averages.assigned_vertices
+        << " bfs_avg_recalculations=" << bfs_averages.recalculations;
 
     return oss.str();
   } else {

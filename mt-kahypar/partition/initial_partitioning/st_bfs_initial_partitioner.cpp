@@ -28,6 +28,7 @@
 #include "mt-kahypar/partition/initial_partitioning/st_bfs_initial_partitioner.h"
 
 #include "mt-kahypar/definitions.h"
+#include "mt-kahypar/utils/connected_component_stats.h"
 #include "mt-kahypar/utils/randomize.h"
 
 #include <deque>
@@ -337,6 +338,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
     HypernodeID starter_node    = kInvalidHypernode;
 
     size_t current_iteration    = 0;
+    utils::BFSStats bfs_stats;
 
     Bitset node_colored;
     node_colored.resize(phg.initialNumNodes());
@@ -362,12 +364,14 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
         const HypernodeID starter_node_st = select_starter_node(component, covered, already_started_from);
 
         if (starter_node_st == kInvalidHypernode) {
-            return;
+            break;
         }
 
         already_started_from.set((size_t) starter_node_st);
 
         calculate_component_spanning_tree(phg, component, hn_to_parent, hn_to_children, subtree_size, hn_to_num_children, starter_node_st, covered, discovered);
+        const size_t previous_result_size = result.size();
+        bfs_stats.assigned_vertices_per_recalculation.push_back(0);
         ////
 
 
@@ -529,9 +533,12 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
         ////
 
         edge_colored.reset();
+        bfs_stats.assigned_vertices_per_recalculation.back() = result.size() - previous_result_size;
         current_iteration++;
     }
 
+    bfs_stats.assigned_vertices = result.size();
+    utils::cc_debug.add_bfs_stats(std::move(bfs_stats));
 }
 
 template<typename TypeTraits>

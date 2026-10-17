@@ -1,5 +1,8 @@
 #pragma once
 
+#include <mutex>
+#include <utility>
+
 #include "mt-kahypar/definitions.h"
 
 
@@ -16,9 +19,22 @@ struct RegionInfo {
     NodeType type;                              
 };
 
+struct BFSStats {
+    size_t assigned_vertices = 0;
+    // Includes the initial spanning-tree construction, as does st_bfs_max_recalculations.
+    size_t recalculations = 0;
+    vec<size_t> assigned_vertices_per_recalculation;
+};
+
+struct BFSAverageStats {
+    double assigned_vertices = 0.0;
+    double recalculations = 0.0;
+};
+
 struct IPState {
     vec<RegionInfo> regions_tarjan;  // singleton intialization
     RegionInfo chosen_region;
+    vec<BFSStats> bfs_runs;
 };
 
 
@@ -46,6 +62,7 @@ class DebugState {
 private:
     IPState                 ip_state;
     vec<StatePerLevel>      state_per_level;
+    mutable std::mutex      bfs_stats_mutex;
 public:
 
     DebugState() {
@@ -89,6 +106,29 @@ public:
     }
 
     // ip
+    void add_bfs_stats(BFSStats stats) {
+        stats.recalculations = stats.assigned_vertices_per_recalculation.size();
+        std::lock_guard<std::mutex> lock(bfs_stats_mutex);
+        ip_state.bfs_runs.push_back(std::move(stats));
+    }
+
+    BFSAverageStats average_bfs_stats() const {
+        std::lock_guard<std::mutex> lock(bfs_stats_mutex);
+        BFSAverageStats averages;
+        if (ip_state.bfs_runs.empty()) {
+            return averages;
+        }
+
+        for (const BFSStats& stats : ip_state.bfs_runs) {
+            averages.assigned_vertices += static_cast<double>(stats.assigned_vertices);
+            averages.recalculations += static_cast<double>(stats.recalculations);
+        }
+        const double runs = static_cast<double>(ip_state.bfs_runs.size());
+        averages.assigned_vertices /= runs;
+        averages.recalculations /= runs;
+        return averages;
+    }
+
     void s_initialize_regions_tarjan(vec<RegionInfo> regions, RegionInfo chosen_region) {
         if (this->ip_state.regions_tarjan.size() != 0) {
             return;
