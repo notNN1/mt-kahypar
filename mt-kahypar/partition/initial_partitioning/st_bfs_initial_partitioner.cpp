@@ -79,6 +79,8 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
     size_t size_b = 0;
 
     size_t target = hg.totalWeight() / 2;
+    size_t upper_target = target * (1.0 + _context.partition.epsilon);
+    size_t lower_target = target * (1.0 - _context.partition.epsilon);
 
     vec<HypernodeID> nodes_to_swap;
     nodes_to_swap.reserve(hg.initialNumNodes());
@@ -99,13 +101,13 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
         connected_components::ConnectedComponent component  = component_and_size.second;
 
 
-        if (size_a + size <= target && size_a > size_b) {
+        if (size_a + size <= lower_target && size_a > size_b) {
             for (const HypernodeID& node : component.nodes) {
                 hg.setNodePart(node, 0);
                 size_a += hg.nodeWeight(node);
             }
         }
-        else if (size_b + size <= target && size_b >= size_a) {
+        else if (size_b + size <= lower_target && size_b >= size_a) {
             for (const HypernodeID& node : component.nodes) {
                 hg.setNodePart(node, 1);
                 size_b += hg.nodeWeight(node);
@@ -113,11 +115,15 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
         } 
         else { // split component
 
-            size_t target_for_split = size - (target - size_a);
+            size_t target_for_split = (size_a + size) - target > 0 ? (size_a + size) - target : 0;
 
             for (const HypernodeID& node : component.nodes) {
                 hg.setNodePart(node, 0);
                 size_a += hg.nodeWeight(node);
+            }
+
+            if (target_for_split == 0) {
+                continue;
             }
 
             //// calculate split 
