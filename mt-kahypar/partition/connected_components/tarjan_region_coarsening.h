@@ -45,7 +45,7 @@ namespace connected_components {
 // Shared region selection and branch compaction for initial partitioning and refinement.
 template<typename PartitionedHypergraph>
 class TarjanRegionCoarsening {
-  using PackedComponentID = uint32_t;
+  using RegionID = uint32_t;
   using Bitset = ds::Bitset;
   struct RegionInfo {
     size_t total_weight;
@@ -385,7 +385,7 @@ private:
           else if (current_node_type == utils::NodeType::normal && tarjan.is_articulation_point(hypergraph, incident_hn)) {
             border_nodes.insert(incident_hn);
 
-            if (!tarjan.is_bridge(hypergraph, incident_hn, incident_hn_index)) {
+            if (!tarjan.is_bridge(hypergraph, current, incident_hn_index)) {
               local_node_colored.set((size_t) incident_hn);
               node_queue.push(incident_hn);
             }
