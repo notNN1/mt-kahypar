@@ -30,6 +30,8 @@
 #include "mt-kahypar/datastructures/bitset.h"
 
 #include <algorithm>
+#include <set>
+#include <utility>
 #include <signal.h>
 
 namespace mt_kahypar {
@@ -48,6 +50,7 @@ private:
     Time            time;
 
     Bitset          is_ap;
+    vec<Bitset>     bridge;
     bool            initialized = false;
 
 public:
@@ -57,29 +60,25 @@ public:
     ) {
         if (!initialized) {
             initialize(phg);
-            this->initialized = true;
         }
 
         return is_ap.isSet((size_t) node);
     }
 
+    bool is_bridge(const PartitionedHypergraph& phg,
+                   const HypernodeID& from,
+                   const uint32_t& edge_index) {
+        if (!initialized) {
+            initialize(phg);
+        }
+
+        return bridge[from].isSet((size_t) edge_index);
+    }
+
     void initialize(const PartitionedHypergraph& phg) {
         reset_fields(phg);
-
-        vec<vec<HypernodeID>> hn_to_new_incident_nodes;
-        if constexpr (PartitionedHypergraph::is_graph) {
-            // Graphs already have ordinary adjacency; no hyperedge expansion is needed.
-            hn_to_new_incident_nodes.resize(phg.initialNumNodes());
-            for (const HypernodeID node : phg.nodes()) {
-                for (const HyperedgeID edge : phg.incidentEdges(node)) {
-                    for (const HypernodeID pin : phg.pins(edge)) {
-                        if (pin != node) hn_to_new_incident_nodes[node].push_back(pin);
-                    }
-                }
-            }
-        } else {
-            hn_to_new_incident_nodes = phg.get_circular_edge_expansion();
-        }
+        vec<vec<HypernodeID>> hn_to_new_incident_nodes = phg.get_circular_edge_expansion();
+        
         
         for (const HypernodeID& node : phg.nodes()) {
             if (disc[node] == 0) {
@@ -88,7 +87,7 @@ public:
                 }
             }
         }
-
+        initialized = true;
     }
 private:
     size_t dfs_recursive_wrapper(
@@ -109,15 +108,25 @@ private:
         low[node] = disc[node] = time;
         time++;
 
-        for (const HypernodeID& incident_hn : hn_to_new_incident_nodes[node]) {
-            if (incident_hn == parent) continue; // we don't want to go back through the same path.
-                            // if we go back is because we found another way back
+        bool skipped_parent = false;
+        for (int32_t incident_hn_index = 0; incident_hn_index < hn_to_new_incident_nodes[node].size(); incident_hn_index++) {
+            HypernodeID incident_hn = hn_to_new_incident_nodes[node][incident_hn_index];
+            // Skip the incoming edge once; parallel edges are valid back edges.
+            if (incident_hn == parent && !skipped_parent) {
+                skipped_parent = true;
+                continue;
+            }
             if (disc[incident_hn] == 0) { // if V has not been discovered before
                 children++;
                 dfs_recursive(phg, incident_hn, node, hn_to_new_incident_nodes); // recursive DFS call
 
-                if (node != parent && disc[node] <= low[incident_hn]) // condition #1
+                if (node != parent && disc[node] <= low[incident_hn]) {
                     is_ap.set((size_t) node);
+                }
+
+                if (disc[node] < low[incident_hn]) {
+                    bridge[node].set((size_t) incident_hn_index);
+                }
 
                 low[node] = std::min(low[node], low[incident_hn]); // low[v] might be an ancestor of u
             } else // if v was already discovered means that we found an ancestor
@@ -222,6 +231,7 @@ private:
     }
 
     void reset_fields(const PartitionedHypergraph& phg) {
+        initialized = false;
         disc.clear();
         disc.resize(phg.initialNumNodes());
 
@@ -231,210 +241,18 @@ private:
         is_ap.reset();
         is_ap.resize(phg.initialNumNodes());
 
+        bridge.clear();
+        bridge.resize(phg.initialNumNodes());
+
+        vec<vec<HyperedgeID>> hn_to_new_incident_nodes = phg.get_circular_edge_expansion();
+        for (const HypernodeID& node : phg.nodes()) {
+            bridge[node].resize(hn_to_new_incident_nodes[node].size());
+        }
+
         time = 1;
     }
 
-public: 
-    /*void test_tarjan() {
-        LOG << "Begin tarjan test";
-        test_tarjan_path_middle();
-        test_tarjan_leaf();
-        test_tarjan_cycle();
-        //test_circular_expansion();x
-        //test_contraction();
-        LOG << "End tarjan test";
-    }
 
-    void test_refinement() {
-        auto hg = Factory::construct(
-            5,
-            4,
-            {
-                {0,1},
-                {1,2},
-                {2,3},
-                {3,4}
-            },
-            nullptr,
-            nullptr,
-            true
-        );
-
-        PartitionedHypergraph phg(2, hg);
-
-
-
-    }
-
-    void test_circular_expansion() {
-
-        auto hg = Factory::construct(
-            5,
-            4,
-            {
-                {0,1},
-                {1,2},
-                {2,3},
-                {3,4}
-            },
-            nullptr,
-            nullptr,
-            true
-        );
-
-
-        PartitionedHypergraph phg(
-            2,     // two partitions
-            hg
-        );
-
-        phg.setNodePart(0, 0);
-        phg.setNodePart(1, 0);
-        phg.setNodePart(2, 0);
-        phg.setNodePart(3, 1);
-        phg.setNodePart(4, 1);
-
-        vec<vec<vec<HypernodeID>>> he_hn_to_new_edge = phg.circular_edge_expansion();
-
-        for (const HyperedgeID& he : phg.edges()) {
-            for (const HypernodeID& hn : phg.pins(he)) {
-                LOG << "HN: " << hn;
-                for (const HypernodeID& incident_hn : he_hn_to_new_edge[he][hn]) {
-                    LOG << "incident_hn: " << incident_hn;
-                }
-            }
-            LOG << "############";
-        }
-    }
-
-    void test_contraction() {
-        auto hg = Factory::construct(
-            5,
-            4,
-            {
-                {0,1},
-                {1,2},
-                {2,3},
-                {3,4}
-            },
-            nullptr,
-            nullptr,
-            true
-        );
-
-        PartitionedHypergraph phg(2, hg);
-
-        mt_kahypar::ds::StaticHypergraph& hg_p = phg.hypergraph();
-
-        parallel::scalable_vector<HypernodeID> communities(5);
-        communities[0] = 0;
-        communities[1] = 0;
-        communities[2] = 0;
-        communities[3] = 1;
-        communities[4] = 1;
-
-        mt_kahypar::ds::StaticHypergraph new_hg = hg_p.contract(communities, true);
-        PartitionedHypergraph phg_n(2, new_hg);
-
-        LOG << "phg incident net: " << new_hg.incidentEdges(0).size();
-        LOG << "initial num nodes: " << new_hg.initialNumNodes();
-    }
-
-    void test_tarjan_path_middle() {
-        auto hg = Factory::construct(
-            5,
-            4,
-            {
-                {0,1},
-                {1,2},
-                {2,3},
-                {3,4}
-            },
-            nullptr,
-            nullptr,
-            true
-        );
-
-        PartitionedHypergraph phg(2, hg);
-
-        phg.setNodePart(0,0);
-        phg.setNodePart(1,0);
-        phg.setNodePart(2,0);
-        phg.setNodePart(3,1);
-        phg.setNodePart(4,1);
-
-        // Removing 2 disconnects {0,1} from {3,4}
-        Tarjan t;
-
-        if (!t.is_articulation_point(phg, 2)) {
-            LOG << "Should be articulaton point!";
-        }
-    }
-
-    void test_tarjan_leaf() {
-        auto hg = Factory::construct(
-            5,
-            4,
-            {
-                {0,1},
-                {1,2},
-                {2,3},
-                {3,4}
-            },
-            nullptr,
-            nullptr,
-            true
-        );
-
-        PartitionedHypergraph phg(2, hg);
-
-        phg.setNodePart(0,0);
-        phg.setNodePart(1,0);
-        phg.setNodePart(2,0);
-        phg.setNodePart(3,0);
-        phg.setNodePart(4,0);
-
-        Tarjan t;
-
-        if (t.is_articulation_point(phg, 0)) {
-            LOG << "A leaf should never be an articulation point";
-        }
-    }
-
-    void test_tarjan_cycle() {
-        auto hg = Factory::construct(
-            4,
-            6,
-            {
-                {0,1},
-                {1,2},
-                {2,0},
-                {0,3},
-                {1,3},
-                {2,3},
-            },
-            nullptr,
-            nullptr,
-            true
-        );
-
-        PartitionedHypergraph phg(2, hg);
-
-        phg.setNodePart(0,0);
-        phg.setNodePart(1,0);
-        phg.setNodePart(2,0);
-        phg.setNodePart(3,1);
-
-        if (!phg.canMoveVertex(DynamicConnectivityStrategy::bfs, 0, 1)) {
-            LOG << "1There should be no articulation points in the cycle";
-        }
-        if (!phg.canMoveVertex(DynamicConnectivityStrategy::bfs, 1, 1)) {
-            LOG << "2There should be no articulation points in the cycle";
-        }
-        if (!phg.canMoveVertex(DynamicConnectivityStrategy::bfs, 2, 1)) {
-            LOG << "3There should be no articulation points in the cycle";
-        }
-    }*/
 };
 
 }  // namespace connected_components
