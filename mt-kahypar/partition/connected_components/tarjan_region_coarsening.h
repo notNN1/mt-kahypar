@@ -30,6 +30,7 @@
 #include <deque>
 #include <limits>
 #include <map>
+#include <numeric>
 #include <queue>
 #include <random>
 #include <set>
@@ -47,7 +48,6 @@ class TarjanRegionCoarsening {
   using PackedComponentID = uint32_t;
   using Bitset = ds::Bitset;
   struct RegionInfo {
-    PackedComponentID id;
     size_t total_weight;
     utils::NodeType type;
     vec<HypernodeID> nodes;
@@ -66,7 +66,6 @@ class TarjanRegionCoarsening {
 
       std::shuffle(region_info.begin(), region_info.end(), _rng);
       for (size_t i = 0; i < region_info.size(); ++i) {
-        region_info[i].id = i;
         for (const HypernodeID node : region_info[i].nodes) {
           vertex_to_region[node] = i;
         }
@@ -124,7 +123,7 @@ class TarjanRegionCoarsening {
             }
           }
         }
-        ++next_community;
+        next_community++;
       }
     }
 
@@ -141,22 +140,20 @@ void calculate_communities(
   vec<PackedComponentID> region_to_head;
   region_to_head.resize(region_info.size());
 
-  for (const RegionInfo& comp_info : region_info) {
-    region_to_head[comp_info.id] = comp_info.id;
-  }
+  std::iota(region_to_head.begin(), region_to_head.end(), PackedComponentID{0});
 
   Bitset updated;
   updated.resize(region_info.size());
 
   vec<PackedComponentID> to_update;
 
-  for (const RegionInfo& comp_info : region_info) {
-    if (region_to_parent[comp_info.id] == comp_info.id) {
-      region_to_head[comp_info.id] = comp_info.id;
+  for (PackedComponentID region_id = 0; region_id < region_info.size(); ++region_id) {
+    if (region_to_parent[region_id] == region_id) {
+      region_to_head[region_id] = region_id;
       continue;
     }
 
-    PackedComponentID parent = comp_info.id;
+    PackedComponentID parent = region_id;
     while (parent != region_to_parent[parent]) {
       if (updated.isSet((size_t) parent)) {
         parent = region_to_head[parent];
@@ -185,53 +182,53 @@ void calculate_communities(
   if (_context.extra_options.tarjan_min_max_region) {
     
     vec<size_t> largest_child_subtree(region_info.size(), 0);
-    for (const RegionInfo& region : region_info) {
-      const PackedComponentID parent = region_to_parent[region.id];
-      if (parent != region.id) {
+    for (PackedComponentID region_id = 0; region_id < region_info.size(); ++region_id) {
+      const PackedComponentID parent = region_to_parent[region_id];
+      if (parent != region_id) {
         largest_child_subtree[parent] =
-          std::max(largest_child_subtree[parent], subtree_size[region.id]);
+          std::max(largest_child_subtree[parent], subtree_size[region_id]);
       }
     }
 
-    for (const RegionInfo& region : region_info) {
-      const PackedComponentID head = region_to_head[region.id];
+    for (PackedComponentID region_id = 0; region_id < region_info.size(); ++region_id) {
+      const PackedComponentID head = region_to_head[region_id];
       const size_t tree_weight = subtree_size[head];
       
-      if (subtree_size[region.id] <= tree_weight / 2) {
+      if (subtree_size[region_id] <= tree_weight / 2) {
         continue;
       }
-      const size_t largest_branch = std::max(tree_weight - subtree_size[region.id], largest_child_subtree[region.id]);
+      const size_t largest_branch = std::max(tree_weight - subtree_size[region_id], largest_child_subtree[region_id]);
       
       if (best_region[head] == std::numeric_limits<uint32_t>::max() ||
-          (region.type == utils::NodeType::normal &&
+          (region_info[region_id].type == utils::NodeType::normal &&
            region_info[best_region[head]].type != utils::NodeType::normal) ||
-          (region.type == region_info[best_region[head]].type &&
+          (region_info[region_id].type == region_info[best_region[head]].type &&
            (largest_branch < best_size[head] ||
-            (largest_branch == best_size[head] && region.id < best_region[head])))) {
+            (largest_branch == best_size[head] && region_id < best_region[head])))) {
         best_size[head] = largest_branch;
-        best_region[head] = region.id;
+        best_region[head] = region_id;
       }
     }
   } else {
-    for (const RegionInfo& comp_info : region_info) {
-      PackedComponentID head = region_to_head[comp_info.id];
+    for (PackedComponentID region_id = 0; region_id < region_info.size(); ++region_id) {
+      PackedComponentID head = region_to_head[region_id];
       size_t target = subtree_size[head] / 2;
 
-      if (subtree_size[comp_info.id] >= target && subtree_size[comp_info.id] < best_size[head] && comp_info.type == mt_kahypar::utils::NodeType::normal) {
-        best_size[head]       = subtree_size[comp_info.id];
-        best_region[head]     = comp_info.id;
+      if (subtree_size[region_id] >= target && subtree_size[region_id] < best_size[head] && region_info[region_id].type == mt_kahypar::utils::NodeType::normal) {
+        best_size[head]       = subtree_size[region_id];
+        best_region[head]     = region_id;
       }
-      else if (subtree_size[comp_info.id] >= target && subtree_size[comp_info.id] < best_size_articulation[head] && comp_info.type == mt_kahypar::utils::NodeType::articulation) {
-        best_size_articulation[head]    = subtree_size[comp_info.id];
-        best_region_articulation[head]  = comp_info.id;
+      else if (subtree_size[region_id] >= target && subtree_size[region_id] < best_size_articulation[head] && region_info[region_id].type == mt_kahypar::utils::NodeType::articulation) {
+        best_size_articulation[head]    = subtree_size[region_id];
+        best_region_articulation[head]  = region_id;
       }
     }
 
     // take region with articulation points, if there is no normal region with a reasonable subtree size
-    for (const RegionInfo& comp_info : region_info) {
-      PackedComponentID head = region_to_head[comp_info.id];
+    for (PackedComponentID region_id = 0; region_id < region_info.size(); ++region_id) {
+      PackedComponentID head = region_to_head[region_id];
 
-      if (head != comp_info.id) {
+      if (head != region_id) {
         continue;
       }
 
@@ -257,14 +254,14 @@ void calculate_communities(
   vec<HypernodeID>    region_to_community;
   region_to_community.resize(region_info.size());
 
-  for (const RegionInfo& comp_info : region_info) {
-    PackedComponentID head = region_to_head[comp_info.id];
+  for (PackedComponentID region_id = 0; region_id < region_info.size(); ++region_id) {
+    PackedComponentID head = region_to_head[region_id];
 
-    if (comp_info.id == best_region[head]) {
+    if (region_id == best_region[head]) {
       continue;
     }
 
-    PackedComponentID parent = comp_info.id;
+    PackedComponentID parent = region_id;
     while (parent != region_to_parent[parent]) {
       if (updated.isSet((size_t) parent) || parent == best_region[head]) {
         break;
@@ -296,18 +293,18 @@ void calculate_communities(
   ////
 
   //// assign nodes
-  for (const RegionInfo& comp_info : region_info) {
-    PackedComponentID head = region_to_head[comp_info.id];
+  for (PackedComponentID region_id = 0; region_id < region_info.size(); ++region_id) {
+    PackedComponentID head = region_to_head[region_id];
 
-    if (comp_info.id == best_region[head]) {
-      for (const HypernodeID& node : comp_info.nodes) {
+    if (region_id == best_region[head]) {
+      for (const HypernodeID& node : region_info[region_id].nodes) {
         communities[node] = community++;
       }
       continue;
     }
 
-    for (const HypernodeID& node : comp_info.nodes) {
-      communities[node] = region_to_community[comp_info.id];
+    for (const HypernodeID& node : region_info[region_id].nodes) {
+      communities[node] = region_to_community[region_id];
     }
   }
   ////
@@ -329,7 +326,6 @@ void compact_regions(
   edge_colored.resize(hypergraph.initialNumEdges());
 
   std::queue<HypernodeID> node_queue;
-  PackedComponentID current_region = 0;
 
   for (const HypernodeID& hn : hypergraph.nodes()) {
 
@@ -343,6 +339,7 @@ void compact_regions(
       current_node_type = utils::NodeType::articulation;
     }
 
+    const PackedComponentID current_region = region_info.size();
     node_queue.push(hn);
     node_colored.set((size_t) hn);
 
@@ -389,8 +386,7 @@ void compact_regions(
       }
     }
     
-    region_info.push_back({(uint32_t) current_region, total_weight, current_node_type, nodes, border_nodes});
-    current_region++;
+    region_info.push_back({total_weight, current_node_type, nodes, border_nodes});
   }
 };
 
@@ -415,32 +411,31 @@ void calculate_master_spanning_tree(
   std::deque<PackedComponentID> calculation_queue;
   ////
 
-  for (const RegionInfo& comp_info : region_info) {
-    region_to_parent[comp_info.id] = comp_info.id;
-  }
+  std::iota(region_to_parent.begin(), region_to_parent.end(), PackedComponentID{0});
 
-  vec<RegionInfo> region_info_copy = region_info;
+  vec<PackedComponentID> region_order(region_info.size());
+  std::iota(region_order.begin(), region_order.end(), PackedComponentID{0});
 
-  std::sort(region_info_copy.begin(), region_info_copy.end(),
-    [](const RegionInfo& a, const RegionInfo& b) {
-      return a.nodes.size() < b.nodes.size();
+  std::sort(region_order.begin(), region_order.end(),
+    [&](const PackedComponentID a, const PackedComponentID b) {
+      return region_info[a].nodes.size() < region_info[b].nodes.size();
     });
 
-  for (const RegionInfo& parent : region_info_copy) {
-    if (region_colored.isSet((size_t) parent.id)) {
+  for (const PackedComponentID parent : region_order) {
+    if (region_colored.isSet((size_t) parent)) {
       continue;
     }
 
-    heads.push_back(parent.id);
+    heads.push_back(parent);
 
-    region_queue.push_back(parent.id);
-    region_colored.set((size_t) parent.id);
+    region_queue.push_back(parent);
+    region_colored.set((size_t) parent);
 
     while (region_queue.size() > 0) {
       PackedComponentID current_id = region_queue.back();
       region_queue.pop_back();
 
-      RegionInfo current_region = region_info[current_id];
+      const RegionInfo& current_region = region_info[current_id];
 
       for (const HypernodeID& incident_hn : current_region.connected_to) {
         PackedComponentID region_id = vertex_to_region[incident_hn];
@@ -461,8 +456,8 @@ void calculate_master_spanning_tree(
   // calculate spanning tree sizes
   subtree_size.resize(region_info.size());
 
-  for (const RegionInfo& region : region_info) {
-    subtree_size[region.id] = region.total_weight;
+  for (PackedComponentID region_id = 0; region_id < region_info.size(); ++region_id) {
+    subtree_size[region_id] = region_info[region_id].total_weight;
   }
 
   for (const PackedComponentID& region_id : calculation_queue) {
