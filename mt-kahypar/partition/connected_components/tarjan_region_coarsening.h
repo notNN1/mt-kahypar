@@ -51,7 +51,7 @@ class TarjanRegionCoarsening {
     size_t total_weight;
     utils::NodeType type;
     vec<HypernodeID> nodes;
-    std::set<HypernodeID> connected_to;
+    vec<HypernodeID> connected_to;
   };
 
  public:
@@ -62,7 +62,59 @@ class TarjanRegionCoarsening {
       connected_components::Tarjan<PartitionedHypergraph> tarjan;
       vec<RegionID> vertex_to_region(hg.initialNumNodes(), -1);
       vec<RegionInfo> region_info;
-      compact_regions(hg, vertex_to_region, region_info, tarjan);
+      vec<vec<HypernodeID>> biconnected_regions = tarjan.get_biconnected_components(hg);
+
+      Bitset node_colored;
+      node_colored.resize(hg.initialNumNodes());
+
+      vec<vec<HyperedgeID>> hn_to_new_incident_nodes = hg.get_circular_edge_expansion();
+
+      for (vec<HypernodeID> biconnected_region : biconnected_regions) {
+        vec<HypernodeID> connected_to;
+        size_t total_weight = 0;
+
+        for (const HypernodeID& node : biconnected_region) {
+
+          if (tarjan.is_articulation_point(hg, node)) {
+            connected_to.push_back(node);
+
+            // find articulation point region
+            vec<HypernodeID> connected_to_ap;
+            size_t total_weight_ap = 0;
+            vec<HypernodeID> ap_region;
+
+            vec<HypernodeID> node_queue;
+            node_queue.push_back(node);
+            node_colored.set((size_t) node);
+
+            while (node_queue.size() > 0) {
+              HypernodeID current_node = node_queue.back();
+              node_queue.pop_back();
+
+              total_weight_ap += hg.nodeWeight(current_node);
+              ap_region.push_back(current_node);
+
+              for (const HypernodeID& incident_hn : hn_to_new_incident_nodes[node]) {
+                if (!tarjan.is_articulation_point(hg, incident_hn) || node_colored.isSet((size_t) incident_hn)) {
+                  connected_to_ap.push_back(incident_hn);
+                  continue;
+                }
+
+                node_colored.set((size_t) incident_hn);
+                node_queue.push_back(incident_hn);
+              }
+            }
+
+            region_info.push_back({total_weight_ap, utils::NodeType::articulation, ap_region, connected_to_ap});
+
+            continue;
+          }
+
+          total_weight += hg.nodeWeight(node);
+        }
+
+        region_info.push_back({total_weight, utils::NodeType::normal, biconnected_region, connected_to});
+      }
 
       std::shuffle(region_info.begin(), region_info.end(), _rng);
       for (size_t i = 0; i < region_info.size(); ++i) {
@@ -314,94 +366,6 @@ private:
     }
     ////
   }
-
-  void compact_regions(
-    const PartitionedHypergraph& hypergraph,
-    vec<RegionID>& vertex_to_region,
-    vec<RegionInfo>& region_info,
-    connected_components::Tarjan<PartitionedHypergraph>& tarjan
-  ) {
-
-    vec<vec<HypernodeID>> hn_to_new_incident_nodes = hypergraph.get_circular_edge_expansion();
-  
-    Bitset node_colored;
-    node_colored.resize(hypergraph.initialNumNodes());
-
-    Bitset local_node_colored;
-    local_node_colored.resize(hypergraph.initialNumNodes());
-    
-    Bitset edge_colored;
-    edge_colored.resize(hypergraph.initialNumEdges());
-
-    std::queue<HypernodeID> node_queue;
-
-    for (const HypernodeID& hn : hypergraph.nodes()) {
-
-      if (node_colored.isSet((size_t) hn)) {
-        continue;
-      }
-
-      utils::NodeType current_node_type = utils::NodeType::normal;
-      
-      if (tarjan.is_articulation_point(hypergraph, hn)) {
-        current_node_type = utils::NodeType::articulation;
-      }
-
-      const RegionID current_region = region_info.size();
-      node_queue.push(hn);
-      node_colored.set((size_t) hn);
-      
-      local_node_colored.reset();
-      local_node_colored.set((size_t) hn);
-
-      vec<HypernodeID> nodes;
-      std::set<HypernodeID> border_nodes;
-      size_t total_weight = 0;
-      
-      edge_colored.reset();
-
-      while (node_queue.size() > 0) {
-        HypernodeID current = node_queue.front();
-        node_queue.pop();
-
-        nodes.push_back(current);
-
-        if (!tarjan.is_articulation_point(hypergraph, current) || current_node_type == utils::NodeType::articulation) {
-          total_weight += hypergraph.nodeWeight(current);
-          vertex_to_region[current] = current_region;
-        }
-
-        for (uint32_t incident_hn_index = 0; incident_hn_index < hn_to_new_incident_nodes[current].size(); incident_hn_index++) {
-          HypernodeID incident_hn = hn_to_new_incident_nodes[current][incident_hn_index];
-          
-          if (node_colored.isSet((size_t) incident_hn) || local_node_colored.isSet((size_t) incident_hn)) {
-            continue;
-          }
-
-          if (current_node_type == utils::NodeType::articulation && !tarjan.is_articulation_point(hypergraph, incident_hn)) {
-            border_nodes.insert(incident_hn);
-            continue;
-          }
-          else if (current_node_type == utils::NodeType::normal && tarjan.is_articulation_point(hypergraph, incident_hn)) {
-            border_nodes.insert(incident_hn);
-
-            if (!tarjan.is_bridge(hypergraph, current, incident_hn_index)) {
-              local_node_colored.set((size_t) incident_hn);
-              node_queue.push(incident_hn);
-            }
-            
-            continue;
-          }
-
-          local_node_colored.set((size_t) incident_hn);
-          node_colored.set((size_t) incident_hn);
-          node_queue.push(incident_hn);
-        }
-      }
-  
-      region_info.push_back({total_weight, current_node_type, nodes, border_nodes});
-    }
-  };
 
   void calculate_master_spanning_tree(
     const vec<RegionID>& vertex_to_region,
