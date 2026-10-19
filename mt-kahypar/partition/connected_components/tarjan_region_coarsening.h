@@ -67,16 +67,24 @@ class TarjanRegionCoarsening {
       Bitset node_colored;
       node_colored.resize(hg.initialNumNodes());
 
+      Bitset node_in_adjacency_list;
+      node_in_adjacency_list.resize(hg.initialNumNodes());
+      
       vec<vec<HyperedgeID>> hn_to_new_incident_nodes = hg.get_circular_edge_expansion();
 
+      //// initialize regions
       for (vec<HypernodeID> biconnected_region : biconnected_regions) {
         vec<HypernodeID> connected_to;
         size_t total_weight = 0;
+        node_in_adjacency_list.reset();
 
         for (const HypernodeID& node : biconnected_region) {
 
           if (tarjan.is_articulation_point(hg, node)) {
-            connected_to.push_back(node);
+            if (!node_in_adjacency_list.isSet((size_t) node)) {
+              connected_to.push_back(node);
+              node_in_adjacency_list.set((size_t) node);
+            }
 
             // find articulation point region
             vec<HypernodeID> connected_to_ap;
@@ -94,9 +102,16 @@ class TarjanRegionCoarsening {
               total_weight_ap += hg.nodeWeight(current_node);
               ap_region.push_back(current_node);
 
-              for (const HypernodeID& incident_hn : hn_to_new_incident_nodes[node]) {
-                if (!tarjan.is_articulation_point(hg, incident_hn) || node_colored.isSet((size_t) incident_hn)) {
-                  connected_to_ap.push_back(incident_hn);
+              for (const HypernodeID& incident_hn : hn_to_new_incident_nodes[current_node]) {
+                if (node_colored.isSet((size_t) incident_hn)) {
+                  continue;
+                }
+
+                if (!tarjan.is_articulation_point(hg, incident_hn)) {
+                  if (!node_in_adjacency_list.isSet((size_t) incident_hn)) {
+                    connected_to_ap.push_back(incident_hn);
+                    node_in_adjacency_list.set((size_t) incident_hn);
+                  }
                   continue;
                 }
 
@@ -123,6 +138,33 @@ class TarjanRegionCoarsening {
         }
         std::shuffle(region_info[i].nodes.begin(), region_info[i].nodes.end(), _rng);
       }
+
+      //// reduce the incident vertices to one in between regions
+      Bitset seen_region;
+      seen_region.resize(region_info.size());
+
+      size_t retained_nodes = 0;
+
+      for (size_t i = 0; i < region_info.size(); ++i) {
+
+        seen_region.reset();
+        retained_nodes = 0;
+
+        for (int32_t incident_hn_index = 0; incident_hn_index < region_info[i].connected_to.size(); incident_hn_index++) {
+          HypernodeID incident_hn = region_info[i].connected_to[incident_hn_index];
+          RegionID region = vertex_to_region[incident_hn];
+
+          if (seen_region.isSet((size_t) region)) {
+            continue;
+          }
+          seen_region.set((size_t) region);
+          region_info[i].connected_to[retained_nodes] = region_info[i].connected_to[incident_hn_index];
+          retained_nodes++;
+        }
+
+        region_info[i].connected_to.resize(retained_nodes);
+      }
+      ////
 
       vec<size_t> subtree_size;
       vec<RegionID> region_to_parent;
