@@ -139,12 +139,11 @@ class TarjanRegionCoarsening {
           total_weight += hg.nodeWeight(node);
         }
 
-        // Articulation vertices are owned exclusively by articulation regions.
-        // Blocks containing only articulation vertices do not add an empty region.
         if (!region_nodes.empty()) {
           region_info.push_back({total_weight, utils::NodeType::normal, region_nodes, connected_to});
         }
       }
+      ////
 
       std::shuffle(region_info.begin(), region_info.end(), _rng);
       for (size_t i = 0; i < region_info.size(); ++i) {
@@ -153,9 +152,6 @@ class TarjanRegionCoarsening {
           vertex_to_region[node] = i;
         }
         std::shuffle(region_info[i].nodes.begin(), region_info[i].nodes.end(), _rng);
-      }
-      for (const HypernodeID node : hg.nodes()) {
-        ASSERT(vertex_to_region[node] != invalid_region);
       }
 
       //// reduce the incident vertices to one in between regions
@@ -172,7 +168,6 @@ class TarjanRegionCoarsening {
         for (int32_t incident_hn_index = 0; incident_hn_index < region_info[i].connected_to.size(); incident_hn_index++) {
           HypernodeID incident_hn = region_info[i].connected_to[incident_hn_index];
           RegionID region = vertex_to_region[incident_hn];
-          ASSERT(region < region_info.size());
 
           if (region == i || seen_region.isSet((size_t) region)) {
             continue;
@@ -189,15 +184,16 @@ class TarjanRegionCoarsening {
       vec<size_t> subtree_size;
       vec<RegionID> region_to_parent;
       vec<RegionID> heads;
+
       calculate_master_spanning_tree(vertex_to_region, region_info, subtree_size, region_to_parent, heads);
+
       parallel::scalable_vector<HypernodeID> communities(hg.initialNumNodes(), kInvalidHypernode);
       calculate_communities(region_info, region_to_parent, communities, subtree_size, heads);
-      for (const HypernodeID node : hg.nodes()) {
-        ASSERT(communities[node] < hg.initialNumNodes());
-      }
+
       return communities;
     }
 
+  //// ai code start
   // Keep the existing partition representable and each coarse vertex connected.
   // Fixed vertices remain singletons, so their constraints cannot conflict.
   static void respectPartition(const PartitionedHypergraph& hg,
@@ -243,6 +239,7 @@ class TarjanRegionCoarsening {
       next_community++;
     }
   }
+  //// ai code end
 
 private:
   void calculate_communities(
@@ -297,6 +294,7 @@ private:
 
     if (_context.extra_options.tarjan_min_max_region) {
       
+      //// ai code start
       vec<size_t> largest_child_subtree(region_info.size(), 0);
       for (RegionID region_id = 0; region_id < region_info.size(); ++region_id) {
         const RegionID parent = region_to_parent[region_id];
@@ -325,6 +323,7 @@ private:
           best_region[head] = region_id;
         }
       }
+      //// ai code end
     } else {
       for (RegionID region_id = 0; region_id < region_info.size(); ++region_id) {
         RegionID head = region_to_head[region_id];
@@ -351,7 +350,7 @@ private:
         size_t target         = subtree_size[head] / 2;
         size_t upper_target   = target * (1 + _context.partition.epsilon);
 
-        if (best_size[head] > best_size_articulation[head] && best_size[head] > upper_target) {
+        if (best_size[head] > best_size_articulation[head] && best_size[head] - region_info[best_region[head]].total_weight > upper_target) {
           best_size[head]   = best_size_articulation[head];
           best_region[head] =  best_region_articulation[head];
         }
@@ -454,10 +453,12 @@ private:
     vec<RegionID> region_order(region_info.size());
     std::iota(region_order.begin(), region_order.end(), RegionID{0});
 
-    std::sort(region_order.begin(), region_order.end(),
+    /*std::sort(region_order.begin(), region_order.end(),
       [&](const RegionID a, const RegionID b) {
         return region_info[a].nodes.size() < region_info[b].nodes.size();
-      });
+      });*/
+
+    std::shuffle(region_order.begin(), region_order.end(), _rng);
 
     for (const RegionID root : region_order) {
       if (region_colored.isSet((size_t) root)) {

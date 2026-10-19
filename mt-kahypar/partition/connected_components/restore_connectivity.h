@@ -36,7 +36,8 @@ void restore_connectivity(
   PartitionedHypergraph& phg,
   const Context& context,
   vec<vec<ComponentInfo>>& super_components,
-  const uint32_t level
+  const uint32_t level,
+  const vec<vec<ConnectedComponent>>& components_per_block
 );
 
 }  // namespace connected_components

@@ -209,14 +209,18 @@ namespace mt_kahypar {
   void MultilevelUncoarsener<TypeTraits>::repairConnectivity(PartitionedHypergraph& partitioned_hypergraph) {
     if (_context.partition.connected_blocks && _context.type == ContextType::main) {
       logConnectivityInformation(partitioned_hypergraph, _context, _current_level);
+      
       if (!_context.extra_options.restore_connectivity) {
         return;
       }
+
       vec<vec<connected_components::ConnectedComponent>> components_per_block;
       connected_components::compute_components_per_block(partitioned_hypergraph, _context, components_per_block);
+
       vec<vec<connected_components::ComponentInfo>> super_components;
       connected_components::compute_super_components(partitioned_hypergraph, _context, components_per_block, super_components);
-      connected_components::restore_connectivity(partitioned_hypergraph, _context, super_components, _current_level);
+
+      connected_components::restore_connectivity(partitioned_hypergraph, _context, super_components, _current_level, components_per_block);
     }
   }
 

@@ -38,12 +38,16 @@ void restore_connectivity(
   PartitionedHypergraph& phg,
   const Context& context,
   vec<vec<ComponentInfo>>& super_components,
-  const uint32_t level
+  const uint32_t level,
+  const vec<vec<ConnectedComponent>>& components_per_block
 ) {
-  // find components
-  vec<vec<ComponentInfo>> infos;
-  vec<size_t> component_weight;
-  infos.resize(context.partition.k);
+
+  vec<uint32_t> components_per_partition;
+
+  for (vec<ConnectedComponent> components : components_per_block) {
+    components_per_partition.push_back(components.size());
+  }
+
 
   ////// just throw components over
   for (vec<connected_components::ComponentInfo>& super_component : super_components) {
@@ -56,13 +60,42 @@ void restore_connectivity(
 
     for (const connected_components::ComponentInfo& component : super_component) {
       // find partition to move component to
+      if (components_per_partition[component.partition] <= 1) {
+        continue;
+      }
 
       PartitionID move_to             = kInvalidPartition;
       HyperedgeWeight best_imbalance  = std::numeric_limits<int32_t>::max();
 
+      Bitset node_colored;
+      node_colored.resize(phg.initialNumNodes());
+
+      Bitset edge_colored;
+      edge_colored.resize(phg.initialNumEdges());
+
       for (const HypernodeID& node : component.nodes) {
+
+        if (node_colored.isSet((size_t) node)) {
+          continue;
+        }
+
+        node_colored.set((size_t) node);
+
         for (const HyperedgeID& edge : phg.incidentEdges(node)) {
+
+          if (edge_colored.isSet((size_t) edge)) {
+            continue;
+          }
+
+          edge_colored.set((size_t) edge);
+
           for (const HypernodeID& incident_hn : phg.pins(edge)) {
+            if (node_colored.isSet((size_t) incident_hn)) {
+              continue;
+            }
+
+            node_colored.set((size_t) incident_hn);
+
             if (phg.partID(incident_hn) != component.partition) {
               PartitionID part_id = phg.partID(incident_hn);
 
@@ -95,7 +128,7 @@ void restore_connectivity(
 
 
 namespace {
-#define RESTORE_CONNECTIVITY(X) void restore_connectivity(X& phg, const Context& context, vec<vec<ComponentInfo>>& super_components, const uint32_t level)
+#define RESTORE_CONNECTIVITY(X) void restore_connectivity(X& phg, const Context& context, vec<vec<ComponentInfo>>& super_components, const uint32_t level, const vec<vec<ConnectedComponent>>& components_per_block)
 }
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(RESTORE_CONNECTIVITY)
