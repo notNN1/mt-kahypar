@@ -12,6 +12,34 @@ using Hypergraph = ds::StaticHypergraph;
 using PartitionedHypergraph = StaticHypergraphTypeTraits::PartitionedHypergraph;
 using RegionCoarsening = connected_components::TarjanRegionCoarsening<PartitionedHypergraph>;
 
+TEST(TarjanRegionCoarsening, KeepsCommunityLabelsInBoundsForRepeatedArticulationVertices) {
+  // Previously, overlapping regions produced labels up to 49 for these 44 vertices.
+  auto hg = ds::StaticHypergraphFactory::construct(44, 44,
+    {{0, 1}, {0, 2}, {2, 3}, {2, 4}, {1, 5}, {4, 6}, {6, 7}, {7, 8},
+     {3, 9}, {6, 10}, {10, 11}, {8, 12}, {10, 13}, {3, 14}, {14, 15},
+     {13, 16}, {10, 17}, {9, 18}, {6, 19}, {19, 20}, {9, 21}, {16, 22},
+     {21, 23}, {1, 24}, {8, 25}, {24, 26}, {2, 27}, {24, 28}, {13, 29},
+     {0, 30}, {20, 31}, {30, 32}, {10, 33}, {1, 34}, {27, 35}, {35, 36},
+     {8, 37}, {26, 38}, {0, 39}, {37, 40}, {7, 41}, {9, 42}, {26, 43}, {15, 2}},
+    nullptr, nullptr, true);
+  PartitionedHypergraph phg(2, hg);
+  Context context;
+  context.partition.epsilon = 0.03;
+  context.extra_options.tarjan_min_max_region = true;
+  std::mt19937 rng(0);
+  RegionCoarsening coarsening(context, rng);
+  auto communities = coarsening.computeCommunities(phg);
+
+  for (const HypernodeID node : phg.nodes()) {
+    ASSERT_LT(communities[node], hg.initialNumNodes());
+  }
+  auto coarse_hg = hg.contract(communities, true);
+  EXPECT_EQ(coarse_hg.totalWeight(), hg.totalWeight());
+  for (const HypernodeID node : phg.nodes()) {
+    EXPECT_LT(communities[node], coarse_hg.initialNumNodes());
+  }
+}
+
 TEST(TarjanRegionCoarsening, PreservesWeightedPartitionAndCutWhenContractingAndProjecting) {
   const HyperedgeWeight edge_weights[] = {2, 5, 7};
   const HypernodeWeight node_weights[] = {10, 20, 30, 40};

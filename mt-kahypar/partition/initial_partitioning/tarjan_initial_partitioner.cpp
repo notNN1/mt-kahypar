@@ -80,13 +80,11 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
     ////
 
 
-    //// Do partitioning like the best performing partitioner on the uncontracted graph
-    auto& ip_data_ref = *reinterpret_cast<InitialPartitioningDataContainer<TypeTraits>*>(ip_data_ptr);
-    ip_data_ref.apply();
-    auto& local_phg = ip_data_ref.local_partitioned_hypergraph();
+    //// Project the winning partition applied to the contracted hypergraph.
+    ip_data.apply();
 
     for (const HypernodeID& node : hg.nodes()) {
-      hg.setNodePart(node, local_phg.partID(communities[node]));
+      hg.setNodePart(node, new_phg.partID(communities[node]));
     }
     ////
 

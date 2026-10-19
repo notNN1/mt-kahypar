@@ -60,7 +60,8 @@ class TarjanRegionCoarsening {
 
     parallel::scalable_vector<HypernodeID> computeCommunities(const PartitionedHypergraph& hg) {
       connected_components::Tarjan<PartitionedHypergraph> tarjan;
-      vec<RegionID> vertex_to_region(hg.initialNumNodes(), -1);
+      const RegionID invalid_region = std::numeric_limits<RegionID>::max();
+      vec<RegionID> vertex_to_region(hg.initialNumNodes(), invalid_region);
       vec<RegionInfo> region_info;
       vec<vec<HypernodeID>> biconnected_regions = tarjan.get_biconnected_components(hg);
 
@@ -69,11 +70,15 @@ class TarjanRegionCoarsening {
 
       Bitset node_in_adjacency_list;
       node_in_adjacency_list.resize(hg.initialNumNodes());
+
+      Bitset ap_node_in_adjacency_list;
+      ap_node_in_adjacency_list.resize(hg.initialNumNodes());
       
       vec<vec<HyperedgeID>> hn_to_new_incident_nodes = hg.get_circular_edge_expansion();
 
       //// initialize regions
       for (vec<HypernodeID> biconnected_region : biconnected_regions) {
+        vec<HypernodeID> region_nodes;
         vec<HypernodeID> connected_to;
         size_t total_weight = 0;
         node_in_adjacency_list.reset();
@@ -86,10 +91,15 @@ class TarjanRegionCoarsening {
               node_in_adjacency_list.set((size_t) node);
             }
 
+            if (node_colored.isSet((size_t) node)) {
+              continue;
+            }
+
             // find articulation point region
             vec<HypernodeID> connected_to_ap;
             size_t total_weight_ap = 0;
             vec<HypernodeID> ap_region;
+            ap_node_in_adjacency_list.reset();
 
             vec<HypernodeID> node_queue;
             node_queue.push_back(node);
@@ -108,9 +118,9 @@ class TarjanRegionCoarsening {
                 }
 
                 if (!tarjan.is_articulation_point(hg, incident_hn)) {
-                  if (!node_in_adjacency_list.isSet((size_t) incident_hn)) {
+                  if (!ap_node_in_adjacency_list.isSet((size_t) incident_hn)) {
                     connected_to_ap.push_back(incident_hn);
-                    node_in_adjacency_list.set((size_t) incident_hn);
+                    ap_node_in_adjacency_list.set((size_t) incident_hn);
                   }
                   continue;
                 }
@@ -125,18 +135,27 @@ class TarjanRegionCoarsening {
             continue;
           }
 
+          region_nodes.push_back(node);
           total_weight += hg.nodeWeight(node);
         }
 
-        region_info.push_back({total_weight, utils::NodeType::normal, biconnected_region, connected_to});
+        // Articulation vertices are owned exclusively by articulation regions.
+        // Blocks containing only articulation vertices do not add an empty region.
+        if (!region_nodes.empty()) {
+          region_info.push_back({total_weight, utils::NodeType::normal, region_nodes, connected_to});
+        }
       }
 
       std::shuffle(region_info.begin(), region_info.end(), _rng);
       for (size_t i = 0; i < region_info.size(); ++i) {
         for (const HypernodeID node : region_info[i].nodes) {
+          ASSERT(vertex_to_region[node] == invalid_region);
           vertex_to_region[node] = i;
         }
         std::shuffle(region_info[i].nodes.begin(), region_info[i].nodes.end(), _rng);
+      }
+      for (const HypernodeID node : hg.nodes()) {
+        ASSERT(vertex_to_region[node] != invalid_region);
       }
 
       //// reduce the incident vertices to one in between regions
@@ -153,8 +172,9 @@ class TarjanRegionCoarsening {
         for (int32_t incident_hn_index = 0; incident_hn_index < region_info[i].connected_to.size(); incident_hn_index++) {
           HypernodeID incident_hn = region_info[i].connected_to[incident_hn_index];
           RegionID region = vertex_to_region[incident_hn];
+          ASSERT(region < region_info.size());
 
-          if (seen_region.isSet((size_t) region)) {
+          if (region == i || seen_region.isSet((size_t) region)) {
             continue;
           }
           seen_region.set((size_t) region);
@@ -170,8 +190,11 @@ class TarjanRegionCoarsening {
       vec<RegionID> region_to_parent;
       vec<RegionID> heads;
       calculate_master_spanning_tree(vertex_to_region, region_info, subtree_size, region_to_parent, heads);
-      parallel::scalable_vector<HypernodeID> communities(hg.initialNumNodes());
-      calculate_communities(hg, region_info, region_to_parent, communities, subtree_size, heads, tarjan);
+      parallel::scalable_vector<HypernodeID> communities(hg.initialNumNodes(), kInvalidHypernode);
+      calculate_communities(region_info, region_to_parent, communities, subtree_size, heads);
+      for (const HypernodeID node : hg.nodes()) {
+        ASSERT(communities[node] < hg.initialNumNodes());
+      }
       return communities;
     }
 
@@ -223,13 +246,11 @@ class TarjanRegionCoarsening {
 
 private:
   void calculate_communities(
-    const PartitionedHypergraph& hypergraph,
     const vec<RegionInfo>& region_info,
     vec<RegionID>& region_to_parent,
     parallel::scalable_vector<HypernodeID>& communities,
     const vec<size_t>& subtree_size,
-    const vec<RegionID> heads,
-    connected_components::Tarjan<PartitionedHypergraph>& tarjan
+    const vec<RegionID> heads
   ) {
     //// get packed region to head
     vec<RegionID> region_to_head;
@@ -393,16 +414,14 @@ private:
 
       if (region_id == best_region[head]) {
         for (const HypernodeID& node : region_info[region_id].nodes) {
-          if (tarjan.is_articulation_point(hypergraph, node)) {
-            continue;
-          }
-
+          ASSERT(communities[node] == kInvalidHypernode);
           communities[node] = community++;
         }
         continue;
       }
 
       for (const HypernodeID& node : region_info[region_id].nodes) {
+        ASSERT(communities[node] == kInvalidHypernode);
         communities[node] = region_to_community[region_id];
       }
     }
