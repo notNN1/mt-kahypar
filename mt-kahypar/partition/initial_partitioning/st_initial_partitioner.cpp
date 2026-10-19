@@ -101,8 +101,8 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
         size_t size_b = 0;
 
         size_t target = hg.totalWeight() / 2;
-        size_t upper_target = target * (1.0 + _context.partition.epsilon);
-        size_t lower_target = target * (1.0 - _context.partition.epsilon);
+        size_t upper_target = target * (1.0 + std::min(0.005, _context.partition.epsilon));
+        size_t lower_target = target * (1.0 - std::min(0.005, _context.partition.epsilon));
 
         vec<HypernodeID> nodes_to_swap;
         nodes_to_swap.reserve(hg.initialNumNodes());
