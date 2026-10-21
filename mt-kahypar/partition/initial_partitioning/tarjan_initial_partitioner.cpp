@@ -55,8 +55,9 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
 
     //// do initial partitioning on the new phg for each enabled initial partitioner
     InitialPartitioningDataContainer<TypeTraits> ip_data(new_phg, _context);
-
     auto* ip_data_ptr = ip::to_pointer(ip_data);
+
+    HighResClockTimepoint start_partition_and_refine = std::chrono::high_resolution_clock::now();
 
     for ( uint8_t i = 0; i < static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED); ++i ) {
       if ( static_cast<InitialPartitioningAlgorithm>(i) != InitialPartitioningAlgorithm::tarjan 
@@ -77,6 +78,8 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
         initial_partitioner->partition();
       }
     }
+
+    HighResClockTimepoint end_partition_and_refine = std::chrono::high_resolution_clock::now();
     ////
 
 
@@ -89,7 +92,7 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
     ////
 
     HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
-    double time = std::chrono::duration<double>(end - start).count();
+    double time = std::chrono::duration<double>((end - start) - (end_partition_and_refine - start_partition_and_refine)).count();
     _ip_data.commit(InitialPartitioningAlgorithm::tarjan, _rng, _tag, time);
   }
 };

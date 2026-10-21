@@ -133,13 +133,13 @@ void STInitialPartitioner<TypeTraits>::partitionImpl() {
             size_t size                                         = component_and_size.first;
             connected_components::ConnectedComponent component  = component_and_size.second;
 
-            if (size_a + size <= lower_target && size_a > size_b) {
+            if (size_a + size <= upper_target && size_a > size_b || size_b >= lower_target) {
                 for (const HypernodeID& node : component.nodes) {
                     hg.setNodePart(node, 0);
                     size_a += hg.nodeWeight(node);
                 }
             }
-            else if (size_b + size <= lower_target && size_b >= size_a) {
+            else if (size_b + size <= upper_target && size_a <= size_b || size_a >= lower_target) {
                 for (const HypernodeID& node : component.nodes) {
                     hg.setNodePart(node, 1);
                     size_b += hg.nodeWeight(node);
