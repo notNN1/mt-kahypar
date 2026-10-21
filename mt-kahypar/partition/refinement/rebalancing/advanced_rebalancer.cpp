@@ -415,9 +415,10 @@ namespace impl {
           _pq_id[v] = my_pq_id;
         };
 
-        for (const HypernodeID& movable_node : phg.getBalancerUpdates()) {
-          LOG << "New movable node: " << movable_node;
-          reinsert_neighbor(movable_node);
+        if (_context.extra_options.ar_reintroduce_neighbors) {
+          for (const HypernodeID& movable_node : phg.getBalancerUpdates()) {
+            reinsert_neighbor(movable_node);
+          }
         }
 
         auto update_neighbor = [&](HypernodeID v) {

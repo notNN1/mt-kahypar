@@ -99,7 +99,7 @@ void restore_connectivity(
             if (phg.partID(incident_hn) != component.partition) {
               PartitionID part_id = phg.partID(incident_hn);
 
-              if (phg.partWeight(part_id) + component.weight > (phg.totalWeight() / phg.k()) * (1.0 + (level * 2 + 1) * context.partition.epsilon)) {
+              if (phg.partWeight(part_id) + component.weight > (phg.totalWeight() / phg.k()) * (1.0 + (level * context.extra_options.restore_connectivity_level_weight_factor + 1) * context.partition.epsilon)) {
                 continue;
               }
 

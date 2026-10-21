@@ -282,6 +282,7 @@ struct ExtraConnectivityOptions {
   bool                tarjan_min_max_region     = false;
   bool                tarjan_refinement         = false;
   bool                restore_connectivity      = false;
+  float               restore_connectivity_level_weight_factor = 2.0f;
   size_t              st_max_recalculations     = 10;
   size_t              st_bfs_max_recalculations = 5;
   size_t              st_bfs_max_new_origins    = 2;
@@ -290,6 +291,7 @@ struct ExtraConnectivityOptions {
   BFSSTOptions        bfs_st_options        = BFSSTOptions::advanced_st_plus_subtree_plus_recalculation;
 
   AdvancedRebalancerOptions ar_options      = AdvancedRebalancerOptions::connectivity_fix;
+  bool ar_reintroduce_neighbors = false;
 };
 
 class Context {

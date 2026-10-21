@@ -407,6 +407,11 @@ namespace mt_kahypar {
       "- default_mode\n"
       "- connectivity_fix"
     )->capture_default_str();
+    app.add_flag(
+      "--r-advanced-rebalancer-reintroduce-neighbors",
+      context.extra_options.ar_reintroduce_neighbors,
+      "Reintroduce newly movable neighbors into the advanced rebalancer's priority queues."
+    )->capture_default_str();
     auto time_limit = app.add_option(
       "--time-limit",
       context.partition.time_limit,
@@ -572,6 +577,12 @@ namespace mt_kahypar {
         "--r-restore-connectivity",
         context.extra_options.restore_connectivity,
         "Restore block connectivity during multilevel uncoarsening. Requires --connected-blocks=true."
+      )->capture_default_str();
+      app.add_option(
+        "--r-restore-connectivity-level-weight-factor",
+        context.extra_options.restore_connectivity_level_weight_factor,
+        "Level multiplier for the maximum block weight during connectivity restoration: "
+        "(total weight / k) * (1 + (level * factor + 1) * epsilon)."
       )->capture_default_str();
       app.add_option(
         "--r-tarjan-coarsening",
