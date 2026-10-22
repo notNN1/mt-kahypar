@@ -367,6 +367,9 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
             break;
         }
 
+        // Count every attempt, including attempts with no leaf that fits the
+        // target. Those continue below and must still consume the retry budget.
+        current_iteration++;
         already_started_from.set((size_t) starter_node_st);
 
         calculate_component_spanning_tree(phg, component, hn_to_parent, hn_to_children, subtree_size, hn_to_num_children, starter_node_st, covered, discovered);
@@ -534,7 +537,6 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
         edge_colored.reset();
         bfs_stats.assigned_vertices_per_recalculation.back() = result.size() - previous_result_size;
-        current_iteration++;
     }
 
     bfs_stats.assigned_vertices = result.size();
