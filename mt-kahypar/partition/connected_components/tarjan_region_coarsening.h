@@ -350,9 +350,14 @@ private:
         size_t target         = subtree_size[head] / 2;
         size_t upper_target   = target * (1 + _context.partition.epsilon);
 
-        if (best_size[head] > best_size_articulation[head] && best_size[head] - region_info[best_region[head]].total_weight > upper_target) {
-          best_size[head]   = best_size_articulation[head];
-          best_region[head] =  best_region_articulation[head];
+        const RegionID invalid = std::numeric_limits<uint32_t>::max();
+
+        if (best_region_articulation[head] != invalid &&
+            (best_region[head] == invalid ||
+            (best_size[head] > best_size_articulation[head] &&
+              best_size[head] - region_info[best_region[head]].total_weight > upper_target))) {
+          best_size[head] = best_size_articulation[head];
+          best_region[head] = best_region_articulation[head];
         }
       }
     }
