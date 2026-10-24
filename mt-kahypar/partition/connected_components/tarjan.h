@@ -50,10 +50,8 @@ private:
     Time            time;
 
     Bitset          is_ap;
-    vec<Bitset>     bridge;
     vec<vec<HypernodeID>> biconnected_components;
-    vec<std::pair<HypernodeID, HypernodeID>> edge_stack;
-    vec<size_t>     component_marker;
+    vec<HypernodeID> vertex_stack;
     bool            initialized = false;
 
 public:
@@ -68,14 +66,13 @@ public:
         return is_ap.isSet((size_t) node);
     }
 
-    bool is_bridge(const PartitionedHypergraph& phg,
-                   const HypernodeID& from,
-                   const uint32_t& edge_index) {
-        if (!initialized) {
-            initialize(phg);
-        }
-
-        return bridge[from].isSet((size_t) edge_index);
+    bool is_articulation_point(
+        const PartitionedHypergraph& phg,
+        const HypernodeID& node,
+        const Bitset& excluded
+    ) {
+        initialize(phg, &excluded);
+        return is_ap.isSet((size_t) node);
     }
 
     // Components of the circular expansion. Articulation vertices may belong to
@@ -87,12 +84,50 @@ public:
         return biconnected_components;
     }
 
-    void initialize(const PartitionedHypergraph& phg) {
+    void initialize(const PartitionedHypergraph& phg, const Bitset* excluded = nullptr) {
         reset_fields(phg);
-        vec<vec<HypernodeID>> hn_to_new_incident_nodes = phg.get_circular_edge_expansion();
+        vec<vec<HypernodeID>> hn_to_new_incident_nodes;
         
+        if (excluded) {
+            hn_to_new_incident_nodes.resize(phg.initialNumNodes());
+            vec<HypernodeID> remaining_pins;
+
+            for (const HyperedgeID he : phg.edges()) {
+
+                remaining_pins.clear();
+
+                for (const HypernodeID pin : phg.pins(he)) {
+                    if (!excluded->isSet((size_t) pin)) {
+                        remaining_pins.push_back(pin);
+                    }
+                }
+
+                // Reconnect surviving pins
+                const size_t size = remaining_pins.size();
+
+                for (size_t i = 0; i < size; ++i) {
+
+                    const HypernodeID current = remaining_pins[i];
+                    const HypernodeID prev = remaining_pins[(i + size - 1) % size];
+                    const HypernodeID next = remaining_pins[(i + 1) % size];
+
+                    if (prev != current) {
+                        hn_to_new_incident_nodes[current].push_back(prev);
+                    }
+
+                    if (next != current && next != prev) {
+                        hn_to_new_incident_nodes[current].push_back(next);
+                    }
+                }
+            }
+        } else {
+            hn_to_new_incident_nodes = phg.get_circular_edge_expansion();
+        }
         
         for (const HypernodeID& node : phg.nodes()) {
+            if (excluded && excluded->isSet((size_t) node)) {
+                continue;
+            }
             if (disc[node] == 0) {
                 const size_t children = dfs_recursive_wrapper(phg, node, hn_to_new_incident_nodes);
                 if (children > 1) {
@@ -106,21 +141,19 @@ public:
     }
 private:
     void extract_biconnected_component(const HypernodeID from, const HypernodeID to) {
-        const size_t component_id = biconnected_components.size() + 1;
         vec<HypernodeID> component;
-        while (!edge_stack.empty()) {
-            const auto edge = edge_stack.back();
-            edge_stack.pop_back();
-            for (const HypernodeID node : {edge.first, edge.second}) {
-                if (component_marker[node] != component_id) {
-                    component_marker[node] = component_id;
-                    component.push_back(node);
-                }
-            }
-            if (edge.first == from && edge.second == to) {
+
+        // Pop the child's remaining subtree, including the child itself.
+        // Keep the parent on the stack: it may belong to another component.
+        while (!vertex_stack.empty()) {
+            const HypernodeID node = vertex_stack.back();
+            vertex_stack.pop_back();
+            component.push_back(node);
+            if (node == to) {
                 break;
             }
         }
+        component.push_back(from);
         biconnected_components.push_back(std::move(component));
     }
 
@@ -129,7 +162,10 @@ private:
         const HypernodeID& node,
         const vec<vec<HypernodeID>>& hn_to_new_incident_nodes
     ) {
-        return dfs_recursive(phg, node, node, hn_to_new_incident_nodes);
+        const size_t children = dfs_recursive(phg, node, node, hn_to_new_incident_nodes);
+        // Every child component has been extracted; only the DFS root remains.
+        vertex_stack.pop_back();
+        return children;
     }
 
     size_t dfs_recursive(
@@ -141,10 +177,10 @@ private:
         size_t children = 0;
         low[node] = disc[node] = time;
         time++;
+        vertex_stack.push_back(node);
 
         bool skipped_parent = false;
-        for (int32_t incident_hn_index = 0; incident_hn_index < hn_to_new_incident_nodes[node].size(); incident_hn_index++) {
-            HypernodeID incident_hn = hn_to_new_incident_nodes[node][incident_hn_index];
+        for (const HypernodeID incident_hn : hn_to_new_incident_nodes[node]) {
             // Skip the incoming edge once; parallel edges are valid back edges.
             if (incident_hn == parent && !skipped_parent) {
                 skipped_parent = true;
@@ -152,7 +188,6 @@ private:
             }
             if (disc[incident_hn] == 0) { // if V has not been discovered before
                 children++;
-                edge_stack.emplace_back(node, incident_hn);
                 dfs_recursive(phg, incident_hn, node, hn_to_new_incident_nodes); // recursive DFS call
 
                 if (disc[node] <= low[incident_hn]) {
@@ -162,13 +197,8 @@ private:
                     extract_biconnected_component(node, incident_hn);
                 }
 
-                if (disc[node] < low[incident_hn]) {
-                    bridge[node].set((size_t) incident_hn_index);
-                }
-
                 low[node] = std::min(low[node], low[incident_hn]); // low[v] might be an ancestor of u
             } else if (disc[incident_hn] < disc[node]) { // back edge to an ancestor
-                edge_stack.emplace_back(node, incident_hn);
                 low[node] = std::min(low[node], disc[incident_hn]); // finds the ancestor with the least discovery time
             }
         }
@@ -273,8 +303,7 @@ private:
     void reset_fields(const PartitionedHypergraph& phg) {
         initialized = false;
         biconnected_components.clear();
-        edge_stack.clear();
-        component_marker.assign(phg.initialNumNodes(), 0);
+        vertex_stack.clear();
         disc.clear();
         disc.resize(phg.initialNumNodes());
 
@@ -283,14 +312,6 @@ private:
 
         is_ap.reset();
         is_ap.resize(phg.initialNumNodes());
-
-        bridge.clear();
-        bridge.resize(phg.initialNumNodes());
-
-        vec<vec<HyperedgeID>> hn_to_new_incident_nodes = phg.get_circular_edge_expansion();
-        for (const HypernodeID& node : phg.nodes()) {
-            bridge[node].resize(hn_to_new_incident_nodes[node].size());
-        }
 
         time = 1;
     }
