@@ -1212,6 +1212,7 @@ namespace mt_kahypar {
       "- advanced_st_calculation\n"
       "- advanced_st_plus_subtree\n"
       "- advanced_st_plus_subtree_plus_recalculation"
+      "- tarjan"
     )->capture_default_str();
     app.add_option(
       "--i-st-recalculations",

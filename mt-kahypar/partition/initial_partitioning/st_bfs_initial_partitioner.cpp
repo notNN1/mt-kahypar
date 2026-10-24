@@ -30,6 +30,7 @@
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/connected_component_stats.h"
 #include "mt-kahypar/utils/randomize.h"
+#include "mt-kahypar/partition/connected_components/tarjan.h"
 
 #include <deque>
 #include <algorithm>
@@ -493,6 +494,23 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                         
                     }
                     else if (hn_to_num_children[incident_hn] == 0) {
+                        add_node_to_split(
+                            incident_hn,
+                            hn_to_parent,
+                            hn_to_num_children,
+                            node_colored,
+                            covered,
+                            current_split,
+                            phg.nodeWeight(incident_hn),
+                            node_queue,
+                            result
+                        );
+                    } else if (_context.extra_options.bfs_st_options == BFSSTOptions::tarjan) {
+                        connected_components::Tarjan<PartitionedHypergraph> tarjan;
+
+                        if (tarjan.is_articulation_point(phg, incident_hn)) {
+                            continue;
+                        }
 
                         add_node_to_split(
                             incident_hn,
@@ -505,7 +523,8 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                             node_queue,
                             result
                         );
-                    } else {
+                    }
+                    else {
                         continue;
                     }
 

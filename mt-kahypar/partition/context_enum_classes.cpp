@@ -585,6 +585,9 @@ namespace mt_kahypar {
     else if (type == "advanced_st_plus_subtree_plus_recalculation") {
       return BFSSTOptions::advanced_st_plus_subtree_plus_recalculation;
     }
+    else if (type == "tarjan") {
+      return BFSSTOptions::tarjan;
+    }
     
     throw InvalidParameterException("Illegal option: " + type);
     return BFSSTOptions::advanced_st_plus_subtree_plus_recalculation;

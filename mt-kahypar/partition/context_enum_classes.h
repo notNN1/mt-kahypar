@@ -199,6 +199,7 @@ enum class BFSSTOptions : uint8_t {
   advanced_st_calculation = 1,
   advanced_st_plus_subtree = 2,
   advanced_st_plus_subtree_plus_recalculation = 3,
+  tarjan = 4,
 };
 
 enum class AdvancedRebalancerOptions :uint8_t {
