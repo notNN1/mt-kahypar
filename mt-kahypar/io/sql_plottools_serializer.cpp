@@ -228,7 +228,6 @@ std::string serialize(const PartitionedHypergraph& hypergraph,
 
       ConnectivityMetrics connectivity = metrics::connectivity(hypergraph, context);
       oss << " extra_components=" << connectivity.extra_components_count;
-      oss << " inefficient_components=" << connectivity.inefficient_components_count;
     }
     oss << " totalPartitionTime=" << elapsed_seconds.count();
 

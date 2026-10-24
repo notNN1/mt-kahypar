@@ -138,7 +138,6 @@ void Metrics::log() const {
   LOG << "Imbalance:                 " << this->imbalance.imbalance_value;
   LOG << "Quality:                   " << this->quality;
   LOG << "Extra components:          " << this->connectivity.extra_components_count;
-  LOG << "Inefficient components:    " << this->connectivity.inefficient_components_count;
 }
 
 std::ostream& operator<< (std::ostream& os, const BalanceMetrics& imbalance) {
@@ -312,19 +311,12 @@ ConnectivityMetrics connectivity(const PartitionedHypergraph& phg, const Context
     total_component_count += components_per_partition.size();
   }
 
-  // calculate inefficient components
-  vec<vec<connected_components::ComponentInfo>> super_components;
-    connected_components::compute_super_components(phg, context, components, super_components);
-
-    vec<vec<connected_components::ComponentInfo>> filtered_super_components;
-    connected_components::find_inefficient_super_components(context, super_components, filtered_super_components);
-
   // Empty blocks can leave fewer than k components; avoid unsigned underflow.
   const u_int32_t num_blocks = static_cast<u_int32_t>(phg.k());
   u_int32_t extra_components_count = total_component_count > num_blocks ?
     total_component_count - num_blocks : 0;
-  u_int32_t inefficient_components_count  = filtered_super_components.size(); 
-  return { extra_components_count, inefficient_components_count };
+  // Keep the legacy field zero for compatibility with metric tuples.
+  return { extra_components_count, 0 };
 }
 
 namespace {

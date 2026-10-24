@@ -26,6 +26,9 @@
 
 #pragma once
 
+#include <algorithm>
+#include <iomanip>
+#include <limits>
 #include <mutex>
 #include <string>
 
@@ -45,14 +48,26 @@ struct InitialPartitionerSummary {
     total_best(0),
     total_calls(0),
     total_extra_components(0),
-    least_extra_components(std::numeric_limits<size_t>::max()),
-    total_inefficient_components(0),
-    least_inefficient_components(std::numeric_limits<size_t>::max()) {}
+    least_extra_components(std::numeric_limits<size_t>::max()) {}
 
   friend std::ostream & operator<< (std::ostream& str, const InitialPartitionerSummary& summary);
 
   void add(const InitialPartitionerSummary& summary) {
     ASSERT(algorithm == summary.algorithm);
+    // Merge centered sums of squares before updating the totals (Chan's formula).
+    if (total_calls > 0 && summary.total_calls > 0) {
+      const double weight = static_cast<double>(total_calls) * summary.total_calls /
+        (static_cast<double>(total_calls) + summary.total_calls);
+      const double quality_delta = summary.average_quality() - average_quality();
+      const double imbalance_delta = summary.average_imbalance() - average_imbalance();
+      const double components_delta = summary.average_components() - average_components();
+      quality_m2 += weight * quality_delta * quality_delta;
+      imbalance_m2 += weight * imbalance_delta * imbalance_delta;
+      components_m2 += weight * components_delta * components_delta;
+    }
+    quality_m2 += summary.quality_m2;
+    imbalance_m2 += summary.imbalance_m2;
+    components_m2 += summary.components_m2;
     total_sum_quality += summary.total_sum_quality;
     total_sum_imbalance += summary.total_sum_imbalance;
     total_time += summary.total_time;
@@ -61,12 +76,6 @@ struct InitialPartitionerSummary {
     
     if (least_extra_components > summary.least_extra_components) {
       least_extra_components = summary.least_extra_components;
-    }
-
-    total_inefficient_components += summary.total_inefficient_components;
-
-    if (least_inefficient_components > summary.least_inefficient_components) {
-      least_inefficient_components = summary.least_inefficient_components;
     }
   }
 
@@ -82,8 +91,17 @@ struct InitialPartitionerSummary {
     return static_cast<double>(total_extra_components) / std::max(total_calls, UL(1));
   }
 
-  double average_inefficient_components() const {
-    return static_cast<double>(total_inefficient_components)/ std::max(total_calls, UL(1));
+  // Population variance over all recorded runs; zero for zero or one run.
+  double variance_quality() const {
+    return quality_m2 / std::max(total_calls, UL(1));
+  }
+
+  double variance_imbalance() const {
+    return imbalance_m2 / std::max(total_calls, UL(1));
+  }
+
+  double variance_components() const {
+    return components_m2 / std::max(total_calls, UL(1));
   }
 
   double average_running_time() const {
@@ -91,7 +109,7 @@ struct InitialPartitionerSummary {
   }
 
   double percentage_best(const size_t total_ip_calls) const {
-    return ( static_cast<double>(total_best) / total_ip_calls ) * 100.0;
+    return ( static_cast<double>(total_best) / std::max(total_ip_calls, UL(1)) ) * 100.0;
   }
 
   InitialPartitioningAlgorithm algorithm;
@@ -102,12 +120,18 @@ struct InitialPartitionerSummary {
   size_t total_calls;
   size_t total_extra_components;
   size_t least_extra_components;
-  size_t total_inefficient_components;
-  size_t least_inefficient_components;
+  double quality_m2 = 0.0;
+  double imbalance_m2 = 0.0;
+  double components_m2 = 0.0;
 };
 
 inline std::ostream & operator<< (std::ostream& str, const InitialPartitionerSummary& summary) {
   str << " avg_quality_" << summary.algorithm << "=" << summary.average_quality()
+      << " var_quality_" << summary.algorithm << "=" << summary.variance_quality()
+      << " avg_imbalance_" << summary.algorithm << "=" << summary.average_imbalance()
+      << " var_imbalance_" << summary.algorithm << "=" << summary.variance_imbalance()
+      << " avg_components_" << summary.algorithm << "=" << summary.average_components()
+      << " var_components_" << summary.algorithm << "=" << summary.variance_components()
       << " total_time_" << summary.algorithm << "=" << summary.total_time
       << " total_best_" << summary.algorithm << "=" << summary.total_best;
   return str;
@@ -162,7 +186,7 @@ class InitialPartitioningStats {
   }
 
   double average_number_of_threads_per_ip_call() const {
-    return static_cast<double>(_total_sum_number_of_threads) / _total_ip_calls;
+    return static_cast<double>(_total_sum_number_of_threads) / std::max(_total_ip_calls, UL(1));
   }
 
   void printInitialPartitioningStats() {
@@ -170,29 +194,19 @@ class InitialPartitioningStats {
     LOG << "Number of Initial Partitioning Calls =" << _total_ip_calls;
     LOG << "Average Number of Thread per IP Call ="
         << average_number_of_threads_per_ip_call() << "\n";
-    std::cout << "\033[1m"
-              << std::left << std::setw(30) << "Algorithm"
-              << std::left << std::setw(15) << "  Avg. Quality"
-              << std::left << std::setw(20) << "  Avg. Imbalance"
-              << std::left << std::setw(20) << "  Avg. Components"
-              //<< std::left << std::setw(20) << "  Least Components"
-              << std::left << std::setw(30) << "  Avg. Inefficient Components"
-              //<< std::left << std::setw(30) << "  Least Inefficient Components"
-              << std::left << std::setw(15) << "  Total Time (s)"
-              << std::left << std::setw(10) << "  Total Best"
-              << std::left << std::setw(15) << "  Total Best (%)"
-              << "\033[0m" << std::endl;
     for ( const InitialPartitionerSummary& summary : _ip_summary ) {
-      LOG << std::left << std::setw(30) << summary.algorithm
-          << std::left << std::setw(15) << summary.average_quality()
-          << std::left << std::setw(20) << summary.average_imbalance()
-          << std::left << std::setw(20) << summary.average_components()
-          //<< std::left << std::setw(20) << summary.least_extra_components
-          << std::left << std::setw(30) << summary.average_inefficient_components()
-          //<< std::left << std::setw(30) << summary.least_inefficient_components
-          << std::left << std::setw(15) << summary.total_time
-          << std::left << std::setw(10) << summary.total_best
-          << std::left << std::setw(15) << summary.percentage_best(_total_ip_calls);
+      if (summary.total_calls == 0) continue;
+      LOG << summary.algorithm << " (runs=" << summary.total_calls
+          << ", time=" << summary.total_time << "s, best=" << summary.total_best
+          << ", " << summary.percentage_best(_total_ip_calls) << "%)";
+      LOG << "  " << std::left << std::setw(20) << "Metric"
+          << std::setw(18) << "Mean" << "Variance";
+      LOG << "  " << std::left << std::setw(20) << "Quality"
+          << std::setw(18) << summary.average_quality() << summary.variance_quality();
+      LOG << "  " << std::left << std::setw(20) << "Imbalance"
+          << std::setw(18) << summary.average_imbalance() << summary.variance_imbalance();
+      LOG << "  " << std::left << std::setw(20) << "Extra components"
+          << std::setw(18) << summary.average_components() << summary.variance_components();
     }
   }
 

@@ -261,8 +261,6 @@ class InitialPartitioningDataContainer {
       new_summary.total_extra_components = result._connectivity.extra_components_count;
       new_summary.least_extra_components = result._connectivity.extra_components_count;
 
-      new_summary.total_inefficient_components = result._connectivity.inefficient_components_count;
-      new_summary.least_inefficient_components = result._connectivity.inefficient_components_count;
 
       auto algorithm_index = static_cast<uint8_t>(algorithm);
       _stats[algorithm_index].add(new_summary);
@@ -277,8 +275,6 @@ class InitialPartitioningDataContainer {
           << std::left << std::setw(10) << result._objective 
           << std::left << std::setw(15) << " Components: " 
           << std::left << std::setw(8) << result._connectivity.extra_components_count
-          << std::left << std::setw(25) << " Inefficient components: "
-          << std::left << std::setw(5) << result._connectivity.inefficient_components_count
           << std::left << std::setw(15) << " Imbalance: " 
           << std::left << std::setw(15) << result._imbalance.imbalance_value;
 
