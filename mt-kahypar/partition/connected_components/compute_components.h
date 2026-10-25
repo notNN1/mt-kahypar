@@ -50,6 +50,14 @@ void compute_components_per_block(
 );
 
 template<typename PartitionedHypergraph>
+void compute_components_per_block_colored(
+  const PartitionedHypergraph& phg,
+  const Context& context,
+  vec<vec<ConnectedComponent>>& result,
+  ds::Bitset& node_colored
+);
+
+template<typename PartitionedHypergraph>
 void compute_components(
   const PartitionedHypergraph& phg,
   const Context& context,

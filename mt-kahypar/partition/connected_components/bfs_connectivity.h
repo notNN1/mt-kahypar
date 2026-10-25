@@ -44,9 +44,22 @@ public:
         const PartitionedHypergraph& phg, 
         const HypernodeID& hn
     ) {
-        Tarjan<PartitionedHypergraph> tarjan;
+        int32_t component_count = connected_components::total_component_count(phg, NULL);
 
-        return !tarjan.is_articulation_point(phg, hn);
+        vec<vec<ConnectedComponent>> connected_components_per_block_colored;
+        
+        Bitset node_colored;
+        node_colored.resize(phg.initialNumNodes());
+        node_colored.set((size_t) hn);
+
+        connected_components::compute_components_per_block_colored(phg, NULL, connected_components_per_block_colored, node_colored);
+
+        int32_t count_induced_graph = 0;
+        for (vec<ConnectedComponent> block : connected_components_per_block_colored) {
+            count_induced_graph += block.size();
+        }
+
+        return count_induced_graph <= component_count;
     };
 };
 
