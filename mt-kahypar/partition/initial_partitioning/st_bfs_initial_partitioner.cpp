@@ -192,68 +192,74 @@ inline void GreedySTInitialPartitioner<TypeTraits>::calculate_component_spanning
     Bitset edge_colored;
     edge_colored.resize(phg.initialNumEdges());
 
-    std::deque<HyperedgeID> node_queue;
-    node_queue.push_back(starter_node);
-
-    std::deque<HyperedgeID> lp_node_queue;
+    // Alternate the two buffers by level; vertices need no depth metadata.
+    vec<HypernodeID> queues[2];
+    queues[0].push_back(starter_node);
+    const bool prioritize_undiscovered =
+        _context.extra_options.bfs_st_options != BFSSTOptions::normal_st;
 
     edge_colored.reset();
     std::deque<HypernodeID> calculation_queue;
 
-    while (node_queue.size() > 0 || lp_node_queue.size() > 0) {
+    for (size_t level = 0; !queues[level % 2].empty(); ++level) {
+        auto& current_queue = queues[level % 2];
+        auto& next_queue = queues[(level + 1) % 2];
+        const size_t level_size = current_queue.size();
+        const size_t start = level_size > 1 ?
+            std::uniform_int_distribution<size_t>(0, level_size - 1)(_rng) : 0;
 
-        HypernodeID current_node;
+        // Advanced modes retain priority within a level. Both passes use the
+        // same cyclic order; every child is queued for the following level.
+        const size_t passes = prioritize_undiscovered ? 2 : 1;
+        for (size_t pass = 0; pass < passes; ++pass) {
+            for (size_t i = 0, index = start; i < level_size;
+                 ++i, index = index + 1 == level_size ? 0 : index + 1) {
+                const HypernodeID current_node = current_queue[index];
+                if (prioritize_undiscovered &&
+                    discovered.isSet((size_t) current_node) != (pass == 1)) {
+                    continue;
+                }
 
-        if (node_queue.size() > 0) {
-            current_node = node_queue.front();
-            node_queue.pop_front();
-        }
-        else {
-            current_node = lp_node_queue.front();
-            lp_node_queue.pop_front();
-        }
+                for (const HyperedgeID& he : phg.incidentEdges(current_node)) {
 
-        for (const HyperedgeID& he : phg.incidentEdges(current_node)) {
+                    if (edge_colored.isSet((size_t) he)) {
+                        continue;
+                    }
 
-            if (edge_colored.isSet((size_t) he)) {
-                continue;
+                    edge_colored.set((size_t) he);
+
+                    for (const HypernodeID& incident_hn : phg.pins(he)) {
+
+                        if (incident_hn == current_node) {
+                            continue;
+                        }
+
+                        if (node_colored.isSet((size_t) incident_hn)) {
+                            continue;
+                        }
+
+                        if (covered.isSet((size_t) incident_hn)) {
+                            continue;
+                        }
+
+                        node_colored.set((size_t) incident_hn);
+
+                        hn_to_parent[incident_hn] = current_node;
+                        hn_to_num_children[current_node]++;
+
+                        hn_to_children[current_node].push_back(incident_hn);
+
+                        next_queue.push_back(incident_hn);
+                    }
+                }
             }
-
-            edge_colored.set((size_t) he);
-
-            for (const HypernodeID& incident_hn : phg.pins(he)) {
-
-                if (incident_hn == current_node) {
-                    continue;
-                }
-
-                if (node_colored.isSet((size_t) incident_hn)) {
-                    continue;
-                }
-
-                if (covered.isSet((size_t) incident_hn)) {
-                    continue;
-                }
-
-                node_colored.set((size_t) incident_hn);
-
-                hn_to_parent[incident_hn] = current_node;
-                hn_to_num_children[current_node]++;
-
-                hn_to_children[current_node].push_back(incident_hn);
-
-                if (_context.extra_options.bfs_st_options != BFSSTOptions::normal_st && (discovered.isSet((size_t) incident_hn))) {
-                    lp_node_queue.push_back(incident_hn);
-                }
-                else {
-                    node_queue.push_back(incident_hn);
-                }
-            }
         }
+        current_queue.clear();
     }
 
 
     // calculate subtree sizes
+    std::deque<HypernodeID> node_queue;
     node_queue.push_back(starter_node);
 
     while (node_queue.size() != 0) {

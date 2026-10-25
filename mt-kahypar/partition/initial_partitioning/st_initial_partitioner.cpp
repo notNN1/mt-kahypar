@@ -212,8 +212,9 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
 ) {
     assert(component.nodes.size() > 0);
 
-    // setup datastructures for BFS
-    std::deque<HypernodeID> queue;
+    // Stack of pending vertices for depth-first traversal.
+    vec<HypernodeID> queue;
+    queue.reserve(component.nodes.size());
     std::deque<HypernodeID> calculation_queue;
 
     const auto attach_node = [&](const HypernodeID node, const HypernodeID parent) {
@@ -249,6 +250,7 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
     while (queue.size() > 0) {
         HypernodeID current_node = queue.back();
         queue.pop_back();
+        const size_t new_vertices_begin = queue.size();
 
         for (const HyperedgeID& he : hg.incidentEdges(current_node)) {
 
@@ -314,6 +316,18 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
                     attach_node(incident_hn, attachment_node);
                 }
             }
+        }
+
+        // Rotate only this expansion's newly discovered vertices. The next
+        // pop starts at a random vertex, preserving their cyclic stack order.
+        // Each vertex belongs to one batch, so rotations take O(|V|) in total.
+        const size_t num_new_vertices = queue.size() - new_vertices_begin;
+        if (num_new_vertices > 1) {
+            const size_t offset =
+                std::uniform_int_distribution<size_t>(0, num_new_vertices - 1)(_rng);
+            std::rotate(queue.begin() + new_vertices_begin,
+                        queue.begin() + new_vertices_begin + offset,
+                        queue.end());
         }
     }
 
