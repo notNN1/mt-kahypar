@@ -45,6 +45,9 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
     HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
+    // Keep origin seeds independent of random draws inside tree recalculations.
+    std::mt19937 component_seed_rng(_rng());
+
     ////// get components sorted by their size
     vec<connected_components::ConnectedComponent> components;
     connected_components::compute_components<typename TypeTraits::PartitionedHypergraph>(hg, _context, components);
@@ -95,6 +98,10 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
     ////// Split the components, only if there is not enough size
     for (const std::pair<size_t, connected_components::ConnectedComponent>& component_and_size : components_and_size) {
 
+        // Consume one seed even for components that do not need splitting.
+        // Earlier components' retry budgets must not shift later seed streams.
+        const auto component_seed = component_seed_rng();
+
         best_split.clear();
         nodes_to_swap.clear();
         current_origins = 0;
@@ -133,10 +140,15 @@ void GreedySTInitialPartitioner<TypeTraits>::partitionImpl() {
             size_t diff = 0;
 
             double best_split_diff = 1.0;
+            std::mt19937 origin_seed_rng(component_seed);
 
             do {
                 nodes_to_swap.clear();
                 split_size = 0;
+
+                // Each origin has its own repeatable stream. Increasing its
+                // recalculation budget cannot change the next origin's seed.
+                _rng.seed(origin_seed_rng());
 
                 calculate_split(hg, component, target_for_split * (1.0 + _context.partition.epsilon), nodes_to_swap, split_size);
 
