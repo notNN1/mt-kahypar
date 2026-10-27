@@ -365,6 +365,17 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
     active_adjacent_vertices_per_hn.resize(phg.initialNumNodes());
     ////
 
+    const auto update_ancestor_subtree_weights = [&](const HypernodeID node, const size_t weight) {
+        if (_context.extra_options.bfs_st_options == BFSSTOptions::advanced_st_plus_subtree_plus_recalculation) {
+            HypernodeID parent = hn_to_parent[node];
+            while (parent != hn_to_parent[parent]) {
+                subtree_size[parent] -= weight;
+                parent = hn_to_parent[parent];
+            }
+            subtree_size[parent] -= weight;
+        }
+    };
+
 
     while (current_split <= target && current_iteration < _context.extra_options.st_bfs_max_recalculations) {
         //// generate spanning tree
@@ -387,16 +398,29 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
 
         //// Select a starting vertex for the BFS
         if (result.size() == 0) {
-
+            size_t num_starting_leaves = 0;
             for (const HypernodeID& node : component.nodes) {
                 if (hn_to_num_children[node] == 0 && phg.nodeWeight(node) <= target) {
-                    starter_node = node;
-                    break;
+                    ++num_starting_leaves;
                 }
             }
 
-            if (starter_node == kInvalidHypernode) {
+            if (num_starting_leaves == 0) {
                 continue;
+            }
+
+            // Origins must vary the splitting BFS's leaf, not only the tree
+            // root. Count first to choose uniformly with one random draw.
+            size_t leaf_index = num_starting_leaves > 1 ?
+                std::uniform_int_distribution<size_t>(0, num_starting_leaves - 1)(_rng) : 0;
+            for (const HypernodeID& node : component.nodes) {
+                if (hn_to_num_children[node] == 0 && phg.nodeWeight(node) <= target) {
+                    if (leaf_index == 0) {
+                        starter_node = node;
+                        break;
+                    }
+                    --leaf_index;
+                }
             }
             
             discovered.set((size_t) starter_node);
@@ -412,6 +436,7 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                 node_queue,
                 result
             );
+            update_ancestor_subtree_weights(starter_node, phg.nodeWeight(starter_node));
         }
         ////
 
@@ -532,18 +557,13 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                         );
                     } 
                     else {
+                        // A new spanning tree may make this neighbor a leaf
+                        // or give it a subtree that fits. Retry from here.
+                        active_adjacent_vertices_per_hn[current_node]++;
                         continue;
                     }
 
-                    if (_context.extra_options.bfs_st_options == BFSSTOptions::advanced_st_plus_subtree_plus_recalculation) {
-                        HypernodeID parent = hn_to_parent[incident_hn];
-                        while (parent != hn_to_parent[parent]) {
-                            subtree_size[parent] -= true_size;
-                            parent = hn_to_parent[parent];
-                        }
-
-                        subtree_size[parent] -= true_size;
-                    }
+                    update_ancestor_subtree_weights(incident_hn, true_size);
                 }
             }   
         }
