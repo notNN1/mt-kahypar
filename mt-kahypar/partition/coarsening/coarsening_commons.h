@@ -29,6 +29,7 @@
 #pragma once
 
 #include "mt-kahypar/partition/context.h"
+#include "mt-kahypar/partition/connected_components/tarjan.h"
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/timer.h"
 #include "mt-kahypar/utils/utilities.h"
@@ -161,6 +162,17 @@ public:
       }
       is_phg_initialized = true;
       timer.stop_timer("finalize_multilevel_hierarchy");
+    }
+    if (_context.type == ContextType::main && _context.partition.sp_process_output) {
+      const PartitionedHypergraph& phg = coarsestPartitionedHypergraph();
+      connected_components::Tarjan<PartitionedHypergraph> tarjan;
+      int64_t num_articulation_points = 0;
+      for (const HypernodeID node : phg.nodes()) {
+        num_articulation_points += tarjan.is_articulation_point(phg, node);
+      }
+      // Keep the first coarsening stage's count across subsequent V-cycles.
+      utils::Utilities::instance().getStats(_context.utility_id).add_stat(
+        "coarsening_num_articulation_points", num_articulation_points);
     }
     is_finalized = true;
   }

@@ -88,7 +88,9 @@ public:
         reset_fields(phg);
         vec<vec<HypernodeID>> hn_to_new_incident_nodes;
         
-        if (excluded) {
+        // Build from the current topology: the connectivity cache may not yet
+        // be initialized immediately after coarsening.
+        {
             hn_to_new_incident_nodes.resize(phg.initialNumNodes());
             vec<HypernodeID> remaining_pins;
 
@@ -97,7 +99,7 @@ public:
                 remaining_pins.clear();
 
                 for (const HypernodeID pin : phg.pins(he)) {
-                    if (!excluded->isSet((size_t) pin)) {
+                    if (!excluded || !excluded->isSet((size_t) pin)) {
                         remaining_pins.push_back(pin);
                     }
                 }
@@ -120,8 +122,6 @@ public:
                     }
                 }
             }
-        } else {
-            hn_to_new_incident_nodes = phg.get_circular_edge_expansion();
         }
         
         for (const HypernodeID& node : phg.nodes()) {
