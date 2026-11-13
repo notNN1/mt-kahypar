@@ -567,6 +567,9 @@ namespace mt_kahypar {
     else if (type == "advanced_st_calculation") {
       return STOptions::advanced_st_calculation;
     }
+    else if (type == "vine_expansion") {
+      return STOptions::vine_expansion;
+    }
 
     throw InvalidParameterException("Illegal option: " + type);
     return STOptions::advanced_st_calculation;

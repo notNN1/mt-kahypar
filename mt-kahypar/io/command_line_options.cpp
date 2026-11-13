@@ -1201,7 +1201,8 @@ namespace mt_kahypar {
       },
       "Improvements of the st initial partitioner:\n"
       "- normal_st\n"
-      "- advanced_st_calculation"
+      "- advanced_st_calculation\n"
+      "- vine_expansion (connect undiscovered pins of each hyperedge in a path)"
     )->capture_default_str();
     app.add_option_function<std::string>(
       "--i-st-bfs-type", [&](const std::string& s) {

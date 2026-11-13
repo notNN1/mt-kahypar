@@ -192,6 +192,7 @@ enum class DynamicConnectivityStrategy : uint8_t {
 enum class STOptions : uint8_t {
   normal_st = 0,
   advanced_st_calculation = 1,
+  vine_expansion = 2,
 };
 
 enum class BFSSTOptions : uint8_t {

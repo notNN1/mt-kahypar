@@ -270,6 +270,20 @@ void STInitialPartitioner<TypeTraits>::calculate_spanning_tree(
                     attach_node(incident_hn, current_node);
                 }
             }
+            else if (_context.extra_options.st_options == STOptions::vine_expansion) {
+                // Attach one pin to the current vertex, then extend a path
+                // through the remaining undiscovered pins of this hyperedge.
+                HypernodeID parent = current_node;
+                for (const HypernodeID& incident_hn : hg.pins(he)) {
+                    if (node_colored.isSet((size_t) incident_hn)) {
+                        continue;
+                    }
+
+                    node_colored.set((size_t) incident_hn);
+                    attach_node(incident_hn, parent);
+                    parent = incident_hn;
+                }
+            }
             else if (_context.extra_options.st_options == STOptions::advanced_st_calculation) {
 
                 vec<std::pair<size_t, HypernodeID>> sizes;
