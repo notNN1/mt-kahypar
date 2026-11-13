@@ -31,6 +31,7 @@
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/partition/connected_components/tarjan.h"
 #include "mt-kahypar/definitions.h"
+#include "mt-kahypar/utils/clustering_coefficient.h"
 #include "mt-kahypar/utils/timer.h"
 #include "mt-kahypar/utils/utilities.h"
 
@@ -166,13 +167,43 @@ public:
     if (_context.type == ContextType::main && _context.partition.sp_process_output) {
       const PartitionedHypergraph& phg = coarsestPartitionedHypergraph();
       connected_components::Tarjan<PartitionedHypergraph> tarjan;
+      int64_t num_nodes = 0;
+      int64_t num_edges = 0;
+      int64_t num_pins = 0;
+      int64_t sum_node_degrees = 0;
+      int64_t min_edge_size = 0;
+      int64_t max_edge_size = 0;
       int64_t num_articulation_points = 0;
       for (const HypernodeID node : phg.nodes()) {
+        ++num_nodes;
+        sum_node_degrees += phg.nodeDegree(node);
         num_articulation_points += tarjan.is_articulation_point(phg, node);
       }
-      // Keep the first coarsening stage's count across subsequent V-cycles.
-      utils::Utilities::instance().getStats(_context.utility_id).add_stat(
-        "coarsening_num_articulation_points", num_articulation_points);
+      for (const HyperedgeID edge : phg.edges()) {
+        ++num_edges;
+        const int64_t edge_size = phg.edgeSize(edge);
+        num_pins += edge_size;
+        min_edge_size = num_edges == 1 ? edge_size : std::min(min_edge_size, edge_size);
+        max_edge_size = std::max(max_edge_size, edge_size);
+      }
+      // Count the current topology rather than the initial allocation sizes.
+      // Graph edges are stored in both directions; their sizes are averaged
+      // over those stored edges, but each undirected edge is reported once.
+      const double mean_degree = num_nodes > 0 ?
+        static_cast<double>(sum_node_degrees) / num_nodes : 0.0;
+      const double mean_edge_size = num_edges > 0 ?
+        static_cast<double>(num_pins) / num_edges : 0.0;
+      // add_stat keeps the first coarsening stage's values across V-cycles.
+      utils::Stats& stats = utils::Utilities::instance().getStats(_context.utility_id);
+      stats.add_stat("coarsening_num_nodes", num_nodes);
+      stats.add_stat("coarsening_num_hyperedges", PartitionedHypergraph::is_graph ? num_edges / 2 : num_edges);
+      stats.add_stat("coarsening_mean_degree", mean_degree);
+      stats.add_stat("coarsening_mean_hyperedge_size", mean_edge_size);
+      stats.add_stat("coarsening_min_hyperedge_size", min_edge_size);
+      stats.add_stat("coarsening_max_hyperedge_size", max_edge_size);
+      stats.add_stat("coarsening_mean_clique_expansion_clustering_coefficient",
+        utils::meanCliqueExpansionClusteringCoefficient(phg));
+      stats.add_stat("coarsening_num_articulation_points", num_articulation_points);
     }
     is_finalized = true;
   }
