@@ -190,10 +190,12 @@ class TarjanRegionCoarsening {
       parallel::scalable_vector<HypernodeID> communities(hg.initialNumNodes(), kInvalidHypernode);
       calculate_communities(region_info, region_to_parent, communities, subtree_size, heads);
 
+      const vec<HypernodeID> groups(communities.begin(), communities.end());
+      splitDisconnectedCommunities(hg, groups, communities);
+
       return communities;
     }
 
-  //// ai code start
   // Keep the existing partition representable and each coarse vertex connected.
   // Fixed vertices remain singletons, so their constraints cannot conflict.
   static void respectPartition(const PartitionedHypergraph& hg,
@@ -212,6 +214,13 @@ class TarjanRegionCoarsening {
       }
     }
 
+    splitDisconnectedCommunities(hg, groups, communities);
+  }
+
+private:
+  static void splitDisconnectedCommunities(const PartitionedHypergraph& hg,
+                                           const vec<HypernodeID>& groups,
+                                           parallel::scalable_vector<HypernodeID>& communities) {
     vec<HypernodeID> edge_group(hg.initialNumEdges(), kInvalidHypernode);
     ds::Bitset visited(hg.initialNumNodes());
     std::queue<HypernodeID> queue;
@@ -239,9 +248,7 @@ class TarjanRegionCoarsening {
       next_community++;
     }
   }
-  //// ai code end
 
-private:
   void calculate_communities(
     const vec<RegionInfo>& region_info,
     vec<RegionID>& region_to_parent,
