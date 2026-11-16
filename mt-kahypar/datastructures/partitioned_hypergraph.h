@@ -963,11 +963,13 @@ class PartitionedHypergraph {
   // ! stores which hyperedges of the extracted hypergraph are already cut in
   // ! the original hypergraph.
   // ! If cut_net_splitting is activated, then cut hyperedges are splitted containing
-  // ! only the pins of the corresponding block. Otherwise, they are discarded.
+  // ! only the pins of the corresponding block. Otherwise, they are discarded,
+  // ! unless virtual_cut_net_removal retains their local pins with zero weight.
   ExtractedBlock extract(const PartitionID block,
                          const vec<uint8_t>* already_cut,
                          bool cut_net_splitting,
-                         bool stable_construction_of_incident_edges) {
+                         bool stable_construction_of_incident_edges,
+                         bool virtual_cut_net_removal = false) {
     ASSERT(block != kInvalidPartition && block < _k);
     ASSERT(!already_cut || already_cut->size() == _hg->initialNumEdges());
 
@@ -987,7 +989,7 @@ class PartitionedHypergraph {
     }, [&] {
       for ( const HyperedgeID& he : edges() ) {
         if ( pinCountInPart(he, block) > 1 &&
-             (cut_net_splitting || connectivity(he) == 1) ) {
+             (cut_net_splitting || virtual_cut_net_removal || connectivity(he) == 1) ) {
           he_mapping[he] = num_hyperedges++;
         }
       }
@@ -1004,9 +1006,12 @@ class PartitionedHypergraph {
       hyperedge_weight.resize(num_hyperedges);
       doParallelForAllEdges([&](const HyperedgeID he) {
         if ( pinCountInPart(he, block) > 1 &&
-             (cut_net_splitting || connectivity(he) == 1) ) {
+             (cut_net_splitting || virtual_cut_net_removal || connectivity(he) == 1) ) {
           ASSERT(he_mapping[he] < num_hyperedges);
-          hyperedge_weight[he_mapping[he]] = edgeWeight(he);
+          // Already-cut nets remain visible to topology-based partitioners,
+          // but cannot contribute to the cut objective of a descendant block.
+          hyperedge_weight[he_mapping[he]] =
+            !cut_net_splitting && connectivity(he) > 1 ? 0 : edgeWeight(he);
           for ( const HypernodeID& pin : pins(he) ) {
             if ( partID(pin) == block ) {
               edge_vector[he_mapping[he]].push_back(hn_mapping[pin]);
@@ -1054,7 +1059,8 @@ class PartitionedHypergraph {
   std::pair<vec<ExtractedBlock>, vec<HypernodeID>> extractAllBlocks(const PartitionID k,
                                                                     const vec<uint8_t>* already_cut,
                                                                     const bool cut_net_splitting,
-                                                                    const bool stable_construction_of_incident_edges) {
+                                                                    const bool stable_construction_of_incident_edges,
+                                                                    const bool virtual_cut_net_removal = false) {
     ASSERT(k <= _k);
 
     vec<HypernodeID> hn_mapping(_hg->initialNumNodes(), kInvalidHypernode);
@@ -1078,7 +1084,7 @@ class PartitionedHypergraph {
         for ( const HyperedgeID& he : edges() ) {
           for ( const PartitionID& block : connectivitySet(he) ) {
             if ( pinCountInPart(he, block) > 1 &&
-                (cut_net_splitting || connectivity(he) == 1) ) {
+                (cut_net_splitting || virtual_cut_net_removal || connectivity(he) == 1) ) {
               hes2block[block].push_back(he);
             }
           }
@@ -1099,7 +1105,7 @@ class PartitionedHypergraph {
         doParallelForAllEdges([&](const HyperedgeID& he) {
           for ( const PartitionID& block : connectivitySet(he) ) {
             if ( pinCountInPart(he, block) > 1 &&
-                (cut_net_splitting || connectivity(he) == 1) ) {
+                (cut_net_splitting || virtual_cut_net_removal || connectivity(he) == 1) ) {
               hes2block_stream[block].stream(he);
             }
           }
@@ -1139,7 +1145,8 @@ class PartitionedHypergraph {
       tbb::parallel_for(static_cast<PartitionID>(0), k, [&](const PartitionID p) {
         tbb::parallel_for(UL(0), hes2block[p].size(), [&, p](const size_t i) {
           const HyperedgeID he = hes2block[p][i];
-          he_weight[p][i] = edgeWeight(he);
+          he_weight[p][i] =
+            !cut_net_splitting && connectivity(he) > 1 ? 0 : edgeWeight(he);
           for ( const HypernodeID& pin : pins(he) ) {
             if ( partID(pin) == p ) {
               edge_vector[p][i].push_back(hn_mapping[pin]);

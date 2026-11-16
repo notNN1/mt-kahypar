@@ -558,7 +558,8 @@ void bipartition_each_block(typename TypeTraits::PartitionedHypergraph& partitio
     });
   }
   auto extracted_blocks = partitioned_hg.extractAllBlocks(current_k, !already_cut.empty() ?
-    &already_cut : nullptr, cut_net_splitting, context.preprocessing.stable_construction_of_incident_edges);
+    &already_cut : nullptr, cut_net_splitting, context.preprocessing.stable_construction_of_incident_edges,
+    true /* virtual_cut_net_removal */);
   vec<Hypergraph> hypergraphs(current_k);
   for ( PartitionID block = 0; block < current_k; ++block ) {
     hypergraphs[block] = std::move(extracted_blocks.first[block].hg);

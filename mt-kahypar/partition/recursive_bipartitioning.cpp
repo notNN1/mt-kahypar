@@ -342,7 +342,8 @@ void rb::recursively_bipartition_block(typename TypeTraits::PartitionedHypergrap
   const bool cut_net_splitting =
     BipartitioningPolicy::useCutNetSplitting(context.partition.gain_policy);
   auto extracted_block = phg.extract(block, !already_cut.empty() ? &already_cut : nullptr,
-    cut_net_splitting, context.preprocessing.stable_construction_of_incident_edges);
+    cut_net_splitting, context.preprocessing.stable_construction_of_incident_edges,
+    true /* virtual_cut_net_removal */);
   Hypergraph& rb_hg = extracted_block.hg;
   auto& mapping = extracted_block.hn_mapping;
   setupFixedVerticesForRecursion(phg.hypergraph(), rb_hg, mapping, k0, k1);

@@ -913,7 +913,8 @@ private:
   ExtractedBlock extract(const PartitionID block,
                          const vec<uint8_t>* already_cut,
                          bool /*cut_net_splitting*/,
-                         bool stable_construction_of_incident_edges) {
+                         bool stable_construction_of_incident_edges,
+                         bool /*virtual_cut_net_removal*/ = false) {
     ASSERT(block != kInvalidPartition && block < _k);
     ASSERT(!already_cut || already_cut->size() == _hg->initialNumEdges());
 
@@ -992,7 +993,8 @@ private:
   std::pair<vec<ExtractedBlock>, vec<HypernodeID>> extractAllBlocks(const PartitionID k,
                                                                     const vec<uint8_t>* already_cut,
                                                                     const bool /*cut_net_splitting*/,
-                                                                    const bool stable_construction_of_incident_edges) {
+                                                                    const bool stable_construction_of_incident_edges,
+                                                                    const bool /*virtual_cut_net_removal*/ = false) {
     ASSERT(k <= _k);
 
     // Compactify node and edge ids
