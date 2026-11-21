@@ -52,7 +52,7 @@ bool ConnectivityFacade<PartitionedHypergraph>::can_move_out_of_partition(
     bool can_move_node = true;
 
     if (strategy == DynamicConnectivityStrategy::bfs) {
-        can_move_node = this-bfs.moveVertex(hypergraph, hn);
+        can_move_node = this->bfs.moveVertex(hypergraph, hn);
     }
     else if (strategy == DynamicConnectivityStrategy::h_vertex_degree) {
         auto range = hypergraph.incidentEdges(hn);
