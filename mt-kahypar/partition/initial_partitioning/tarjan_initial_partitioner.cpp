@@ -64,14 +64,15 @@ void TarjanInitialPartitioner<TypeTraits>::partitionImpl() {
       && enabled_ip_algos[i]) {
         auto algorithm = static_cast<InitialPartitioningAlgorithm>(i);
 
-        // Create one initial partitioner.
+        // Draw from this Tarjan run's seeded RNG so repeated runs explore
+        // different partitions even when coarsening produces identical labels.
         std::unique_ptr<IInitialPartitioner> initial_partitioner =
             InitialPartitionerFactory::getInstance().createObject(
                 algorithm,
                 algorithm,
                 ip_data_ptr,
                 _context,
-                _context.partition.seed + i + 100,
+                _rng(),
                 10000);
 
         // Run it.
