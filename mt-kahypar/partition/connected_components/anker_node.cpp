@@ -43,7 +43,7 @@ void AnkerNodes<PartitionedHypergraph>::initialize(
     uint32_t count = 0;
 
     for (const HyperedgeID& he : phg.edges()) {
-        
+        count = 0;
         
         for (const HypernodeID& incident_hn : phg.pins(he)) {
             PartitionID part = phg.partID(incident_hn);
