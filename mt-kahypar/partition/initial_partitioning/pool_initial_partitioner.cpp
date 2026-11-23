@@ -60,12 +60,19 @@ void Pool<TypeTraits>::bipartition(PartitionedHypergraph& hypergraph,
   for ( uint8_t i = 0; i < static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED); ++i ) {
     if ( context.initial_partitioning.enabled_ip_algos[i] ) {
       auto algorithm = static_cast<InitialPartitioningAlgorithm>(i);
-      for ( size_t j = 0; j < context.initial_partitioning.runs; ++j ) {
+      const size_t runs = algorithm == InitialPartitioningAlgorithm::tarjan ?
+        context.initial_partitioning.tarjan_runs.value_or(context.initial_partitioning.runs) :
+        context.initial_partitioning.runs;
+      for ( size_t j = 0; j < runs; ++j ) {
         // Each initial partitioning algorithm is assigned a seed and a tag
         // for deterministic behavior when partitioning in deterministic mode.
         _ip_task_lists.emplace_back(algorithm, rng(), tag++);
       }
     }
+  }
+  if ( _ip_task_lists.empty() ) {
+    throw InvalidParameterException(
+      "No initial partitioning runs are enabled. Enable an algorithm with a positive run count!");
   }
   // Random shuffle task list to evenly schedule the initial
   // partitioning algorithms to the threads

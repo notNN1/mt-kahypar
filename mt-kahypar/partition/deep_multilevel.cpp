@@ -376,6 +376,11 @@ Context setupDeepMultilevelRecursionContext(const Context& context,
   r_context.initial_partitioning.runs = std::max(
     std::ceil(static_cast<double>(context.initial_partitioning.runs) *
       thread_reduction_factor), 1.0);
+  if ( context.initial_partitioning.tarjan_runs.value_or(0) > 0 ) {
+    r_context.initial_partitioning.tarjan_runs = std::max(
+      std::ceil(static_cast<double>(*context.initial_partitioning.tarjan_runs) *
+        thread_reduction_factor), 1.0);
+  }
 
   return r_context;
 }

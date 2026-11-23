@@ -104,6 +104,7 @@ std::string serialize(const PartitionedHypergraph& hypergraph,
         << " rating_acceptance_policy=" << context.coarsening.rating.acceptance_policy;
     oss << " initial_partitioning_mode=" << context.initial_partitioning.mode
         << " initial_partitioning_runs=" << context.initial_partitioning.runs
+        << " initial_partitioning_tarjan_runs=" << context.initial_partitioning.tarjan_runs.value_or(context.initial_partitioning.runs)
         << " initial_partitioning_use_adaptive_ip_runs=" << std::boolalpha << context.initial_partitioning.use_adaptive_ip_runs
         << " initial_partitioning_min_adaptive_ip_runs=" << context.initial_partitioning.min_adaptive_ip_runs
         << " initial_partitioning_perform_refinement_on_best_partitions=" << std::boolalpha << context.initial_partitioning.perform_refinement_on_best_partitions

@@ -1145,6 +1145,13 @@ namespace mt_kahypar {
       context.initial_partitioning.runs,
      "Number of runs for each bipartitioning algorithm."
     )->capture_default_str();
+    app.add_option_function<size_t>(
+      "--i-tarjan-runs", [&](const size_t runs) {
+        context.initial_partitioning.tarjan_runs = runs;
+      },
+      "Number of runs for the Tarjan initial partitioner, overriding --i-runs. "
+      "If omitted, inherits --i-runs. Zero skips Tarjan. Adaptive stopping still applies."
+    )->check(CLI::NonNegativeNumber);
     app.add_option(
       "--i-use-adaptive-ip-runs",
       context.initial_partitioning.use_adaptive_ip_runs,

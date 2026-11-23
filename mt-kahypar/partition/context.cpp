@@ -306,6 +306,11 @@ namespace mt_kahypar {
     }
     str << std::endl;
     str << "  Number of Runs:                     " << params.runs << std::endl;
+    str << "  Number of Tarjan Runs:              " << params.tarjan_runs.value_or(params.runs);
+    if ( !params.tarjan_runs.has_value() ) {
+      str << " (inherited)";
+    }
+    str << std::endl;
     str << "  Use Adaptive IP Runs:               " << std::boolalpha << params.use_adaptive_ip_runs << std::endl;
     if ( params.use_adaptive_ip_runs ) {
       str << "  Min Adaptive IP Runs:               " << params.min_adaptive_ip_runs << std::endl;

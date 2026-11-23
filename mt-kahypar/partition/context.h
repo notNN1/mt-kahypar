@@ -27,6 +27,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/partition/context_enum_classes.h"
 
@@ -248,6 +250,8 @@ struct InitialPartitioningParameters {
   // An empty list inherits enabled_ip_algos (excluding Tarjan itself).
   std::vector<bool> enabled_ip_algos_tarjan;
   size_t runs = 20;
+  // If unset, Tarjan uses the common run count. Zero skips Tarjan.
+  std::optional<size_t> tarjan_runs;
   bool use_adaptive_ip_runs = true;
   size_t min_adaptive_ip_runs = 5;
   bool perform_refinement_on_best_partitions = false;

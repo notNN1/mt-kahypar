@@ -490,21 +490,23 @@ void GreedySTInitialPartitioner<TypeTraits>::calculate_split(
                     if (_context.extra_options.bfs_st_options == BFSSTOptions::tarjan) {
                         connected_components::Tarjan<PartitionedHypergraph> tarjan;
 
-                        if (tarjan.is_articulation_point(phg, incident_hn, covered)) {
-                            continue;
+                        if (!tarjan.is_articulation_point(phg, incident_hn, covered)) {
+                            add_node_to_split(
+                                incident_hn,
+                                hn_to_parent,
+                                hn_to_num_children,
+                                node_colored,
+                                covered,
+                                current_split,
+                                phg.nodeWeight(incident_hn),
+                                node_queue,
+                                result
+                            );
+                        } else {
+                            // Removing other vertices can make this neighbor
+                            // non-articulating. Revisit it on the next pass.
+                            active_adjacent_vertices_per_hn[current_node]++;
                         }
-
-                        add_node_to_split(
-                            incident_hn,
-                            hn_to_parent,
-                            hn_to_num_children,
-                            node_colored,
-                            covered,
-                            current_split,
-                            phg.nodeWeight(incident_hn),
-                            node_queue,
-                            result
-                        );
                     }
                     else if (do_subtree_move && subtree_size[incident_hn] + current_split <= target) {
 
